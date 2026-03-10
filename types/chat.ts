@@ -19,5 +19,5 @@ export interface ModelRuntimeConfig {
   baseUrl: string;
   modelName: string;
   apiKey: string;
+  defaultReplyLength: number;
 }
-

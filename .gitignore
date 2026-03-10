@@ -12,4 +12,5 @@ coverage/
 generated/
 prisma/dev.db
 prisma/dev.db-journal
-
+.codex/dev-server.log
+.codex/dev-server.err.log

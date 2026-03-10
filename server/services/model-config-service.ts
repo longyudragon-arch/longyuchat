@@ -1,5 +1,8 @@
+import type { ModelConfig } from "@/generated/prisma/client";
+import { ModelTestStatus, ProviderType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { ProviderType } from "@/generated/prisma/enums";
+import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
+import { ApiError } from "@/server/http/api-error";
 
 export interface CreateModelConfigInput {
   name: string;
@@ -7,6 +10,7 @@ export interface CreateModelConfigInput {
   baseUrl: string;
   modelName: string;
   apiKey: string;
+  defaultReplyLength?: number;
   enabled?: boolean;
 }
 
@@ -16,8 +20,30 @@ export interface UpdateModelConfigInput {
   baseUrl?: string;
   modelName?: string;
   apiKey?: string;
+  defaultReplyLength?: number;
   enabled?: boolean;
 }
+
+interface PersistModelTestResultInput {
+  status: keyof typeof ModelTestStatus;
+  message: string;
+  testedAt?: Date;
+}
+
+interface TestModelConnectionDependencies {
+  getModelById: (id: string) => Promise<ModelConfig | null>;
+  persistTestResult: (id: string, input: PersistModelTestResultInput) => Promise<ModelConfig>;
+  createAdapter: typeof createModelAdapter;
+}
+
+const fallbackReplyLength = 300;
+const maxTestMessageLength = 1200;
+
+const defaultTestDependencies: TestModelConnectionDependencies = {
+  getModelById: getModelConfigById,
+  persistTestResult: persistModelTestResult,
+  createAdapter: createModelAdapter,
+};
 
 function requireNonEmpty(value: string, label: string) {
   const normalized = value.trim();
@@ -31,19 +57,48 @@ function requireNonEmpty(value: string, label: string) {
 
 function assertProvider(provider: string) {
   if (!(provider in ProviderType)) {
-    throw new Error(`Unsupported provider: ${provider}`);
+    throw new ApiError(400, `Unsupported provider: ${provider}`);
   }
 }
 
+function normalizeDefaultReplyLength(value: number | undefined) {
+  const nextValue = value ?? fallbackReplyLength;
+
+  if (!Number.isInteger(nextValue) || nextValue < 50 || nextValue > 4000) {
+    throw new ApiError(400, "Default reply length must be an integer between 50 and 4000.");
+  }
+
+  return nextValue;
+}
+
+function shouldResetConnectionTest(input: UpdateModelConfigInput) {
+  return input.provider !== undefined || input.baseUrl !== undefined || input.modelName !== undefined || input.apiKey !== undefined;
+}
+
+function normalizeTestMessage(message: string) {
+  return message.trim().slice(0, maxTestMessageLength) || "Connection test failed.";
+}
+
+function toPersistedTestResultData(input: PersistModelTestResultInput) {
+  return {
+    lastTestStatus: ModelTestStatus[input.status],
+    lastTestMessage: normalizeTestMessage(input.message),
+    lastTestedAt: input.testedAt ?? new Date(),
+  };
+}
+
+function toResetConnectionTestData() {
+  return {
+    lastTestStatus: null,
+    lastTestMessage: null,
+    lastTestedAt: null,
+  };
+}
+
 export async function listModelConfigs() {
-  const models = await prisma.modelConfig.findMany({
+  return prisma.modelConfig.findMany({
     orderBy: [{ enabled: "desc" }, { updatedAt: "desc" }],
   });
-
-  return models.map(({ apiKey, ...model }) => ({
-    ...model,
-    hasApiKey: Boolean(apiKey),
-  }));
 }
 
 export async function getModelConfigById(id: string) {
@@ -62,7 +117,9 @@ export async function createModelConfig(input: CreateModelConfigInput) {
       baseUrl: requireNonEmpty(input.baseUrl, "Base URL"),
       modelName: requireNonEmpty(input.modelName, "Model name"),
       apiKey: requireNonEmpty(input.apiKey, "API key"),
+      defaultReplyLength: normalizeDefaultReplyLength(input.defaultReplyLength),
       enabled: input.enabled ?? true,
+      ...toResetConnectionTestData(),
     },
   });
 }
@@ -73,7 +130,7 @@ export async function updateModelConfig(id: string, input: UpdateModelConfigInpu
   });
 
   if (!existingModel) {
-    throw new Error(`Model ${id} was not found.`);
+    throw new ApiError(404, `Model ${id} was not found.`);
   }
 
   if (input.provider) {
@@ -88,7 +145,10 @@ export async function updateModelConfig(id: string, input: UpdateModelConfigInpu
       baseUrl: input.baseUrl ? requireNonEmpty(input.baseUrl, "Base URL") : undefined,
       modelName: input.modelName ? requireNonEmpty(input.modelName, "Model name") : undefined,
       apiKey: input.apiKey ? requireNonEmpty(input.apiKey, "API key") : undefined,
+      defaultReplyLength:
+        input.defaultReplyLength !== undefined ? normalizeDefaultReplyLength(input.defaultReplyLength) : undefined,
       enabled: input.enabled,
+      ...(shouldResetConnectionTest(input) ? toResetConnectionTestData() : {}),
     },
   });
 }
@@ -99,3 +159,51 @@ export async function deleteModelConfig(id: string) {
   });
 }
 
+export function toModelRuntimeConfig(model: ModelConfig) {
+  return {
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    baseUrl: model.baseUrl,
+    modelName: model.modelName,
+    apiKey: model.apiKey,
+    defaultReplyLength: model.defaultReplyLength,
+  };
+}
+
+export async function persistModelTestResult(id: string, input: PersistModelTestResultInput) {
+  return prisma.modelConfig.update({
+    where: { id },
+    data: toPersistedTestResultData(input),
+  });
+}
+
+export async function testModelConnectionById(
+  id: string,
+  dependencies: TestModelConnectionDependencies = defaultTestDependencies,
+) {
+  const model = await dependencies.getModelById(id);
+
+  if (!model) {
+    throw new ApiError(404, `Model ${id} was not found.`);
+  }
+
+  const runtimeConfig = toModelRuntimeConfig(model);
+
+  try {
+    const adapter = dependencies.createAdapter(runtimeConfig);
+    await adapter.testConnection(runtimeConfig);
+
+    return dependencies.persistTestResult(id, {
+      status: "SUCCESS",
+      message: "Connection test succeeded.",
+    });
+  } catch (error) {
+    await dependencies.persistTestResult(id, {
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "Connection test failed.",
+    });
+
+    throw error;
+  }
+}

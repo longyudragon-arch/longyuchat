@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { MessageRole } from "@/generated/prisma/enums";
+import { ApiError } from "@/server/http/api-error";
 
 async function getNextSequence(roomId: string) {
   const lastMessage = await prisma.message.findFirst({
@@ -19,7 +20,7 @@ function requireContent(content: string) {
   const normalized = content.trim();
 
   if (!normalized) {
-    throw new Error("Message content is required.");
+    throw new ApiError(400, "Message content is required.");
   }
 
   return normalized;

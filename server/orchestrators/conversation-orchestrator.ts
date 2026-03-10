@@ -28,6 +28,20 @@ export interface SequentialConversationResult {
   error?: string;
 }
 
+export function buildReplyLengthInstruction(config: ModelRuntimeConfig): ChatMessage {
+  return {
+    role: "system",
+    content: `Reply in the same language as the latest user message. Your final answer must stay within ${config.defaultReplyLength} visible characters, including punctuation and spaces. If your first draft would be longer, compress and summarize it until it fits. Do not exceed the limit.`,
+  };
+}
+
+export function buildParticipationInstruction(config: ModelRuntimeConfig): ChatMessage {
+  return {
+    role: "user",
+    content: `You are ${config.name}. Continue this multi-model discussion from your own perspective. The messages above may include replies from other AI models, but you should still respond with your own answer instead of staying silent. Keep it within the required character limit.`,
+  };
+}
+
 export async function runSequentialConversation(
   input: SequentialConversationInput,
 ): Promise<SequentialConversationResult> {
@@ -40,7 +54,7 @@ export async function runSequentialConversation(
       const adapter = input.createAdapter(model.config);
       const reply = await adapter.generateReply({
         config: model.config,
-        messages: history,
+        messages: [buildReplyLengthInstruction(model.config), ...history, buildParticipationInstruction(model.config)],
       });
 
       const savedMessage = await input.saveAssistantMessage({
@@ -71,4 +85,3 @@ export async function runSequentialConversation(
     messages: persistedMessages,
   };
 }
-

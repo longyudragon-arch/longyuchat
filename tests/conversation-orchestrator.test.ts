@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runSequentialConversation } from "@/server/orchestrators/conversation-orchestrator";
+import {
+  buildParticipationInstruction,
+  buildReplyLengthInstruction,
+  runSequentialConversation,
+} from "@/server/orchestrators/conversation-orchestrator";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
 import type { ChatMessage, ModelRuntimeConfig, PersistedMessage } from "@/types/chat";
 
@@ -12,6 +16,7 @@ function buildConfig(id: string): ModelRuntimeConfig {
     baseUrl: "https://example.com/v1",
     modelName: `${id}-model`,
     apiKey: "test-key",
+    defaultReplyLength: 300,
   };
 }
 
@@ -84,10 +89,16 @@ describe("runSequentialConversation", () => {
 
     expect(result.status).toBe("completed");
     expect(result.messages.map((message) => message.modelId)).toEqual(["model-a", "model-b"]);
-    expect(seenMessages.get("model-a")).toEqual([{ role: "user", content: "How should we start?" }]);
+    expect(seenMessages.get("model-a")).toEqual([
+      buildReplyLengthInstruction(buildConfig("model-a")),
+      { role: "user", content: "How should we start?" },
+      buildParticipationInstruction(buildConfig("model-a")),
+    ]);
     expect(seenMessages.get("model-b")).toEqual([
+      buildReplyLengthInstruction(buildConfig("model-b")),
       { role: "user", content: "How should we start?" },
       { role: "assistant", content: "First reply", modelId: "model-a", sequence: 1 },
+      buildParticipationInstruction(buildConfig("model-b")),
     ]);
   });
 

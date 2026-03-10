@@ -14,6 +14,7 @@ enum ProviderType {
   GROK
   DOUBAO
   DEEPSEEK
+  MODELSCOPE
 }
 
 enum RoomType {
@@ -27,18 +28,27 @@ enum MessageRole {
   SYSTEM
 }
 
+enum ModelTestStatus {
+  SUCCESS
+  ERROR
+}
+
 model ModelConfig {
-  id         String          @id @default(cuid())
-  name       String          @unique
-  provider   ProviderType
-  baseUrl    String          @map("base_url")
-  modelName  String          @map("model_name")
-  apiKey     String          @map("api_key")
-  enabled    Boolean         @default(true)
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
-  roomModels ChatRoomModel[]
-  messages   Message[]
+  id                 String          @id @default(cuid())
+  name               String          @unique
+  provider           ProviderType
+  baseUrl            String          @map("base_url")
+  modelName          String          @map("model_name")
+  apiKey             String          @map("api_key")
+  defaultReplyLength Int             @default(300) @map("default_reply_length")
+  lastTestStatus     ModelTestStatus? @map("last_test_status")
+  lastTestMessage    String?         @map("last_test_message")
+  lastTestedAt       DateTime?       @map("last_tested_at")
+  enabled            Boolean         @default(true)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  roomModels         ChatRoomModel[]
+  messages           Message[]
 
   @@map("model_configs")
 }
@@ -85,4 +95,3 @@ model Message {
   @@index([modelId])
   @@map("messages")
 }
-
