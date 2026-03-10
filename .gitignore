@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.turbo/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+generated/
+prisma/dev.db
+prisma/dev.db-journal
+

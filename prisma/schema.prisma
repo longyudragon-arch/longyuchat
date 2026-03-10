@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum ProviderType {
+  OPENAI_COMPATIBLE
+  CLAUDE
+  GEMINI
+  GROK
+  DOUBAO
+  DEEPSEEK
+}
+
+enum RoomType {
+  SINGLE
+  GROUP
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model ModelConfig {
+  id         String          @id @default(cuid())
+  name       String          @unique
+  provider   ProviderType
+  baseUrl    String          @map("base_url")
+  modelName  String          @map("model_name")
+  apiKey     String          @map("api_key")
+  enabled    Boolean         @default(true)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  roomModels ChatRoomModel[]
+  messages   Message[]
+
+  @@map("model_configs")
+}
+
+model ChatRoom {
+  id         String          @id @default(cuid())
+  title      String
+  type       RoomType
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  roomModels ChatRoomModel[]
+  messages   Message[]
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomModel {
+  id        String      @id @default(cuid())
+  roomId    String      @map("room_id")
+  modelId   String      @map("model_id")
+  sortOrder Int         @map("sort_order")
+  room      ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  model     ModelConfig @relation(fields: [modelId], references: [id], onDelete: Restrict)
+
+  @@unique([roomId, modelId])
+  @@unique([roomId, sortOrder])
+  @@index([modelId])
+  @@map("chat_room_models")
+}
+
+model Message {
+  id        String       @id @default(cuid())
+  roomId    String       @map("room_id")
+  sequence  Int
+  role      MessageRole
+  modelId   String?      @map("model_id")
+  content   String
+  createdAt DateTime     @default(now()) @map("created_at")
+  room      ChatRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  model     ModelConfig? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  @@unique([roomId, sequence])
+  @@index([roomId, createdAt])
+  @@index([modelId])
+  @@map("messages")
+}
+
