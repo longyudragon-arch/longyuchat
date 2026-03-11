@@ -31,6 +31,7 @@ export function isPublicAccessPath(pathname: string) {
     pathname === "/manifest.webmanifest" ||
     pathname.startsWith("/icon") ||
     pathname.startsWith("/apple-icon") ||
+    /^\/[^/]+\.txt$/i.test(pathname) ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
   );

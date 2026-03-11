@@ -64,6 +64,7 @@ describe("isPublicAccessPath", () => {
     expect(isPublicAccessPath("/favicon.ico")).toBe(true);
     expect(isPublicAccessPath("/manifest.webmanifest")).toBe(true);
     expect(isPublicAccessPath("/icon.svg")).toBe(true);
+    expect(isPublicAccessPath("/a2141ae39c2d54f3710b0063e4af13fc.txt")).toBe(true);
   });
 
   it("still protects application routes", () => {
