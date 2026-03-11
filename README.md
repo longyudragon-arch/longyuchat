@@ -405,3 +405,20 @@ public/
 当前所有代码产出都应服务于同一个目标：
 
 **尽快完成一个结构清晰、可运行、可扩展的 AI 多模型聊天室 MVP。**
+
+## 16. 部署准备
+
+项目已经补充了第一批服务器部署准备项：
+
+- `.env.example`
+- `npm run start:prod`
+- `npm run prisma:migrate:deploy`
+- `GET /api/health`
+- 生产环境自动禁用本地 mock 路由
+- 可选的 Basic Auth 访问保护
+- 可选的模型 API Key 加密存储
+- 可选的敏感 POST 接口限流
+- API 请求 ID 响应头和脱敏错误日志
+- 生产启动自检、文件日志和 SQLite 备份脚本
+
+部署步骤和服务器示例见：[docs/deployment.md](./docs/deployment.md)

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
 import { parseJsonBody } from "@/server/http/request";
 import { presentRoom, presentRoomList } from "@/server/presenters/api-presenters";
 import { createChatRoom, listChatRooms } from "@/server/services/chat-room-service";
@@ -12,12 +12,12 @@ const createRoomSchema = z.object({
   modelIds: z.array(z.string().min(1)).min(1),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const rooms = await listChatRooms();
-    return NextResponse.json({ rooms: presentRoomList(rooms) });
+    return jsonWithRequestId(request, { rooms: presentRoomList(rooms) });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }
 
@@ -26,14 +26,14 @@ export async function POST(request: Request) {
     const body = await parseJsonBody(request, createRoomSchema);
     const room = await createChatRoom(body);
 
-    return NextResponse.json(
+    return jsonWithRequestId(
+      request,
       { room: presentRoom(room) },
       {
         status: 201,
       },
     );
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }
-

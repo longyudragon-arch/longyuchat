@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildReorderSortPlan } from "@/server/services/chat-room-service";
+import { ApiError } from "@/server/http/api-error";
+import { buildReorderSortPlan, normalizeRoomSelection } from "@/server/services/chat-room-service";
 
 describe("buildReorderSortPlan", () => {
   it("moves all room models to temporary slots before assigning final sort orders", () => {
@@ -17,5 +18,21 @@ describe("buildReorderSortPlan", () => {
       { modelId: "model-a", sortOrder: 2 },
       { modelId: "model-c", sortOrder: 3 },
     ]);
+  });
+});
+
+describe("normalizeRoomSelection", () => {
+  it("keeps unique model ids for valid group rooms", () => {
+    expect(normalizeRoomSelection("GROUP", ["model-a", "model-b"])).toEqual(["model-a", "model-b"]);
+  });
+
+  it("rejects duplicate models in the same room", () => {
+    expect(() => normalizeRoomSelection("GROUP", ["model-a", "model-a"])).toThrowError(ApiError);
+  });
+
+  it("rejects single rooms with more than one model", () => {
+    expect(() => normalizeRoomSelection("SINGLE", ["model-a", "model-b"])).toThrowError(
+      "Single chat rooms must be bound to exactly one model.",
+    );
   });
 });

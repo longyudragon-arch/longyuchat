@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
+import { assertModelTestRateLimit } from "@/server/http/rate-limit";
 import { presentModelConfig } from "@/server/presenters/api-presenters";
 import { testModelConnectionById } from "@/server/services/model-config-service";
 
@@ -10,14 +10,15 @@ interface RouteContext {
 
 export async function POST(_request: Request, context: RouteContext) {
   try {
+    assertModelTestRateLimit(_request);
     const { id } = await context.params;
     const model = await testModelConnectionById(id);
 
-    return NextResponse.json({
+    return jsonWithRequestId(_request, {
       ok: true,
       model: presentModelConfig(model),
     });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, _request);
   }
 }

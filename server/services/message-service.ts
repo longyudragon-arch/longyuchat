@@ -29,6 +29,9 @@ function requireContent(content: string) {
 export async function listMessagesByRoomId(roomId: string) {
   return prisma.message.findMany({
     where: { roomId },
+    include: {
+      model: true,
+    },
     orderBy: {
       sequence: "asc",
     },

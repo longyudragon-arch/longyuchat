@@ -12,6 +12,12 @@ export interface UpdateChatRoomInput {
   title?: string;
 }
 
+export interface ReconfigureChatRoomInput {
+  title: string;
+  type: keyof typeof RoomType;
+  modelIds: string[];
+}
+
 const roomInclude = {
   roomModels: {
     include: {
@@ -86,21 +92,16 @@ function uniqueModelIds(modelIds: string[]) {
   return uniqueIds;
 }
 
-export async function listChatRooms() {
-  return prisma.chatRoom.findMany({
-    include: roomInclude,
-    orderBy: {
-      updatedAt: "desc",
-    },
-  });
+export function normalizeRoomSelection(type: keyof typeof RoomType, modelIds: string[]) {
+  validateRoomType(type);
+
+  const uniqueIds = uniqueModelIds(modelIds);
+  validateModelCount(type, uniqueIds);
+
+  return uniqueIds;
 }
 
-export async function createChatRoom(input: CreateChatRoomInput) {
-  validateRoomType(input.type);
-
-  const modelIds = uniqueModelIds(input.modelIds);
-  validateModelCount(input.type, modelIds);
-
+async function requireEnabledModels(modelIds: string[]) {
   const models = await prisma.modelConfig.findMany({
     where: {
       id: {
@@ -116,6 +117,23 @@ export async function createChatRoom(input: CreateChatRoomInput) {
   if (models.length !== modelIds.length) {
     throw new ApiError(400, "All selected models must exist and be enabled.");
   }
+
+  return models;
+}
+
+export async function listChatRooms() {
+  return prisma.chatRoom.findMany({
+    include: roomInclude,
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+}
+
+export async function createChatRoom(input: CreateChatRoomInput) {
+  const modelIds = normalizeRoomSelection(input.type, input.modelIds);
+
+  await requireEnabledModels(modelIds);
 
   return prisma.$transaction(async (transaction) => {
     const room = await transaction.chatRoom.create({
@@ -169,6 +187,47 @@ export async function updateChatRoom(roomId: string, input: UpdateChatRoomInput)
 export async function deleteChatRoom(roomId: string) {
   return prisma.chatRoom.delete({
     where: { id: roomId },
+  });
+}
+
+export async function reconfigureChatRoom(roomId: string, input: ReconfigureChatRoomInput) {
+  const existingRoom = await prisma.chatRoom.findUnique({
+    where: { id: roomId },
+    select: { id: true },
+  });
+
+  if (!existingRoom) {
+    throw new ApiError(404, `Room ${roomId} was not found.`);
+  }
+
+  const modelIds = normalizeRoomSelection(input.type, input.modelIds);
+  await requireEnabledModels(modelIds);
+
+  return prisma.$transaction(async (transaction) => {
+    await transaction.chatRoom.update({
+      where: { id: roomId },
+      data: {
+        title: requireTitle(input.title),
+        type: RoomType[input.type],
+      },
+    });
+
+    await transaction.chatRoomModel.deleteMany({
+      where: { roomId },
+    });
+
+    await transaction.chatRoomModel.createMany({
+      data: modelIds.map((modelId, index) => ({
+        roomId,
+        modelId,
+        sortOrder: index + 1,
+      })),
+    });
+
+    return transaction.chatRoom.findUniqueOrThrow({
+      where: { id: roomId },
+      include: roomInclude,
+    });
   });
 }
 

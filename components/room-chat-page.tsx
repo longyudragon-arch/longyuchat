@@ -39,8 +39,8 @@ type RoomAction = "loading" | "sending" | "saving-order" | "renaming-room" | "de
 
 function RoomChatSkeleton() {
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8">
-      <section className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-8">
+    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      <section className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 sm:px-6 sm:py-8">
         <div className="h-4 w-28 rounded-full bg-[rgba(191,95,54,0.14)]" />
         <div className="mt-5 h-11 w-72 rounded-2xl bg-zinc-200/80" />
         <div className="mt-3 h-5 w-full max-w-3xl rounded-xl bg-zinc-200/70" />
@@ -48,10 +48,10 @@ function RoomChatSkeleton() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
-        <div className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6">
+        <div className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 sm:p-6">
           <div className="h-8 w-32 rounded-xl bg-zinc-200/80" />
           <div className="mt-2 h-4 w-56 rounded-xl bg-zinc-200/60" />
-          <div className="mt-6 space-y-4 rounded-[1.75rem] border border-[var(--border)] bg-white/70 p-5">
+          <div className="mt-6 space-y-4 rounded-[1.75rem] border border-[var(--border)] bg-white/70 p-4 sm:p-5">
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={`message-skeleton-${index}`}
@@ -63,7 +63,7 @@ function RoomChatSkeleton() {
           </div>
         </div>
 
-        <aside className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6">
+        <aside className="animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 sm:p-6">
           <div className="h-8 w-32 rounded-xl bg-zinc-200/80" />
           <div className="mt-2 h-4 w-56 rounded-xl bg-zinc-200/60" />
           <div className="mt-6 space-y-3">
@@ -180,6 +180,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
   const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
   const [draftModelIds, setDraftModelIds] = useState<string[]>([]);
+  const [mobilePanel, setMobilePanel] = useState<"chat" | "order">("chat");
 
   const isBusy = activeAction !== null;
   const isSending = activeAction === "sending";
@@ -455,8 +456,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-8 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
@@ -470,12 +471,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
             {statusText}
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           <Link
             href="/rooms"
             className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -487,6 +488,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             新建房间
+          </Link>
+          <Link
+            href={`/rooms/${roomId}/edit`}
+            className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            编辑房间
           </Link>
           <button
             type="button"
@@ -509,9 +516,38 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         {feedback ? <FeedbackPanel feedback={feedback} /> : null}
       </section>
 
+      <section className="xl:hidden">
+        <div className="grid grid-cols-2 gap-2 rounded-[1.6rem] border border-[var(--border)] bg-[var(--card)] p-2 shadow-[0_16px_40px_rgba(17,17,17,0.06)]">
+          <button
+            type="button"
+            onClick={() => setMobilePanel("chat")}
+            className={`rounded-[1.1rem] px-4 py-3 text-sm font-medium transition ${
+              mobilePanel === "chat"
+                ? "bg-[var(--accent)] text-white shadow-[0_12px_24px_rgba(17,17,17,0.08)]"
+                : "bg-white/70 text-[var(--muted)]"
+            }`}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel("order")}
+            className={`rounded-[1.1rem] px-4 py-3 text-sm font-medium transition ${
+              mobilePanel === "order"
+                ? "bg-[var(--accent)] text-white shadow-[0_12px_24px_rgba(17,17,17,0.08)]"
+                : "bg-white/70 text-[var(--muted)]"
+            }`}
+          >
+            Order
+          </button>
+        </div>
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
-        <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
-          <div className="mb-5 flex items-center justify-between gap-4">
+        <div
+          className={`${mobilePanel === "chat" ? "block" : "hidden"} rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6 xl:block`}
+        >
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold">聊天区</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
@@ -530,8 +566,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             ) : null}
           </div>
 
-          <div className="flex min-h-[560px] flex-col rounded-[1.75rem] border border-[var(--border)] bg-white/75">
-            <div ref={messageListRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="flex min-h-[420px] flex-col rounded-[1.75rem] border border-[var(--border)] bg-white/75 sm:min-h-[560px]">
+            <div ref={messageListRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
               {messages.length === 0 && !pendingUserContent ? (
                 <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-4 text-sm text-[var(--muted)]">
                   这个房间还没有消息，可以先发第一条内容试试。
@@ -549,7 +585,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   return (
                     <article
                       key={message.id}
-                      className="ml-auto max-w-[90%] rounded-[1.6rem] bg-[var(--accent)] px-4 py-3 text-white shadow-[0_12px_24px_rgba(17,17,17,0.06)]"
+                      className="ml-auto max-w-[96%] rounded-[1.6rem] bg-[var(--accent)] px-4 py-3 text-white shadow-[0_12px_24px_rgba(17,17,17,0.06)] sm:max-w-[90%]"
                     >
                       <div className="mb-2 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] opacity-70">
@@ -565,12 +601,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                 const roomModel =
                   room?.roomModels.find((candidate) => candidate.modelId === message.modelId) ?? null;
-                const provider = roomModel?.model.provider;
+                const messageModel = roomModel?.model ?? message.model;
+                const provider = messageModel?.provider;
 
                 return (
                   <article
                     key={message.id}
-                    className={`max-w-[90%] rounded-[1.6rem] px-4 py-3 text-[var(--foreground)] shadow-[0_12px_24px_rgba(17,17,17,0.06)] ${
+                    className={`max-w-[96%] rounded-[1.6rem] px-4 py-3 text-[var(--foreground)] shadow-[0_12px_24px_rgba(17,17,17,0.06)] sm:max-w-[90%] ${
                       provider ? getProviderSoftClassName(provider) : "bg-[rgb(255,252,247)]"
                     }`}
                   >
@@ -584,7 +621,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           >
                             {getProviderShortName(provider)}
                           </span>
-                          <span className="text-sm font-medium">{roomModel?.model.name ?? "AI"}</span>
+                          <span className="text-sm font-medium">{messageModel?.name ?? "AI"}</span>
                           <span
                             className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(
                               provider,
@@ -593,7 +630,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             {getProviderOptionLabel(provider)}
                           </span>
                           <span className="text-xs text-[var(--muted)]">
-                            {formatReplyLength(roomModel?.model.defaultReplyLength ?? 300)}
+                            {formatReplyLength(messageModel?.defaultReplyLength ?? 300)}
                           </span>
                         </>
                       ) : (
@@ -610,7 +647,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               })}
 
               {pendingUserContent ? (
-                <article className="ml-auto max-w-[90%] rounded-[1.6rem] border border-[var(--accent)] bg-[rgba(191,95,54,0.10)] px-4 py-3 text-[var(--foreground)] shadow-[0_12px_24px_rgba(17,17,17,0.06)]">
+                <article className="ml-auto max-w-[96%] rounded-[1.6rem] border border-[var(--accent)] bg-[rgba(191,95,54,0.10)] px-4 py-3 text-[var(--foreground)] shadow-[0_12px_24px_rgba(17,17,17,0.06)] sm:max-w-[90%]">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                       <span>用户</span>
@@ -643,7 +680,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               ) : null}
             </div>
 
-            <div className="border-t border-[var(--border)] px-5 py-4">
+            <div className="border-t border-[var(--border)] px-4 py-4 sm:px-5">
               <textarea
                 value={messageInput}
                 onChange={(event) => setMessageInput(event.target.value)}
@@ -652,7 +689,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 rows={4}
                 className="w-full resize-none rounded-3xl border border-[var(--border)] bg-white px-4 py-3 outline-none transition focus:border-[var(--accent)]"
               />
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="mt-3 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className={`text-xs ${orderDirty ? "text-amber-700" : "text-[var(--muted)]"}`}>
                   {orderDirty
                     ? "当前有未保存的顺序调整，请先点右侧“保存排序”，再发送消息。"
@@ -662,7 +699,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   type="button"
                   onClick={() => startTransition(() => void sendMessage())}
                   disabled={!messageInput.trim() || isBusy}
-                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300"
+                  className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto"
                 >
                   {isSending ? "等待回复中..." : "发送消息"}
                 </button>
@@ -671,8 +708,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+        <aside className={`${mobilePanel === "order" ? "block" : "hidden"} space-y-6 xl:block`}>
+          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <div className="mb-5">
               <h2 className="text-2xl font-semibold">模型顺序</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
@@ -735,7 +772,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                         isDropTarget ? "opacity-100" : "opacity-0"
                       }`}
                     />
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3">
                         <span
                           className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(

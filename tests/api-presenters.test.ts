@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MessageRole, ModelTestStatus, ProviderType, RoomType } from "@/generated/prisma/enums";
-import { presentRoom } from "@/server/presenters/api-presenters";
+import { presentMessages, presentRoom } from "@/server/presenters/api-presenters";
 
 describe("presentRoom", () => {
   it("exposes safe room summary metadata without leaking api keys", () => {
@@ -76,5 +76,48 @@ describe("presentRoom", () => {
 
     expect(room.messageCount).toBe(0);
     expect(room.lastMessagePreview).toBeNull();
+  });
+});
+
+describe("presentMessages", () => {
+  it("includes a safe model snapshot for assistant messages", () => {
+    const messages = presentMessages([
+      {
+        id: "message-1",
+        roomId: "room-1",
+        sequence: 1,
+        role: MessageRole.ASSISTANT,
+        modelId: "model-1",
+        content: "你好，我来补充一下。",
+        createdAt: new Date("2026-03-11T02:40:00.000Z"),
+        model: {
+          id: "model-1",
+          name: "Gemini 助手",
+          provider: ProviderType.GEMINI,
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+          modelName: "gemini-2.5-flash",
+          apiKey: "secret-key",
+          defaultReplyLength: 180,
+          lastTestStatus: null,
+          lastTestMessage: null,
+          lastTestedAt: null,
+          enabled: true,
+          createdAt: new Date("2026-03-11T02:00:00.000Z"),
+          updatedAt: new Date("2026-03-11T02:00:00.000Z"),
+        },
+      },
+    ]);
+
+    expect(messages[0]).toMatchObject({
+      modelId: "model-1",
+      model: {
+        id: "model-1",
+        name: "Gemini 助手",
+        provider: ProviderType.GEMINI,
+        modelName: "gemini-2.5-flash",
+        defaultReplyLength: 180,
+      },
+    });
+    expect(messages[0]?.model).not.toHaveProperty("apiKey");
   });
 });

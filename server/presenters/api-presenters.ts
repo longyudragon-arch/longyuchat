@@ -24,6 +24,10 @@ type RoomWithModels = ChatRoom & {
   };
 };
 
+type MessageWithModel = Message & {
+  model: ModelConfig | null;
+};
+
 function presentLastConnectionTest(
   lastTestStatus: ModelConfig["lastTestStatus"],
   lastTestMessage: ModelConfig["lastTestMessage"],
@@ -79,6 +83,23 @@ export function presentRoomList(rooms: RoomWithModels[]) {
   return rooms.map(presentRoom);
 }
 
-export function presentMessages(messages: Message[]) {
-  return messages;
+function presentMessageModelSnapshot(model: ModelConfig | null) {
+  if (!model) {
+    return null;
+  }
+
+  return {
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    modelName: model.modelName,
+    defaultReplyLength: model.defaultReplyLength,
+  };
+}
+
+export function presentMessages(messages: MessageWithModel[]) {
+  return messages.map((message) => ({
+    ...message,
+    model: presentMessageModelSnapshot(message.model),
+  }));
 }

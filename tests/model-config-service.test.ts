@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelConfig } from "@/generated/prisma/client";
-import { testModelConnectionById } from "@/server/services/model-config-service";
+import { testModelConnectionById, toModelRuntimeConfig } from "@/server/services/model-config-service";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
+import { encryptModelSecret } from "@/server/security/model-secret-crypto";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
 function buildModel(id: string): ModelConfig {
@@ -24,6 +25,10 @@ function buildModel(id: string): ModelConfig {
 }
 
 describe("testModelConnectionById", () => {
+  afterEach(() => {
+    delete process.env.MODEL_SECRET_ENCRYPTION_KEY;
+  });
+
   it("persists the latest successful test result", async () => {
     const persistedModel = {
       ...buildModel("model-1"),
@@ -117,5 +122,18 @@ describe("testModelConnectionById", () => {
         message: "Provider CLAUDE is not supported in the MVP yet.",
       }),
     );
+  });
+
+  it("decrypts encrypted API keys before building runtime config", () => {
+    const encryptionKey = Buffer.from("0123456789abcdef0123456789abcdef", "utf8").toString("base64");
+    process.env.MODEL_SECRET_ENCRYPTION_KEY = encryptionKey;
+    const encryptedApiKey = encryptModelSecret("secret-key", encryptionKey);
+
+    const runtimeConfig = toModelRuntimeConfig({
+      ...buildModel("model-4"),
+      apiKey: encryptedApiKey,
+    });
+
+    expect(runtimeConfig.apiKey).toBe("secret-key");
   });
 });

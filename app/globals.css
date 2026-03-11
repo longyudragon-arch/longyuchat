@@ -17,6 +17,7 @@
 
 html {
   background: radial-gradient(circle at top, #fff6e8 0%, #f6f4ee 42%, #efe9df 100%);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -24,6 +25,7 @@ body {
   min-height: 100vh;
   color: var(--foreground);
   font-family: "Segoe UI", sans-serif;
+  overflow-x: hidden;
 }
 
 a {
@@ -31,3 +33,11 @@ a {
   text-decoration: none;
 }
 
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

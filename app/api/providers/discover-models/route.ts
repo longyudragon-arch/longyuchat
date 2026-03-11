@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
+import { assertModelDiscoveryRateLimit } from "@/server/http/rate-limit";
 import { parseJsonBody } from "@/server/http/request";
 import { discoverProviderModels } from "@/server/services/model-discovery-service";
 
@@ -13,11 +14,12 @@ const discoverModelsSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    assertModelDiscoveryRateLimit(request);
     const body = await parseJsonBody(request, discoverModelsSchema);
     const models = await discoverProviderModels(body);
 
-    return NextResponse.json({ models });
+    return jsonWithRequestId(request, { models });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }

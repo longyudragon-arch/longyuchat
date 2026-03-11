@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
+
+import { areDevMocksEnabledForServer } from "@/lib/runtime";
+import { jsonWithRequestId } from "@/server/http/api-response";
 
 const requestSchema = z.object({
   model: z.string().min(1),
@@ -37,10 +39,14 @@ function buildMockReply(model: string, messages: Array<{ role: "system" | "user"
 }
 
 export async function POST(request: Request) {
+  if (!areDevMocksEnabledForServer()) {
+    return jsonWithRequestId(request, { error: "The requested record was not found." }, { status: 404 });
+  }
+
   const body = requestSchema.parse(await request.json());
   const content = buildMockReply(body.model, body.messages);
 
-  return NextResponse.json({
+  return jsonWithRequestId(request, {
     id: `mock-${Date.now()}`,
     object: "chat.completion",
     created: Math.floor(Date.now() / 1000),
@@ -57,4 +63,3 @@ export async function POST(request: Request) {
     ],
   });
 }
-

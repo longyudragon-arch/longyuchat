@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { areDevMocksEnabledForServer } from "@/lib/runtime";
+import { jsonWithRequestId } from "@/server/http/api-response";
 
 const mockModels = [
   {
@@ -18,8 +19,12 @@ const mockModels = [
   },
 ] as const;
 
-export async function GET() {
-  return NextResponse.json({
+export async function GET(request: Request) {
+  if (!areDevMocksEnabledForServer()) {
+    return jsonWithRequestId(request, { error: "The requested record was not found." }, { status: 404 });
+  }
+
+  return jsonWithRequestId(request, {
     object: "list",
     data: mockModels,
   });

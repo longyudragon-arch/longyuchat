@@ -61,8 +61,17 @@ export interface MessageView {
   sequence: number;
   role: MessageRole;
   modelId: string | null;
+  model: MessageModelSnapshotView | null;
   content: string;
   createdAt: string;
+}
+
+export interface MessageModelSnapshotView {
+  id: string;
+  name: string;
+  provider: ProviderType;
+  modelName: string;
+  defaultReplyLength: number;
 }
 
 export interface SendRoomMessageResult {

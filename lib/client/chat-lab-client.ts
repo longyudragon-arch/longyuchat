@@ -7,6 +7,7 @@ import type {
   RoomView,
   SendRoomMessageResult,
 } from "@/types/app";
+import { areDevMocksEnabledForClient } from "@/lib/runtime";
 
 export const providerOptions = [
   "OPENAI_COMPATIBLE",
@@ -151,6 +152,10 @@ export const localMockDefinitions = [
     modelName: "mock-gamma",
   },
 ] as const;
+
+export function supportsLocalMockTools() {
+  return areDevMocksEnabledForClient();
+}
 
 export async function fetchJson<T>(input: string, init?: RequestInit) {
   const response = await fetch(input, {
@@ -345,6 +350,10 @@ export function describePartialSendResult(
 }
 
 export function getLocalMockBaseUrl() {
+  if (!supportsLocalMockTools()) {
+    throw new Error("Local mock tools are disabled in this environment.");
+  }
+
   if (typeof window === "undefined") {
     return "http://127.0.0.1:3000/api/dev/mock-openai";
   }
@@ -353,6 +362,10 @@ export function getLocalMockBaseUrl() {
 }
 
 export async function ensureLocalMockModels() {
+  if (!supportsLocalMockTools()) {
+    throw new Error("Local mock tools are disabled in this environment.");
+  }
+
   const baseUrl = getLocalMockBaseUrl();
 
   await Promise.allSettled(
@@ -385,6 +398,10 @@ export async function ensureLocalMockModels() {
 }
 
 export async function bootstrapLocalTestWorkspace() {
+  if (!supportsLocalMockTools()) {
+    throw new Error("Local mock tools are disabled in this environment.");
+  }
+
   const mockModels = await ensureLocalMockModels();
   const roomTitle = `本地测试群聊 ${new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",

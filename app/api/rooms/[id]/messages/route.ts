@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
+import { assertMessagePostRateLimit } from "@/server/http/rate-limit";
 import { parseJsonBody } from "@/server/http/request";
 import { presentMessages } from "@/server/presenters/api-presenters";
 import { getChatRoomById } from "@/server/services/chat-room-service";
@@ -22,18 +23,19 @@ export async function GET(_request: Request, context: RouteContext) {
     const room = await getChatRoomById(id);
 
     if (!room) {
-      return NextResponse.json({ error: "The requested record was not found." }, { status: 404 });
+      return jsonWithRequestId(_request, { error: "The requested record was not found." }, { status: 404 });
     }
 
     const messages = await listMessagesByRoomId(id);
-    return NextResponse.json({ messages: presentMessages(messages) });
+    return jsonWithRequestId(_request, { messages: presentMessages(messages) });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, _request);
   }
 }
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    assertMessagePostRateLimit(request);
     const { id } = await context.params;
     const body = await parseJsonBody(request, createMessageSchema);
     const result = await sendRoomMessage({
@@ -41,10 +43,10 @@ export async function POST(request: Request, context: RouteContext) {
       content: body.content,
     });
 
-    return NextResponse.json(result, {
+    return jsonWithRequestId(request, result, {
       status: result.status === "completed" ? 201 : 207,
     });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
 import { parseJsonBody } from "@/server/http/request";
 import { presentRoom } from "@/server/presenters/api-presenters";
 import { reorderChatRoomModels } from "@/server/services/chat-room-service";
@@ -20,8 +20,8 @@ export async function PUT(request: Request, context: RouteContext) {
     const body = await parseJsonBody(request, reorderSchema);
     const room = await reorderChatRoomModels(id, body.modelIds);
 
-    return NextResponse.json({ room: presentRoom(room) });
+    return jsonWithRequestId(request, { room: presentRoom(room) });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }

@@ -15,6 +15,7 @@ import {
   getProviderOptionLabel,
   getProviderShortName,
   providerOptions,
+  supportsLocalMockTools,
   toRoleLabel,
   toRoomLabel,
   type ClientErrorFeedback,
@@ -50,6 +51,7 @@ function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback }) {
 
 export function RoomsPage() {
   const router = useRouter();
+  const mockToolsEnabled = supportsLocalMockTools();
   const [rooms, setRooms] = useState<RoomView[]>([]);
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -185,8 +187,8 @@ export function RoomsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-8 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
@@ -200,7 +202,7 @@ export function RoomsPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
             {isBusy ? "处理中..." : notice || "可以继续新建房间，或者进入现有会话。"}
           </div>
         </div>
@@ -208,29 +210,31 @@ export function RoomsPage() {
         {feedback ? <FeedbackPanel feedback={feedback} /> : null}
       </section>
 
-      <section className="flex flex-wrap gap-3">
+      <section className="grid gap-3 sm:flex sm:flex-wrap">
         <Link
           href="/rooms/new"
-          className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]"
+          className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] sm:w-auto"
         >
           去新建房间
         </Link>
         <Link
           href="/models"
-          className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          className="w-full rounded-full border border-[var(--border)] bg-white px-5 py-3 text-center text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto"
         >
           先配置模型
         </Link>
-        <button
-          type="button"
-          onClick={() => startTransition(() => void launchLocalWorkspace())}
-          className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-        >
-          一键创建本地测试房间
-        </button>
+        {mockToolsEnabled ? (
+          <button
+            type="button"
+            onClick={() => startTransition(() => void launchLocalWorkspace())}
+            className="w-full rounded-full border border-[var(--border)] bg-white px-5 py-3 text-center text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto"
+          >
+            一键创建本地测试房间
+          </button>
+        ) : null}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
           <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)]">TOTAL ROOMS</p>
           <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{roomSummary.totalRooms}</p>
@@ -253,8 +257,8 @@ export function RoomsPage() {
         </article>
       </section>
 
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
-        <div className="grid gap-3 lg:grid-cols-[1fr_160px_220px]">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_160px_220px]">
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -292,7 +296,9 @@ export function RoomsPage() {
       <section className="space-y-4">
         {rooms.length === 0 ? (
           <div className="rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-8 text-sm text-[var(--muted)]">
-            还没有房间。你可以先去模型管理页创建模型，或者直接使用本地测试房间。
+            {mockToolsEnabled
+              ? "还没有房间。你可以先去模型管理页创建模型，或者直接使用本地测试房间。"
+              : "还没有房间。你可以先去模型管理页创建模型，再创建你的第一个正式房间。"}
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-8 text-sm text-[var(--muted)]">
@@ -302,10 +308,10 @@ export function RoomsPage() {
           filteredRooms.map((room) => (
             <article
               key={room.id}
-              className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]"
+              className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6"
             >
               <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-2xl font-semibold">{room.title}</h2>
@@ -323,7 +329,13 @@ export function RoomsPage() {
                     <p className="text-sm text-[var(--muted)]">最后更新于 {formatDate(room.updatedAt)}</p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <Link
+                      href={`/rooms/${room.id}/edit`}
+                      className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                    >
+                      编辑房间
+                    </Link>
                     <button
                       type="button"
                       onClick={() => startTransition(() => void renameRoom(room))}

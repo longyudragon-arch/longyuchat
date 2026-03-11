@@ -17,6 +17,7 @@ import {
   getProviderPreset,
   getProviderShortName,
   providerOptions,
+  supportsLocalMockTools,
   supportsAutomaticModelDiscovery,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
@@ -93,6 +94,7 @@ function ModelTestBadge({
 }
 
 export function ModelsPage() {
+  const mockToolsEnabled = supportsLocalMockTools();
   const [models, setModels] = useState<ModelView[]>([]);
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -383,8 +385,8 @@ export function ModelsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-8 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
@@ -398,7 +400,7 @@ export function ModelsPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
             {isBusy ? "处理中..." : notice || "配置好模型后，就可以去创建单聊或群聊。"}
           </div>
         </div>
@@ -408,32 +410,34 @@ export function ModelsPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-6">
-          <div className="rounded-[2rem] border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Local Test</p>
-            <h2 className="mt-3 text-2xl font-semibold">先用本地模拟接口跑通主流程</h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              这里会自动填入本地 OpenAI-compatible mock 地址，方便先验证连接测试、模型发现、消息保存和顺序回复。
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => fillLocalMockPreset()}
-                className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                填入本地模拟参数
-              </button>
-              <button
-                type="button"
-                onClick={() => startTransition(() => void createLocalMockModels())}
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]"
-              >
-                一键创建本地模型
-              </button>
+          {mockToolsEnabled ? (
+            <div className="rounded-[2rem] border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Local Test</p>
+              <h2 className="mt-3 text-2xl font-semibold">先用本地模拟接口跑通主流程</h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                这里会自动填入本地 OpenAI-compatible mock 地址，方便先验证连接测试、模型发现、消息保存和顺序回复。
+              </p>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => fillLocalMockPreset()}
+                  className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  填入本地模拟参数
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startTransition(() => void createLocalMockModels())}
+                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]"
+                >
+                  一键创建本地模型
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
-          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">{modelForm.id ? "编辑模型" : "新增模型"}</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">
@@ -627,7 +631,7 @@ export function ModelsPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+            <div className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">当前模型</h2>
@@ -643,7 +647,7 @@ export function ModelsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
+            <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -672,7 +676,9 @@ export function ModelsPage() {
           <div className="space-y-3">
             {models.length === 0 ? (
               <p className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] px-5 py-6 text-sm text-[var(--muted)]">
-                还没有模型。你可以先新增一个真实模型，或者先创建本地 mock 模型。
+                {mockToolsEnabled
+                  ? "还没有模型。你可以先新增一个真实模型，或者先创建本地 mock 模型。"
+                  : "还没有模型。你可以先新增一个真实模型配置，再创建房间开始使用。"}
               </p>
             ) : filteredModels.length === 0 ? (
               <p className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] px-5 py-6 text-sm text-[var(--muted)]">
@@ -682,9 +688,9 @@ export function ModelsPage() {
               filteredModels.map((model) => (
                 <article
                   key={model.id}
-                  className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)]"
+                  className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-5"
                 >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <span
@@ -728,7 +734,7 @@ export function ModelsPage() {
                       />
                     </div>
 
-                    <div className="flex flex-wrap gap-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap">
                       <button
                         type="button"
                         onClick={() => {

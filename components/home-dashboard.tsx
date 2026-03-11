@@ -28,21 +28,21 @@ const cards = [
 
 export function HomeDashboard() {
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-8 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+    <main className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-5 sm:py-8">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
         <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.2em] text-[var(--accent)]">
           PRODUCT FLOW
         </span>
         <div className="mt-5 max-w-4xl space-y-4">
           <h1 className="text-4xl font-semibold tracking-tight">AI 多模型聊天室已经拆成更接近正式产品的页面结构</h1>
-          <p className="text-base leading-8 text-[var(--muted)]">
+          <p className="text-sm leading-7 text-[var(--muted)] sm:text-base sm:leading-8">
             当前项目已经从一个大工作台拆成模型管理、房间列表、创建房间和房间聊天四个独立页面。后续继续扩展搜索、归档、更多
             provider 或客户端形态时，结构会稳定很多。
           </p>
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-6 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)]">
+      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Provider 识别色</h2>
@@ -65,12 +65,12 @@ export function HomeDashboard() {
 
       <LocalTestLauncher />
 
-      <section className="grid gap-5 lg:grid-cols-3">
+      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
           <Link
             key={card.href}
             href={card.href}
-            className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] transition hover:-translate-y-0.5 hover:border-[var(--accent)]"
+            className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] sm:p-6"
           >
             <h2 className="text-2xl font-semibold">{card.title}</h2>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{card.body}</p>

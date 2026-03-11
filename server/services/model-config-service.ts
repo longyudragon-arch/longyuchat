@@ -3,6 +3,11 @@ import { ModelTestStatus, ProviderType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
+import {
+  decryptModelSecretOrPlaintext,
+  encryptModelSecret,
+  isModelSecretEncryptionConfigured,
+} from "@/server/security/model-secret-crypto";
 
 export interface CreateModelConfigInput {
   name: string;
@@ -53,6 +58,31 @@ function requireNonEmpty(value: string, label: string) {
   }
 
   return normalized;
+}
+
+function requireProtectedApiKey(apiKey: string) {
+  const normalized = requireNonEmpty(apiKey, "API key");
+
+  try {
+    if (!isModelSecretEncryptionConfigured()) {
+      if (process.env.NODE_ENV === "production") {
+        throw new ApiError(500, "MODEL_SECRET_ENCRYPTION_KEY must be configured in production to store model API keys.");
+      }
+
+      return normalized;
+    }
+
+    return encryptModelSecret(normalized);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      500,
+      error instanceof Error ? error.message : "Failed to protect the model API key for storage.",
+    );
+  }
 }
 
 function assertProvider(provider: string) {
@@ -116,7 +146,7 @@ export async function createModelConfig(input: CreateModelConfigInput) {
       provider: ProviderType[input.provider],
       baseUrl: requireNonEmpty(input.baseUrl, "Base URL"),
       modelName: requireNonEmpty(input.modelName, "Model name"),
-      apiKey: requireNonEmpty(input.apiKey, "API key"),
+      apiKey: requireProtectedApiKey(input.apiKey),
       defaultReplyLength: normalizeDefaultReplyLength(input.defaultReplyLength),
       enabled: input.enabled ?? true,
       ...toResetConnectionTestData(),
@@ -144,7 +174,7 @@ export async function updateModelConfig(id: string, input: UpdateModelConfigInpu
       provider: input.provider ? ProviderType[input.provider] : undefined,
       baseUrl: input.baseUrl ? requireNonEmpty(input.baseUrl, "Base URL") : undefined,
       modelName: input.modelName ? requireNonEmpty(input.modelName, "Model name") : undefined,
-      apiKey: input.apiKey ? requireNonEmpty(input.apiKey, "API key") : undefined,
+      apiKey: input.apiKey ? requireProtectedApiKey(input.apiKey) : undefined,
       defaultReplyLength:
         input.defaultReplyLength !== undefined ? normalizeDefaultReplyLength(input.defaultReplyLength) : undefined,
       enabled: input.enabled,
@@ -160,13 +190,24 @@ export async function deleteModelConfig(id: string) {
 }
 
 export function toModelRuntimeConfig(model: ModelConfig) {
+  let apiKey: string;
+
+  try {
+    apiKey = decryptModelSecretOrPlaintext(model.apiKey);
+  } catch (error) {
+    throw new ApiError(
+      500,
+      error instanceof Error ? error.message : "Failed to decrypt the stored model API key.",
+    );
+  }
+
   return {
     id: model.id,
     name: model.name,
     provider: model.provider,
     baseUrl: model.baseUrl,
     modelName: model.modelName,
-    apiKey: model.apiKey,
+    apiKey,
     defaultReplyLength: model.defaultReplyLength,
   };
 }

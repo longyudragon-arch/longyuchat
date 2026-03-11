@@ -1,4 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
+import { getOrCreateRequestId, REQUEST_ID_HEADER } from "@/lib/request-id";
+import { logRouteError } from "@/server/observability/server-logger";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
@@ -55,17 +57,29 @@ export function normalizeApiError(error: unknown) {
   return new ApiError(500, "An unexpected error occurred.");
 }
 
-export function handleRouteError(error: unknown) {
+export function handleRouteError(error: unknown, request?: Request) {
   const normalized = normalizeApiError(error);
+  const requestId = getOrCreateRequestId(request);
 
-  return NextResponse.json(
+  logRouteError({
+    requestId,
+    request,
+    status: normalized.status,
+    error,
+    details: normalized.details,
+  });
+
+  const response = NextResponse.json(
     {
       error: normalized.message,
       details: normalized.details,
+      requestId,
     },
     {
       status: normalized.status,
     },
   );
-}
 
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
+}

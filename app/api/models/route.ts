@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/http/api-error";
+import { jsonWithRequestId } from "@/server/http/api-response";
 import { parseJsonBody } from "@/server/http/request";
 import { presentModelConfig, presentModelConfigList } from "@/server/presenters/api-presenters";
 import { createModelConfig, listModelConfigs } from "@/server/services/model-config-service";
@@ -16,12 +16,12 @@ const createModelSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const models = await listModelConfigs();
-    return NextResponse.json({ models: presentModelConfigList(models) });
+    return jsonWithRequestId(request, { models: presentModelConfigList(models) });
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }
 
@@ -30,13 +30,14 @@ export async function POST(request: Request) {
     const body = await parseJsonBody(request, createModelSchema);
     const model = await createModelConfig(body);
 
-    return NextResponse.json(
+    return jsonWithRequestId(
+      request,
       { model: presentModelConfig(model) },
       {
         status: 201,
       },
     );
   } catch (error) {
-    return handleRouteError(error);
+    return handleRouteError(error, request);
   }
 }
