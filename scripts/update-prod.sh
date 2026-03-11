@@ -72,14 +72,34 @@ echo "Restarting ${SERVICE_NAME}..."
 systemctl restart "${SERVICE_NAME}"
 systemctl --no-pager --full status "${SERVICE_NAME}"
 
-echo "Running health check..."
-if [[ -n "${HEALTHCHECK_BEARER_TOKEN:-}" ]]; then
-  curl -fsS -H "Authorization: Bearer ${HEALTHCHECK_BEARER_TOKEN}" "${HEALTH_URL}"
-elif [[ -n "${BASIC_AUTH_USERNAME:-}" && -n "${BASIC_AUTH_PASSWORD:-}" ]]; then
-  curl -fsS -u "${BASIC_AUTH_USERNAME}:${BASIC_AUTH_PASSWORD}" "${HEALTH_URL}"
-else
-  curl -fsS "${HEALTH_URL}"
-fi
+health_check() {
+  if [[ -n "${HEALTHCHECK_BEARER_TOKEN:-}" ]]; then
+    curl -fsS -H "Authorization: Bearer ${HEALTHCHECK_BEARER_TOKEN}" "${HEALTH_URL}" >/dev/null
+    return
+  fi
 
-echo
-echo "Production update completed successfully."
+  if [[ -n "${BASIC_AUTH_USERNAME:-}" && -n "${BASIC_AUTH_PASSWORD:-}" ]]; then
+    curl -fsS -u "${BASIC_AUTH_USERNAME}:${BASIC_AUTH_PASSWORD}" "${HEALTH_URL}" >/dev/null
+    return
+  fi
+
+  curl -fsS "${HEALTH_URL}" >/dev/null
+}
+
+echo "Running health check..."
+for attempt in 1 2 3 4 5 6; do
+  if health_check; then
+    echo "Health check passed."
+    echo
+    echo "Production update completed successfully."
+    exit 0
+  fi
+
+  if [[ "${attempt}" -lt 6 ]]; then
+    echo "Health check attempt ${attempt} failed, retrying in 2 seconds..."
+    sleep 2
+  fi
+done
+
+echo "Health check failed after retries."
+exit 1
