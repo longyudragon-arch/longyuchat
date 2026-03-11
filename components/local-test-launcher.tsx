@@ -1,7 +1,7 @@
 "use client";
 
-import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
+import { startTransition, useState } from "react";
 
 import { bootstrapLocalTestWorkspace, supportsLocalMockTools } from "@/lib/client/chat-lab-client";
 
@@ -30,11 +30,11 @@ export function LocalTestLauncher() {
   }
 
   return (
-    <div className="rounded-[2rem] border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-5 sm:p-6">
+    <div className="rounded-[2rem] border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
       <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Quick Test</p>
       <h2 className="mt-3 text-2xl font-semibold">一键生成本地演示环境</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-        不需要真实 API Key。按钮会自动创建 3 个本地模拟模型和 1 个群聊房间，然后直接跳到聊天页，方便你测试顺序回复和历史保存。
+        不需要真实 API Key。按钮会自动创建 3 个本地模拟模型和 1 个群聊房间，然后直接跳到聊天页，方便快速验证顺序回复和历史保存。
       </p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button

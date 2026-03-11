@@ -1,3 +1,4 @@
+import { getAccessProtectionMode, isAppLoginEnabled } from "@/lib/app-auth";
 import { isServerAccessProtectionEnabled } from "@/lib/server-access";
 import {
   areApiRateLimitsEnabled,
@@ -14,13 +15,16 @@ export interface ProductionReadinessReport {
   ready: boolean;
   issues: string[];
   warnings: string[];
-  checks: {
-    databaseConfigured: boolean;
-    devMocksDisabled: boolean;
-    accessProtectionEnabled: boolean;
-    unprotectedAccessAllowed: boolean;
-    modelSecretEncryptionConfigured: boolean;
-    apiRateLimitsEnabled: boolean;
+    checks: {
+      databaseConfigured: boolean;
+      devMocksDisabled: boolean;
+      accessProtectionMode: "app" | "basic" | "none";
+      accessProtectionEnabled: boolean;
+      appLoginEnabled: boolean;
+      basicAuthEnabled: boolean;
+      unprotectedAccessAllowed: boolean;
+      modelSecretEncryptionConfigured: boolean;
+      apiRateLimitsEnabled: boolean;
     fileLoggingEnabled: boolean;
     logDirectory: string | null;
     sqliteBackupConfigured: boolean;
@@ -48,7 +52,15 @@ export function buildProductionReadinessReport(env = process.env): ProductionRea
       checks: {
         databaseConfigured: Boolean(env.DATABASE_URL),
         devMocksDisabled: !areDevMocksEnabledForServer(env.NODE_ENV, env.ENABLE_DEV_MOCKS),
-        accessProtectionEnabled: isServerAccessProtectionEnabled({
+        accessProtectionMode: getAccessProtectionMode(env),
+        accessProtectionEnabled: getAccessProtectionMode(env) !== "none",
+        appLoginEnabled: isAppLoginEnabled({
+          enabled: env.APP_LOGIN_ENABLED,
+          username: env.APP_LOGIN_USERNAME,
+          password: env.APP_LOGIN_PASSWORD,
+          sessionSecret: env.APP_LOGIN_SESSION_SECRET,
+        }),
+        basicAuthEnabled: isServerAccessProtectionEnabled({
           enabled: env.BASIC_AUTH_ENABLED,
           username: env.BASIC_AUTH_USERNAME,
           password: env.BASIC_AUTH_PASSWORD,
@@ -69,11 +81,19 @@ export function buildProductionReadinessReport(env = process.env): ProductionRea
   const serverDevMocksEnabled = areDevMocksEnabledForServer(env.NODE_ENV, env.ENABLE_DEV_MOCKS);
   const clientDevMocksEnabled = areDevMocksEnabledForClient(env.NODE_ENV, env.NEXT_PUBLIC_ENABLE_DEV_MOCKS);
   const devMocksDisabled = !serverDevMocksEnabled && !clientDevMocksEnabled;
-  const accessProtectionEnabled = isServerAccessProtectionEnabled({
+  const accessProtectionMode = getAccessProtectionMode(env);
+  const appLoginEnabled = isAppLoginEnabled({
+    enabled: env.APP_LOGIN_ENABLED,
+    username: env.APP_LOGIN_USERNAME,
+    password: env.APP_LOGIN_PASSWORD,
+    sessionSecret: env.APP_LOGIN_SESSION_SECRET,
+  });
+  const basicAuthEnabled = isServerAccessProtectionEnabled({
     enabled: env.BASIC_AUTH_ENABLED,
     username: env.BASIC_AUTH_USERNAME,
     password: env.BASIC_AUTH_PASSWORD,
   });
+  const accessProtectionEnabled = accessProtectionMode !== "none";
   const unprotectedAccessAllowed = isUnprotectedAccessAllowedInProduction(env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION);
   const modelSecretEncryptionConfigured = isModelSecretEncryptionConfigured(env.MODEL_SECRET_ENCRYPTION_KEY);
   const apiRateLimitsEnabled = areApiRateLimitsEnabled(env.NODE_ENV, env.ENABLE_API_RATE_LIMITS);
@@ -96,7 +116,7 @@ export function buildProductionReadinessReport(env = process.env): ProductionRea
 
   if (!accessProtectionEnabled && !unprotectedAccessAllowed) {
     issues.push(
-      "Basic Auth access protection is not enabled. Set BASIC_AUTH_ENABLED=true or explicitly allow unprotected access.",
+      "Access protection is not enabled. Configure APP_LOGIN_* or BASIC_AUTH_* variables, or explicitly allow unprotected access.",
     );
   }
 
@@ -117,7 +137,7 @@ export function buildProductionReadinessReport(env = process.env): ProductionRea
   }
 
   if (!healthcheckBearerConfigured) {
-    warnings.push("HEALTHCHECK_BEARER_TOKEN is not configured. Health probes will rely on Basic Auth only.");
+    warnings.push("HEALTHCHECK_BEARER_TOKEN is not configured. Health probes will rely on login-protected routes only.");
   }
 
   if (!accessProtectionEnabled && unprotectedAccessAllowed) {
@@ -131,7 +151,10 @@ export function buildProductionReadinessReport(env = process.env): ProductionRea
     checks: {
       databaseConfigured,
       devMocksDisabled,
+      accessProtectionMode,
       accessProtectionEnabled,
+      appLoginEnabled,
+      basicAuthEnabled,
       unprotectedAccessAllowed,
       modelSecretEncryptionConfigured,
       apiRateLimitsEnabled,

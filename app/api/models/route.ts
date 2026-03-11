@@ -8,7 +8,17 @@ import { createModelConfig, listModelConfigs } from "@/server/services/model-con
 
 const createModelSchema = z.object({
   name: z.string().min(1),
-  provider: z.enum(["OPENAI_COMPATIBLE", "CLAUDE", "GEMINI", "GROK", "DOUBAO", "DEEPSEEK", "MODELSCOPE"]),
+  provider: z.enum([
+    "OPENAI_COMPATIBLE",
+    "CLAUDE",
+    "GEMINI",
+    "GROK",
+    "DOUBAO",
+    "DEEPSEEK",
+    "MODELSCOPE",
+    "HUNYUAN",
+    "QWEN",
+  ]),
   baseUrl: z.string().url(),
   modelName: z.string().min(1),
   apiKey: z.string().min(1),

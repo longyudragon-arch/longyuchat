@@ -27,6 +27,21 @@ function areDevMocksDisabled() {
   return server === false && client === false;
 }
 
+function isAppLoginEnabled() {
+  const explicit = parseBoolean(process.env.APP_LOGIN_ENABLED);
+  const configured = Boolean(
+    process.env.APP_LOGIN_USERNAME?.trim() &&
+      process.env.APP_LOGIN_PASSWORD?.trim() &&
+      process.env.APP_LOGIN_SESSION_SECRET?.trim(),
+  );
+
+  if (explicit === false) {
+    return false;
+  }
+
+  return configured;
+}
+
 function isBasicAuthEnabled() {
   const explicit = parseBoolean(process.env.BASIC_AUTH_ENABLED);
 
@@ -63,6 +78,18 @@ function isUnprotectedAccessAllowed() {
   return parseBoolean(process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION) ?? false;
 }
 
+function getAccessProtectionMode() {
+  if (isAppLoginEnabled()) {
+    return "app";
+  }
+
+  if (isBasicAuthEnabled()) {
+    return "basic";
+  }
+
+  return "none";
+}
+
 function isSqliteDatabaseUrl(databaseUrl) {
   return databaseUrl?.startsWith("file:");
 }
@@ -80,9 +107,9 @@ function validateProductionReadiness() {
     issues.push("ENABLE_DEV_MOCKS and NEXT_PUBLIC_ENABLE_DEV_MOCKS must both be false in production.");
   }
 
-  if (!isBasicAuthEnabled() && !isUnprotectedAccessAllowed()) {
+  if (getAccessProtectionMode() === "none" && !isUnprotectedAccessAllowed()) {
     issues.push(
-      "Basic Auth access protection is not enabled. Set BASIC_AUTH_ENABLED=true or ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION=true.",
+      "Access protection is not enabled. Configure APP_LOGIN_* or BASIC_AUTH_* variables, or set ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION=true.",
     );
   }
 

@@ -62,6 +62,8 @@ describe("isPublicAccessPath", () => {
   it("keeps Next static assets public", () => {
     expect(isPublicAccessPath("/_next/static/chunks/main.js")).toBe(true);
     expect(isPublicAccessPath("/favicon.ico")).toBe(true);
+    expect(isPublicAccessPath("/manifest.webmanifest")).toBe(true);
+    expect(isPublicAccessPath("/icon.svg")).toBe(true);
   });
 
   it("still protects application routes", () => {

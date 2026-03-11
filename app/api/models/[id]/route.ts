@@ -8,7 +8,19 @@ import { deleteModelConfig, getModelConfigById, updateModelConfig } from "@/serv
 
 const updateModelSchema = z.object({
   name: z.string().min(1).optional(),
-  provider: z.enum(["OPENAI_COMPATIBLE", "CLAUDE", "GEMINI", "GROK", "DOUBAO", "DEEPSEEK", "MODELSCOPE"]).optional(),
+  provider: z
+    .enum([
+      "OPENAI_COMPATIBLE",
+      "CLAUDE",
+      "GEMINI",
+      "GROK",
+      "DOUBAO",
+      "DEEPSEEK",
+      "MODELSCOPE",
+      "HUNYUAN",
+      "QWEN",
+    ])
+    .optional(),
   baseUrl: z.string().url().optional(),
   modelName: z.string().min(1).optional(),
   apiKey: z.string().min(1).optional(),

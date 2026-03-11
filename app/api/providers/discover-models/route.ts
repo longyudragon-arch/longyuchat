@@ -7,7 +7,17 @@ import { parseJsonBody } from "@/server/http/request";
 import { discoverProviderModels } from "@/server/services/model-discovery-service";
 
 const discoverModelsSchema = z.object({
-  provider: z.enum(["OPENAI_COMPATIBLE", "CLAUDE", "GEMINI", "GROK", "DOUBAO", "DEEPSEEK", "MODELSCOPE"]),
+  provider: z.enum([
+    "OPENAI_COMPATIBLE",
+    "CLAUDE",
+    "GEMINI",
+    "GROK",
+    "DOUBAO",
+    "DEEPSEEK",
+    "MODELSCOPE",
+    "HUNYUAN",
+    "QWEN",
+  ]),
   baseUrl: z.string().url(),
   apiKey: z.string().min(1),
 });

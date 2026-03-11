@@ -28,6 +28,9 @@ export function isPublicAccessPath(pathname: string) {
   return (
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname.startsWith("/icon") ||
+    pathname.startsWith("/apple-icon") ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
   );

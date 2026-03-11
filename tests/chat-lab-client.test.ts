@@ -16,6 +16,13 @@ describe("describeClientError", () => {
     expect(feedback.tone).toBe("error");
   });
 
+  it("returns login guidance for app-level access protection", () => {
+    const feedback = describeClientError(new ClientRequestError("Login required.", 401));
+
+    expect(feedback.title).toBe("需要先登录");
+    expect(feedback.tone).toBe("warning");
+  });
+
   it("returns network guidance for timeout-like failures", () => {
     const feedback = describeClientError(new Error("Provider timeout"));
 
@@ -26,7 +33,7 @@ describe("describeClientError", () => {
   it("returns disabled-model guidance for disabled room models", () => {
     const feedback = describeClientError(new Error("Model Alpha is disabled."));
 
-    expect(feedback.title).toBe("房间里有已停用的模型");
+    expect(feedback.title).toBe("房间里存在已停用的模型");
     expect(feedback.tone).toBe("warning");
   });
 });
@@ -52,10 +59,12 @@ describe("describePartialSendResult", () => {
 });
 
 describe("supportsAutomaticModelDiscovery", () => {
-  it("enables discovery for compatible providers and keeps Claude manual", () => {
+  it("keeps OpenAI-compatible discovery enabled and leaves the new providers manual for now", () => {
     expect(supportsAutomaticModelDiscovery("OPENAI_COMPATIBLE")).toBe(true);
     expect(supportsAutomaticModelDiscovery("DOUBAO")).toBe(true);
     expect(supportsAutomaticModelDiscovery("MODELSCOPE")).toBe(true);
+    expect(supportsAutomaticModelDiscovery("HUNYUAN")).toBe(false);
+    expect(supportsAutomaticModelDiscovery("QWEN")).toBe(false);
     expect(supportsAutomaticModelDiscovery("CLAUDE")).toBe(false);
   });
 });

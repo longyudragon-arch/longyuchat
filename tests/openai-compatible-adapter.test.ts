@@ -185,7 +185,7 @@ describe("OpenAiCompatibleAdapter", () => {
     expect(result.content).toBe("你好，世界");
   });
 
-  it("reuses the OpenAI-compatible adapter for Gemini, ModelScope, and Doubao models", () => {
+  it("reuses the OpenAI-compatible adapter for compatible providers", () => {
     const providerConfigs = [
       {
         provider: "GEMINI",
@@ -198,6 +198,14 @@ describe("OpenAiCompatibleAdapter", () => {
       {
         provider: "DOUBAO",
         baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+      },
+      {
+        provider: "HUNYUAN",
+        baseUrl: "https://api.hunyuan.cloud.tencent.com/v1",
+      },
+      {
+        provider: "QWEN",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
       },
     ] as const;
 

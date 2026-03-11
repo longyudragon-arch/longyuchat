@@ -8,9 +8,13 @@ function buildEnv(overrides?: Record<string, string | undefined>) {
     DATABASE_URL: "file:/srv/ai-chat-lab/data/app.db",
     ENABLE_DEV_MOCKS: "false",
     NEXT_PUBLIC_ENABLE_DEV_MOCKS: "false",
-    BASIC_AUTH_ENABLED: "true",
-    BASIC_AUTH_USERNAME: "admin",
-    BASIC_AUTH_PASSWORD: "secret",
+    APP_LOGIN_ENABLED: "true",
+    APP_LOGIN_USERNAME: "longyu",
+    APP_LOGIN_PASSWORD: "secret",
+    APP_LOGIN_SESSION_SECRET: "session-secret",
+    BASIC_AUTH_ENABLED: "false",
+    BASIC_AUTH_USERNAME: "",
+    BASIC_AUTH_PASSWORD: "",
     HEALTHCHECK_BEARER_TOKEN: "health-token",
     MODEL_SECRET_ENCRYPTION_KEY: Buffer.from("0123456789abcdef0123456789abcdef", "utf8").toString("base64"),
     ENABLE_API_RATE_LIMITS: "true",
@@ -31,6 +35,7 @@ describe("buildProductionReadinessReport", () => {
     expect(report.issues).toEqual([]);
     expect(report.checks.fileLoggingEnabled).toBe(true);
     expect(report.checks.sqliteBackupConfigured).toBe(true);
+    expect(report.checks.accessProtectionMode).toBe("app");
   });
 
   it("reports missing production safeguards", () => {
@@ -40,7 +45,7 @@ describe("buildProductionReadinessReport", () => {
         ENABLE_FILE_LOGGING: "false",
         SQLITE_BACKUP_DIR: "",
         MODEL_SECRET_ENCRYPTION_KEY: "",
-        BASIC_AUTH_ENABLED: "false",
+        APP_LOGIN_ENABLED: "false",
       }),
     );
 
@@ -48,11 +53,25 @@ describe("buildProductionReadinessReport", () => {
     expect(report.issues).toEqual(
       expect.arrayContaining([
         "ENABLE_DEV_MOCKS and NEXT_PUBLIC_ENABLE_DEV_MOCKS must both be disabled in production.",
-        "Basic Auth access protection is not enabled. Set BASIC_AUTH_ENABLED=true or explicitly allow unprotected access.",
+        "Access protection is not enabled. Configure APP_LOGIN_* or BASIC_AUTH_* variables, or explicitly allow unprotected access.",
         "MODEL_SECRET_ENCRYPTION_KEY must be configured in production.",
         "File logging must be enabled in production and APP_LOG_DIR must resolve to a writable directory.",
       ]),
     );
+  });
+
+  it("accepts Basic Auth as a fallback protection mode", () => {
+    const report = buildProductionReadinessReport(
+      buildEnv({
+        APP_LOGIN_ENABLED: "false",
+        BASIC_AUTH_ENABLED: "true",
+        BASIC_AUTH_USERNAME: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+      }),
+    );
+
+    expect(report.ready).toBe(true);
+    expect(report.checks.accessProtectionMode).toBe("basic");
   });
 });
 

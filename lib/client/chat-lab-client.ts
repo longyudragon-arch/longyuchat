@@ -1,4 +1,6 @@
+import { areDevMocksEnabledForClient } from "@/lib/runtime";
 import type {
+  AuthSessionView,
   DiscoveredModelView,
   JsonErrorResponse,
   MessageRole,
@@ -7,7 +9,6 @@ import type {
   RoomView,
   SendRoomMessageResult,
 } from "@/types/app";
-import { areDevMocksEnabledForClient } from "@/lib/runtime";
 
 export const providerOptions = [
   "OPENAI_COMPATIBLE",
@@ -17,6 +18,8 @@ export const providerOptions = [
   "DOUBAO",
   "DEEPSEEK",
   "MODELSCOPE",
+  "HUNYUAN",
+  "QWEN",
 ] as const;
 
 interface ProviderPreset {
@@ -74,7 +77,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
   },
   GEMINI: {
     label: "Gemini",
-    labelZh: "Gemini",
+    labelZh: "谷歌 Gemini",
     shortName: "GM",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
     defaultModelName: "gemini-2.5-flash",
@@ -85,7 +88,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
   },
   GROK: {
     label: "Grok",
-    labelZh: "Grok",
+    labelZh: "xAI / Grok",
     shortName: "GK",
     baseUrl: "https://api.x.ai/v1",
     defaultModelName: "",
@@ -127,6 +130,28 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     iconClassName: "bg-fuchsia-500 text-white",
     softClassName: "bg-fuchsia-50/70",
   },
+  HUNYUAN: {
+    label: "Hunyuan",
+    labelZh: "腾讯混元 / Hunyuan",
+    shortName: "HY",
+    baseUrl: "https://api.hunyuan.cloud.tencent.com/v1",
+    defaultModelName: "hunyuan-turbo",
+    defaultReplyLength: 300,
+    badgeClassName: "border-rose-200 bg-rose-50 text-rose-700",
+    iconClassName: "bg-rose-500 text-white",
+    softClassName: "bg-rose-50/70",
+  },
+  QWEN: {
+    label: "Qwen",
+    labelZh: "通义千问 / Qwen",
+    shortName: "QW",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    defaultModelName: "qwen-plus",
+    defaultReplyLength: 300,
+    badgeClassName: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    iconClassName: "bg-indigo-500 text-white",
+    softClassName: "bg-indigo-50/70",
+  },
 };
 
 const autoDiscoverableProviders = new Set<ProviderType>([
@@ -139,18 +164,9 @@ const autoDiscoverableProviders = new Set<ProviderType>([
 ]);
 
 export const localMockDefinitions = [
-  {
-    name: "Mock Alpha",
-    modelName: "mock-alpha",
-  },
-  {
-    name: "Mock Beta",
-    modelName: "mock-beta",
-  },
-  {
-    name: "Mock Gamma",
-    modelName: "mock-gamma",
-  },
+  { name: "Mock Alpha", modelName: "mock-alpha" },
+  { name: "Mock Beta", modelName: "mock-beta" },
+  { name: "Mock Gamma", modelName: "mock-gamma" },
 ] as const;
 
 export function supportsLocalMockTools() {
@@ -175,7 +191,7 @@ export async function fetchJson<T>(input: string, init?: RequestInit) {
 
   if (!response.ok) {
     throw new ClientRequestError(
-      (data as JsonErrorResponse).error ?? "请求失败。",
+      (data as JsonErrorResponse).error ?? "Request failed.",
       response.status,
       (data as JsonErrorResponse).details,
     );
@@ -251,7 +267,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "请求失败。";
+  return "Request failed.";
 }
 
 export function describeClientError(error: unknown): ClientErrorFeedback {
@@ -259,30 +275,48 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
   const normalized = message.toLowerCase();
   const status = error instanceof ClientRequestError ? error.status : undefined;
 
+  if (status === 401 && normalized.includes("login")) {
+    return {
+      title: "需要先登录",
+      description: message,
+      suggestion: "请重新进入登录页完成登录，再继续访问模型、房间或聊天接口。",
+      tone: "warning",
+    };
+  }
+
   if (status === 404 || normalized.includes("not found")) {
     return {
-      title: "目标房间已不存在",
+      title: "目标内容不存在",
       description: message,
-      suggestion: "这个房间可能已经被删除。回到房间列表重新打开，或者重新创建一个新房间。",
+      suggestion: "它可能已经被删除。回到上一页刷新数据，或重新创建一个新的房间/模型。",
       tone: "error",
     };
   }
 
   if (normalized.includes("disabled")) {
     return {
-      title: "房间里有已停用的模型",
+      title: "房间里存在已停用的模型",
       description: message,
-      suggestion: "去模型管理页重新启用对应模型，或者把它从房间里移除后再继续发送消息。",
+      suggestion: "请先在模型管理里启用对应模型，或者把它从房间成员里移除后再继续发送消息。",
       tone: "warning",
     };
   }
 
-  if (normalized.includes("discover") && normalized.includes("claude")) {
+  if (normalized.includes("discover") && normalized.includes("not available yet")) {
     return {
       title: "当前 Provider 还不能自动拉取模型列表",
       description: message,
-      suggestion: "Claude 先手动填写模型 ID 即可，后面我们再补原生列表发现接口。",
+      suggestion: "先手动填写模型 ID 即可，后续再补该平台原生的模型发现接口。",
       tone: "warning",
+    };
+  }
+
+  if (normalized.includes("quota") || normalized.includes("billing") || normalized.includes("429")) {
+    return {
+      title: "当前账号额度不足或配额已超限",
+      description: message,
+      suggestion: "检查该平台的 billing、quota 和模型可用性；如果是预览模型，确认它是否仅支持付费层。",
+      tone: "error",
     };
   }
 
@@ -295,7 +329,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "模型请求超时或网络连接失败",
       description: message,
-      suggestion: "优先检查 Base URL、当前网络和模型服务可用性；如果是境外服务，也确认本机网络是否能访问。",
+      suggestion: "优先检查 Base URL、当前网络、服务器对上游接口的连通性，以及模型服务是否可用。",
       tone: "error",
     };
   }
@@ -309,7 +343,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "API Key 无效或鉴权失败",
       description: message,
-      suggestion: "请检查模型的 API Key、Base URL 和模型 ID 是否匹配当前 provider。",
+      suggestion: "请检查 API Key、Base URL 和模型 ID 是否匹配当前 Provider。",
       tone: "error",
     };
   }
@@ -343,7 +377,7 @@ export function describePartialSendResult(
 
   return {
     title: `${failedModelName} 未完成本轮回复`,
-    description: result.error ?? "本轮顺序回复在中途停止，前面已经成功生成的回复仍然保留。",
+    description: result.error ?? "本轮顺序回复在中途停止，前面已经成功生成的回复仍然会保留。",
     suggestion: derivedFeedback.suggestion,
     tone: "warning",
   };
@@ -391,7 +425,7 @@ export async function ensureLocalMockModels() {
     .filter((model): model is ModelView => Boolean(model));
 
   if (mockModels.length !== localMockDefinitions.length) {
-    throw new Error("本地测试模型创建不完整，请重试一次。");
+    throw new Error("Local mock models were not created completely. Please try again.");
   }
 
   return mockModels;
@@ -455,4 +489,8 @@ export async function discoverProviderModels(input: {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function fetchAuthSession() {
+  return fetchJson<AuthSessionView>("/api/auth/session");
 }

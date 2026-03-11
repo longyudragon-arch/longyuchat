@@ -5,10 +5,13 @@ export type ProviderType =
   | "GROK"
   | "DOUBAO"
   | "DEEPSEEK"
-  | "MODELSCOPE";
+  | "MODELSCOPE"
+  | "HUNYUAN"
+  | "QWEN";
 export type RoomType = "SINGLE" | "GROUP";
 export type MessageRole = "USER" | "ASSISTANT" | "SYSTEM";
 export type ModelTestResultStatus = "success" | "error";
+export type AccessProtectionMode = "app" | "basic" | "none";
 
 export interface ModelTestResultView {
   status: ModelTestResultStatus;
@@ -90,4 +93,11 @@ export interface DiscoveredModelView {
 export interface JsonErrorResponse {
   error?: string;
   details?: unknown;
+}
+
+export interface AuthSessionView {
+  mode: AccessProtectionMode;
+  appLoginEnabled: boolean;
+  authenticated: boolean;
+  username: string | null;
 }

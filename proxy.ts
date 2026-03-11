@@ -1,13 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  APP_SESSION_COOKIE_NAME,
+  getAccessProtectionMode,
+  isAppSessionAuthorized,
+  resolveSafeNextPath,
+} from "@/lib/app-auth";
+import {
   isBasicAuthAuthorized,
   isHealthcheckBearerAuthorized,
   isPublicAccessPath,
-  isServerAccessProtectionEnabled,
 } from "@/lib/server-access";
 
-function createUnauthorizedResponse(request: NextRequest) {
+const APP_LOGIN_PUBLIC_PATHS = new Set([
+  "/login",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/auth/session",
+]);
+
+function isAppLoginPublicPath(pathname: string) {
+  return APP_LOGIN_PUBLIC_PATHS.has(pathname);
+}
+
+function createBasicUnauthorizedResponse(request: NextRequest) {
   const headers = new Headers({
     "WWW-Authenticate": 'Basic realm="AI Chat Lab", charset="UTF-8"',
   });
@@ -26,10 +42,30 @@ function createUnauthorizedResponse(request: NextRequest) {
   });
 }
 
-export function proxy(request: NextRequest) {
+function createAppUnauthorizedResponse(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "Login required.",
+      },
+      {
+        status: 401,
+      },
+    );
+  }
+
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set(
+    "next",
+    resolveSafeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+  );
+  return NextResponse.redirect(loginUrl);
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isPublicAccessPath(pathname) || !isServerAccessProtectionEnabled()) {
+  if (isPublicAccessPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -39,11 +75,47 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isBasicAuthAuthorized(authorization)) {
+  const protectionMode = getAccessProtectionMode();
+
+  if (protectionMode === "none") {
     return NextResponse.next();
   }
 
-  return createUnauthorizedResponse(request);
+  if (protectionMode === "basic") {
+    if (isBasicAuthAuthorized(authorization)) {
+      return NextResponse.next();
+    }
+
+    return createBasicUnauthorizedResponse(request);
+  }
+
+  if (isAppLoginPublicPath(pathname)) {
+    if (pathname === "/login") {
+      const isAuthenticated = await isAppSessionAuthorized(
+        request.cookies.get(APP_SESSION_COOKIE_NAME)?.value,
+      );
+
+      if (isAuthenticated) {
+        const targetUrl = new URL(
+          resolveSafeNextPath(request.nextUrl.searchParams.get("next") ?? "/"),
+          request.url,
+        );
+        return NextResponse.redirect(targetUrl);
+      }
+    }
+
+    return NextResponse.next();
+  }
+
+  const isAuthenticated = await isAppSessionAuthorized(
+    request.cookies.get(APP_SESSION_COOKIE_NAME)?.value,
+  );
+
+  if (isAuthenticated) {
+    return NextResponse.next();
+  }
+
+  return createAppUnauthorizedResponse(request);
 }
 
 export const config = {

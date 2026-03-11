@@ -181,6 +181,8 @@ const openAiCompatibleProviders = new Set([
   "DOUBAO",
   "DEEPSEEK",
   "MODELSCOPE",
+  "HUNYUAN",
+  "QWEN",
 ]);
 
 export function createModelAdapter(config: ModelRuntimeConfig): ModelAdapter {
