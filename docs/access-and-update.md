@@ -100,3 +100,20 @@ sudo systemctl restart ai-chat-lab
 - 浏览器访问站点会进入 `/login`
 - 微信或手机浏览器打开时，也会看到应用自己的登录页
 - 不会再出现浏览器级的 `Authentication required` 弹窗
+
+## 手机浏览器 / 微信打开不稳定时
+
+如果出现：
+
+- `ERR_CONNECTION_CLOSED`
+- 需要刷新很多次才能打开
+- 手机浏览器和微信内 WebView 都不稳定
+
+优先检查 Nginx 反代配置是否过于激进。当前项目不依赖 WebSocket，所以推荐使用更保守的代理方式：
+
+- 暂时关闭 `http2`
+- 去掉 `proxy_set_header Upgrade`
+- 去掉固定的 `proxy_set_header Connection "upgrade"`
+- 关闭 `proxy_buffering`
+
+这类调整通常更适合微信内 WebView 和部分移动网络环境。
