@@ -10,7 +10,11 @@ import type { AuthSessionView } from "@/types/app";
 const navItems = [
   { href: "/", label: "首页", match: (pathname: string) => pathname === "/" },
   { href: "/models", label: "模型管理", match: (pathname: string) => pathname.startsWith("/models") },
-  { href: "/rooms", label: "房间列表", match: (pathname: string) => pathname.startsWith("/rooms") },
+  {
+    href: "/rooms",
+    label: "房间列表",
+    match: (pathname: string) => pathname === "/rooms" || /^\/rooms\/[^/]+(?:\/edit)?$/.test(pathname),
+  },
   { href: "/rooms/new", label: "新建房间", match: (pathname: string) => pathname === "/rooms/new" },
 ];
 
@@ -96,7 +100,7 @@ export function AppNavigation() {
                         href={item.href}
                         className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
                           active
-                            ? "bg-[var(--foreground)] text-white shadow-[0_14px_28px_rgba(22,19,17,0.18)]"
+                            ? "border border-[rgba(31,47,68,0.10)] bg-[var(--navy-soft)] text-[var(--navy)] shadow-[0_10px_20px_rgba(31,47,68,0.10)]"
                             : "border border-[var(--border)] bg-white/72 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                         }`}
                       >
