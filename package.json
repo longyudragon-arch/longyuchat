@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node scripts/start-dev-local.mjs",
     "postinstall": "prisma generate",
     "prebuild": "prisma generate",
     "build": "next build",

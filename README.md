@@ -422,3 +422,24 @@ public/
 - 生产启动自检、文件日志和 SQLite 备份脚本
 
 部署步骤和服务器示例见：[docs/deployment.md](./docs/deployment.md)
+
+## 17. 本地开发代理说明
+
+如果本机开启了 TUN 模式代理，或设置了 `http_proxy` / `https_proxy`，本地开发时可能会把 `localhost` 也错误走代理，导致：
+
+- `http://localhost:3000` 返回 `502`
+- 浏览器或自动化工具访问本地页面持续超时
+
+项目已提供本地开发启动脚本，会自动为当前进程补齐 `NO_PROXY`：
+
+```bash
+npm run dev:local
+```
+
+这个脚本会自动把以下地址加入绕过列表：
+
+- `localhost`
+- `127.0.0.1`
+- `::1`
+
+如果你仍然使用系统代理或 Clash / Mihomo 一类工具，建议同时在代理规则中将上述地址设置为 `DIRECT`，避免本地开发服务被代理劫持。
