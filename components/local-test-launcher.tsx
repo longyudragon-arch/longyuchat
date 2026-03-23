@@ -33,7 +33,7 @@ export function LocalTestLauncher() {
     <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,244,232,0.92),rgba(255,255,255,0.92))] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">LOCAL SANDBOX</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">本地沙盒</p>
           <h2 className="mt-3 text-2xl font-semibold">一键生成本地演示环境</h2>
           <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
             不需要真实 API Key。系统会自动创建 3 个本地 mock 模型和 1 个测试群聊房间，方便你快速验证顺序回复、消息保存和聊天页交互。

@@ -76,9 +76,9 @@ export function AppNavigation() {
   const isLoginPage = pathname === "/login";
 
   return (
-    <header className="sticky top-0 z-40 px-4 pb-3 pt-4 sm:px-5">
+    <header className="sticky top-0 z-40 px-3 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
       <div className="ly-shell">
-        <div className="ly-glass overflow-hidden rounded-[2rem] px-4 py-4 sm:px-5">
+        <div className="ly-glass overflow-hidden rounded-[1.6rem] px-4 py-3 sm:rounded-[2rem] sm:px-5 sm:py-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-start justify-between gap-4">
               <BrandBlock />
@@ -91,7 +91,7 @@ export function AppNavigation() {
 
             {!isLoginPage ? (
               <div className="flex flex-col gap-3 xl:items-end">
-                <nav className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
+                <nav className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
                   {navItems.map((item) => {
                     const active = item.match(pathname);
 
@@ -99,7 +99,7 @@ export function AppNavigation() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
+                        className={`min-w-0 rounded-[1rem] px-3 py-2 text-center text-sm transition sm:rounded-full sm:px-4 ${
                           active
                             ? "border border-[rgba(31,47,68,0.10)] bg-[var(--navy-soft)] text-[var(--navy)] shadow-[0_10px_20px_rgba(31,47,68,0.10)]"
                             : "border border-[var(--border)] bg-white/72 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -114,7 +114,7 @@ export function AppNavigation() {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   {session?.mode === "app" && session.authenticated ? (
                     <>
-                      <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-2 text-[var(--muted)]">
+                      <span className="hidden rounded-full border border-[var(--border)] bg-white/78 px-3 py-2 text-[var(--muted)] sm:inline-flex">
                         当前账号：{session.username ?? "owner"}
                       </span>
                       <button

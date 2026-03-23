@@ -39,6 +39,9 @@ type PendingRoundState = {
   expectedAssistantCount: number;
 };
 
+type TimelineState = "done" | "active" | "pending" | "idle";
+type OrderedRoomModel = RoomView["roomModels"][number];
+
 function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
   if (!feedback) return null;
 
@@ -58,6 +61,70 @@ function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
 
 function Chip({ text, className }: { text: string; className: string }) {
   return <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${className}`}>{text}</span>;
+}
+
+function TimelineStepCard({
+  roomModel,
+  index,
+  state,
+  compact = false,
+}: {
+  roomModel: OrderedRoomModel;
+  index: number;
+  state: TimelineState;
+  compact?: boolean;
+}) {
+  const stateChipClass =
+    state === "done"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : state === "active"
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : state === "pending"
+          ? "border-zinc-200 bg-white/80 text-zinc-600"
+          : "border-[var(--border)] bg-white/70 text-[var(--muted)]";
+
+  const panelClass =
+    state === "done"
+      ? "border-emerald-200 bg-emerald-50/80"
+      : state === "active"
+        ? "border-sky-200 bg-white shadow-[0_0_0_6px_rgba(14,165,233,0.08)]"
+        : state === "pending"
+          ? "border-zinc-200 bg-white/86"
+          : "border-[var(--border)] bg-white/72";
+
+  return (
+    <div className={`rounded-[1.5rem] border px-4 py-4 transition-all ${panelClass}`}>
+      <div className="flex items-start gap-3">
+        <span
+          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(
+            roomModel.model.provider,
+          )}`}
+        >
+          {getProviderShortName(roomModel.model.provider)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[var(--border)] bg-[rgb(248,246,242)] px-2.5 py-0.5 text-[10px] text-[var(--muted)]">
+              {index + 1}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(roomModel.model.provider)}`}
+            >
+              {getProviderOptionLabel(roomModel.model.provider)}
+            </span>
+            <Chip
+              text={state === "done" ? "已完成" : state === "active" ? "思考中" : state === "pending" ? "等待中" : "待命"}
+              className={stateChipClass}
+            />
+          </div>
+          <p className="mt-2 text-sm font-medium leading-6">{roomModel.model.name}</p>
+          {!compact ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">默认回复上限：{formatReplyLength(roomModel.model.defaultReplyLength)}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
@@ -173,7 +240,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     return room.roomModels.map((item) => item.modelId).join(",") !== draftModelIds.join(",");
   }, [draftModelIds, room]);
 
-  const pendingTimeline = useMemo(() => {
+  const pendingTimeline = useMemo<Array<{ roomModel: OrderedRoomModel; state: TimelineState }>>(() => {
     if (!pendingRound || !isSending) return [];
     const total = Math.min(pendingRound.expectedAssistantCount, orderedRoomModels.length);
     return orderedRoomModels.slice(0, total).map((roomModel, index) => ({
@@ -188,6 +255,31 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }, [isSending, orderedRoomModels, pendingRound]);
 
   const activeTimelineModel = pendingTimeline.find((item) => item.state === "active")?.roomModel.model.name ?? null;
+  const timelineDisplayItems = useMemo(
+    () =>
+      pendingTimeline.length > 0
+        ? pendingTimeline
+        : orderedRoomModels.map((roomModel) => ({
+            roomModel,
+            state: "idle" as TimelineState,
+          })),
+    [orderedRoomModels, pendingTimeline],
+  );
+  const currentFocusModel =
+    pendingTimeline.find((item) => item.state === "active")?.roomModel ??
+    pendingTimeline.find((item) => item.state === "pending")?.roomModel ??
+    null;
+  const progressLabel = pendingRound
+    ? `${pendingRound.completedAssistantCount}/${pendingRound.expectedAssistantCount}`
+    : `${room?.roomModels.length ?? 0} 个模型`;
+  const timelineHeadline = isSending
+    ? activeTimelineModel
+      ? `当前轮到 ${activeTimelineModel}`
+      : "正在同步这一轮的最终结果"
+    : "等待你发起下一轮";
+  const timelineDescription = isSending
+    ? `这一轮已经完成 ${pendingRound?.completedAssistantCount ?? 0} 个模型回复。`
+    : "发送消息后，模型会按照右侧顺序依次出现。";
 
   function previewMove(targetId: string) {
     if (!draggedModelId || draggedModelId === targetId) return;
@@ -327,78 +419,81 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   return (
     <main className="ly-shell flex flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="ly-dark-panel ly-grid-lines overflow-hidden rounded-[2.8rem] px-6 py-7 sm:px-8 sm:py-9">
-          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
-            CONVERSATION ROOM
+      <section className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr] xl:gap-6">
+        <div className="ly-dark-panel ly-grid-lines overflow-hidden rounded-[2.4rem] px-5 py-6 sm:px-6 sm:py-7 xl:rounded-[2.8rem] xl:px-8 xl:py-9">
+          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-[11px] font-semibold tracking-[0.24em] text-white/78">
+            当前房间
           </span>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">{room?.title ?? "正在加载房间..."}</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
-            这里不只是消息列表，而是一套清楚展示“谁先说、谁正在思考、谁已经完成”的多模型协作工作区。
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl xl:text-5xl">
+            {room?.title ?? "正在加载房间..."}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-white/72 xl:text-base xl:leading-8">
+            这里不只是消息列表，而是一个会明确告诉你“轮到谁回答、谁已经完成、谁还在等待”的多模型协作工作区。
           </p>
-          <div className="mt-6 flex flex-wrap gap-2 text-sm">
+          <div className="mt-5 flex flex-wrap gap-2 text-sm">
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">{room ? toRoomLabel(room.type) : "房间"}</span>
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">{room?.roomModels.length ?? 0} 个模型参与</span>
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">累计 {room?.messageCount ?? 0} 条消息</span>
           </div>
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <Link href="/rooms" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <Link href="/rooms" className="rounded-[1.4rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
               返回房间列表
             </Link>
-            <Link href={`/rooms/${roomId}/edit`} className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+            <Link href={`/rooms/${roomId}/edit`} className="rounded-[1.4rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
               编辑当前房间
             </Link>
-            <Link href="/rooms/new" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+            <Link href="/rooms/new" className="rounded-[1.4rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
               新建另一个房间
             </Link>
           </div>
         </div>
 
-        <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="ly-glass rounded-[2.4rem] p-5 sm:p-6 xl:rounded-[2.8rem]">
+          <div className="flex items-center justify-between gap-3">
             <span className="rounded-full bg-[var(--navy-soft)] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[var(--navy)]">
-              LIVE ORDER
+              当前轮次
             </span>
-            <span className="text-sm text-[var(--muted)]">{notice || "可以直接开始聊天，也可以先调整模型顺序。"}</span>
+            <Chip text={progressLabel} className="border-[var(--border)] bg-white/84 text-[var(--muted)]" />
           </div>
-          <h2 className="mt-4 text-2xl font-semibold">当前轮次与模型链路</h2>
-          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-            用户消息发出后，模型会严格按当前顺序逐个回复。你可以在等待时直接看到这一轮已经完成到哪一步。
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            {orderedRoomModels.map((roomModel, index) => {
-              const timelineItem = pendingTimeline.find((item) => item.roomModel.id === roomModel.id);
-              const state = timelineItem?.state ?? "idle";
 
-              return (
-                <div key={roomModel.id} className="flex items-center gap-2">
-                  <div
-                    className={`flex items-center gap-3 rounded-full border px-3 py-2 ${
-                      state === "done"
-                        ? "border-emerald-200 bg-emerald-50"
-                        : state === "active"
-                          ? "border-sky-200 bg-sky-50 shadow-[0_0_0_6px_rgba(14,165,233,0.08)]"
-                          : "border-[var(--border)] bg-white/86"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(
-                        roomModel.model.provider,
-                      )}`}
-                    >
-                      {getProviderShortName(roomModel.model.provider)}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium leading-5">{roomModel.model.name}</p>
-                      <p className="text-[10px] text-[var(--muted)]">{state === "done" ? "已完成" : state === "active" ? "思考中" : "等待中"}</p>
-                    </div>
-                  </div>
-                  {index < orderedRoomModels.length - 1 ? <span className="text-[var(--accent)]">→</span> : null}
-                </div>
-              );
-            })}
+          <div className="mt-4 rounded-[2rem] bg-[linear-gradient(135deg,#1f2f44,#203754_64%,#2a4567)] px-5 py-5 text-white shadow-[0_20px_45px_rgba(31,47,68,0.18)]">
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-white/58">
+              {isSending ? "当前发言" : "下一轮"}
+            </p>
+            <div className="mt-4 flex items-center gap-4">
+              {currentFocusModel ? (
+                <span
+                  className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.5rem] text-xs font-semibold tracking-[0.22em] ${getProviderIconClassName(
+                    currentFocusModel.model.provider,
+                  )}`}
+                >
+                  {getProviderShortName(currentFocusModel.model.provider)}
+                </span>
+              ) : (
+                <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.5rem] bg-white/10 text-xs font-semibold tracking-[0.22em] text-white/78">
+                  GO
+                </span>
+              )}
+              <div className="min-w-0">
+                <h2 className="text-2xl font-semibold leading-tight">
+                  {currentFocusModel ? timelineHeadline : "等待你发送下一条消息"}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/74">
+                  {currentFocusModel
+                    ? `${timelineDescription}${notice ? ` ${notice}` : ""}`
+                    : "顺序已经准备好。发送消息后，模型会按当前顺序依次作答。"}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            {timelineDisplayItems.map(({ roomModel, state }, index) => (
+              <TimelineStepCard key={roomModel.id} roomModel={roomModel} index={index} state={state} compact />
+            ))}
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <button type="button" onClick={() => startTransition(() => void renameRoom())} disabled={!room || isBusy} className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:opacity-60">
               重命名房间
             </button>
@@ -411,8 +506,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
       <FeedbackPanel feedback={feedback} />
 
-      <section className="xl:hidden">
-        <div className="ly-glass grid grid-cols-2 gap-2 rounded-[1.6rem] p-2">
+      <section className="sticky top-[5.35rem] z-30 xl:hidden">
+        <div className="ly-glass grid grid-cols-2 gap-2 rounded-[1.4rem] p-2 shadow-[0_18px_36px_rgba(17,17,17,0.08)]">
           <button type="button" onClick={() => setMobilePanel("chat")} className={`rounded-[1.2rem] px-4 py-3 text-sm font-medium ${mobilePanel === "chat" ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--muted)]"}`}>
             聊天
           </button>
@@ -422,11 +517,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
+      <section className="grid gap-4 xl:grid-cols-[1.55fr_0.95fr] xl:gap-6">
         <div className={`${mobilePanel === "chat" ? "block" : "hidden"} xl:block`}>
-          <div className="ly-glass rounded-[2.6rem] p-5 sm:p-6">
+          <div className="ly-glass rounded-[2.2rem] p-4 sm:rounded-[2.6rem] sm:p-6">
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">CHAT STREAM</p>
+              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">聊天流</p>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-semibold">顺序协作消息流</h2>
                 <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-1 text-xs text-[var(--muted)]">
@@ -434,9 +529,23 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 </span>
               </div>
             </div>
+            <div className="mt-4 flex min-h-[66svh] flex-col rounded-[1.8rem] border border-[var(--border)] bg-white/50 sm:min-h-[620px] sm:rounded-[2rem]">
+              <div ref={messageListRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+                <div className="sticky top-0 z-10 -mx-4 mb-4 rounded-[1.4rem] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,251,246,0.96),rgba(255,255,255,0.9))] px-4 py-3 shadow-[0_10px_24px_rgba(17,17,17,0.06)] backdrop-blur sm:-mx-6 sm:px-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold tracking-[0.18em] text-[var(--accent-strong)]">当前焦点</p>
+                      <h3 className="mt-1 text-base font-semibold">
+                        {currentFocusModel ? timelineHeadline : "等待你发送下一条消息"}
+                      </h3>
+                      <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
+                        {currentFocusModel ? timelineDescription : "消息发出后，这里会实时告诉你当前轮到哪个模型回答。"}
+                      </p>
+                    </div>
+                    <Chip text={progressLabel} className="border-[var(--border)] bg-white/88 text-[var(--muted)]" />
+                  </div>
+                </div>
 
-            <div className="mt-5 flex min-h-[460px] flex-col rounded-[2rem] border border-[var(--border)] bg-white/50 sm:min-h-[620px]">
-              <div ref={messageListRef} className="flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
                 {messages.map((message) => {
                   if (message.role === "USER") {
                     const status = getUserMessageRoundStatus({
@@ -470,16 +579,16 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                               : "单对勾 · 已送达";
 
                     return (
-                      <article key={message.id} className="ml-auto max-w-[96%] sm:max-w-[86%]">
-                        <div className="rounded-[2rem] rounded-tr-[0.6rem] bg-[linear-gradient(135deg,#c35a2f,#8f3416)] px-5 py-4 text-white shadow-[0_18px_36px_rgba(143,52,22,0.22)]">
-                          <div className="mb-3 flex items-center justify-between gap-3">
+                      <article key={message.id} className="ml-auto max-w-[94%] sm:max-w-[86%]">
+                        <div className="rounded-[1.7rem] rounded-tr-[0.55rem] bg-[linear-gradient(135deg,#c35a2f,#8f3416)] px-4 py-3 text-white shadow-[0_16px_28px_rgba(143,52,22,0.20)] sm:rounded-[2rem] sm:px-5 sm:py-4">
+                          <div className="mb-2.5 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/70">
                               <span>{toRoleLabel(message.role)}</span>
                               <span>{formatDate(message.createdAt)}</span>
                             </div>
                             <Chip text={statusText} className={statusChipClass} />
                           </div>
-                          <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
+                          <p className="whitespace-pre-wrap text-sm leading-6 sm:leading-7">{message.content}</p>
                         </div>
                       </article>
                     );
@@ -490,9 +599,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   const provider = messageModel?.provider;
 
                   return (
-                    <article key={message.id} className="max-w-[96%] sm:max-w-[86%]">
-                      <div className={`rounded-[2rem] rounded-tl-[0.6rem] px-5 py-4 shadow-[0_16px_34px_rgba(17,17,17,0.06)] ${provider ? getProviderSoftClassName(provider) : "bg-white/78"}`}>
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <article key={message.id} className="max-w-[94%] sm:max-w-[86%]">
+                      <div className={`rounded-[1.7rem] rounded-tl-[0.55rem] px-4 py-3 shadow-[0_14px_28px_rgba(17,17,17,0.05)] sm:rounded-[2rem] sm:px-5 sm:py-4 ${provider ? getProviderSoftClassName(provider) : "bg-white/78"}`}>
+                        <div className="mb-2.5 flex flex-wrap items-center gap-2">
                           {provider ? (
                             <>
                               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(provider)}`}>{getProviderShortName(provider)}</span>
@@ -506,45 +615,37 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           <span className="text-xs text-[var(--muted)]">{formatDate(message.createdAt)}</span>
                         </div>
                         <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{toRoleLabel(message.role)}</div>
-                        <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
+                        <p className="whitespace-pre-wrap text-sm leading-6 sm:leading-7">{message.content}</p>
                       </div>
                     </article>
                   );
                 })}
 
                 {pendingUserContent ? (
-                  <article className="ml-auto max-w-[96%] sm:max-w-[86%]">
-                    <div className="rounded-[2rem] rounded-tr-[0.6rem] border border-[var(--accent)] bg-[rgba(195,90,47,0.10)] px-5 py-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
+                  <article className="ml-auto max-w-[94%] sm:max-w-[86%]">
+                    <div className="rounded-[1.7rem] rounded-tr-[0.55rem] border border-[var(--accent)] bg-[rgba(195,90,47,0.10)] px-4 py-3 sm:rounded-[2rem] sm:px-5 sm:py-4">
+                      <div className="mb-2.5 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]"><span>用户</span><span>正在发送</span></div>
                         <Chip text="发送中" className="border-zinc-200 bg-white/80 text-zinc-500" />
                       </div>
-                      <p className="whitespace-pre-wrap text-sm leading-7">{pendingUserContent}</p>
+                      <p className="whitespace-pre-wrap text-sm leading-6 sm:leading-7">{pendingUserContent}</p>
                     </div>
                   </article>
                 ) : null}
 
                 {pendingTimeline.length > 0 ? (
-                  <article className="max-w-[96%] sm:max-w-[86%]">
-                    <div className="rounded-[2rem] border border-dashed border-sky-200 bg-sky-50/80 px-5 py-4 shadow-[0_14px_30px_rgba(14,165,233,0.08)]">
+                  <article className="max-w-[94%] sm:max-w-[86%]">
+                    <div className="rounded-[1.8rem] border border-dashed border-sky-200 bg-sky-50/80 px-4 py-4 shadow-[0_14px_30px_rgba(14,165,233,0.08)] sm:rounded-[2rem] sm:px-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.18em] text-sky-700">ROUND TIMELINE</div>
+                          <div className="text-[10px] tracking-[0.18em] text-sky-700">轮次时间线</div>
                           <p className="mt-2 text-sm leading-6 text-sky-900">{activeTimelineModel ? `当前轮到 ${activeTimelineModel} 回复。` : "正在同步这一轮的最终结果。"}</p>
                         </div>
                         <Chip text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`} className="border-sky-200 bg-white/90 text-sky-700" />
                       </div>
                       <div className="mt-4 space-y-3">
                         {pendingTimeline.map(({ roomModel, state }, index) => (
-                          <div key={roomModel.id} className={`rounded-[1.4rem] border px-4 py-3 ${state === "done" ? "border-emerald-200 bg-emerald-50/80" : state === "active" ? "border-sky-200 bg-white shadow-[0_0_0_6px_rgba(14,165,233,0.08)]" : "border-zinc-200 bg-white/78"}`}>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(roomModel.model.provider)}`}>{getProviderShortName(roomModel.model.provider)}</span>
-                              <span className="rounded-full border border-[var(--border)] bg-[rgb(248,246,242)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{index + 1}</span>
-                              <span className="text-sm font-medium">{roomModel.model.name}</span>
-                              <Chip text={state === "done" ? "已完成" : state === "active" ? "思考中" : "等待中"} className={state === "done" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : state === "active" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-zinc-200 bg-white/80 text-zinc-600"} />
-                            </div>
-                            <p className="mt-2 text-sm text-[var(--muted)]">默认回复上限：{formatReplyLength(roomModel.model.defaultReplyLength)}</p>
-                          </div>
+                          <TimelineStepCard key={roomModel.id} roomModel={roomModel} index={index} state={state} compact />
                         ))}
                       </div>
                     </div>
@@ -552,8 +653,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 ) : null}
               </div>
 
-              <div className="border-t border-[var(--border)] px-4 py-4 sm:px-6">
-                <textarea value={messageInput} onChange={(event) => setMessageInput(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="输入消息并发送，Enter 发送，Shift+Enter 换行..." rows={4} className="w-full resize-none rounded-[1.8rem] border border-[var(--border)] bg-white/92 px-4 py-4 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(195,90,47,0.12)]" />
+              <div className="sticky bottom-0 z-20 border-t border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,248,242,0.94),rgba(255,255,255,0.98))] px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:bg-transparent sm:px-6 sm:pb-4">
+                <textarea value={messageInput} onChange={(event) => setMessageInput(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="输入消息并发送，Enter 发送，Shift+Enter 换行..." rows={4} className="w-full resize-none rounded-[1.6rem] border border-[var(--border)] bg-white/92 px-4 py-4 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(195,90,47,0.12)] sm:rounded-[1.8rem]" />
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className={`text-xs ${orderDirty ? "text-amber-700" : "text-[var(--muted)]"}`}>{orderDirty ? "当前有未保存的顺序调整，请先保存排序。" : "系统会按已保存顺序依次回复，并遵守每个模型自己的字数限制。"}</p>
                   <button type="button" onClick={() => startTransition(() => void sendMessage())} disabled={!messageInput.trim() || isBusy} className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300">{isSending ? "等待回复中..." : "发送消息"}</button>
@@ -564,8 +665,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         </div>
 
         <aside className={`${mobilePanel === "order" ? "block" : "hidden"} xl:block`}>
-          <div className="ly-glass rounded-[2.6rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">ORDER CONTROL</p>
+          <div className="ly-glass rounded-[2.2rem] p-5 sm:rounded-[2.6rem] sm:p-6">
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">顺序控制</p>
             <h2 className="mt-3 text-2xl font-semibold">当前模型顺序</h2>
             <p className="mt-2 text-sm leading-7 text-[var(--muted)]">拖拽卡片就会实时换位。下一轮会严格按照保存后的顺序执行。</p>
             <div className={`mt-4 rounded-[1.6rem] border px-4 py-3 text-sm ${orderDirty ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[var(--border)] bg-white/80 text-[var(--muted)]"}`}>{orderDirty ? "当前顺序只在本地生效，服务端还没有保存。" : "当前顺序已经保存。"}</div>
@@ -590,7 +691,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     clearDragState();
                   }}
                   onDragEnd={clearDragState}
-                  className={`rounded-[1.8rem] border px-4 py-4 transition-all ${dragOverModelId === roomModel.modelId && draggedModelId !== roomModel.modelId ? "border-[var(--accent)] bg-[rgba(195,90,47,0.10)]" : "border-[var(--border)] bg-white/82"}`}
+                  className={`rounded-[1.6rem] border px-4 py-4 transition-all sm:rounded-[1.8rem] ${dragOverModelId === roomModel.modelId && draggedModelId !== roomModel.modelId ? "border-[var(--accent)] bg-[rgba(195,90,47,0.10)]" : "border-[var(--border)] bg-white/82"}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(roomModel.model.provider)}`}>{getProviderShortName(roomModel.model.provider)}</span>
