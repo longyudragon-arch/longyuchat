@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import {
   describeClientError,
@@ -80,7 +80,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
     try {
       await Promise.all([loadRoom(), loadModels()]);
-      setNotice("房间配置已加载。");
+      setNotice("房间配置已经加载完成。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -166,7 +166,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
       setFeedback({
         title: "该模型当前已停用",
         description: `${model.name} 目前不能加入房间，因为它在模型管理页被停用了。`,
-        suggestion: "先去模型管理页重新启用这个模型，或者改选别的可用模型。",
+        suggestion: "请先去模型管理页重新启用这个模型，或者改选别的可用模型。",
         tone: "warning",
       });
       return;
@@ -251,21 +251,21 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
+      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
+            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
               ROOM SETTINGS
             </span>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight">编辑房间</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                这里可以修改房间标题、单聊或群聊类型、参与模型和顺序。改动只影响后续轮次，不会改写历史消息记录。
+                这里可以修改房间标题、单聊或群聊类型、参与模型和顺序。改动只影响后续轮次，不会改写历史消息。
               </p>
             </div>
           </div>
 
-          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
             {activeAction === "loading"
               ? "正在加载房间配置..."
               : activeAction === "saving"
@@ -300,12 +300,12 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         {feedback ? <FeedbackPanel feedback={feedback} /> : null}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <div className="mb-5">
               <h2 className="text-2xl font-semibold">房间配置</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">修改后会影响未来的发言顺序和参与模型。</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">保存后会影响后续的发言顺序和参与模型。</p>
             </div>
 
             <div className="grid gap-3">
@@ -369,7 +369,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
             <div className="mt-5 space-y-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold">可选模型</h3>
-                <span className="text-xs text-[var(--muted)]">{toRoomLabel(form.type)}模式</span>
+                <span className="text-xs text-[var(--muted)]">{toRoomLabel(form.type)} 模式</span>
               </div>
 
               {filteredModels.length === 0 ? (
@@ -385,10 +385,10 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                       key={model.id}
                       type="button"
                       onClick={() => toggleModel(model.id)}
-                      className={`flex w-full flex-col items-start gap-3 rounded-3xl border px-4 py-4 text-left transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
+                      className={`flex w-full flex-col items-start gap-3 rounded-[1.8rem] border px-4 py-4 text-left transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
                         selected
                           ? "border-[var(--accent)] bg-[rgba(191,95,54,0.08)] shadow-[0_12px_30px_rgba(17,17,17,0.06)]"
-                          : "border-[var(--border)] bg-white/75 hover:border-[var(--accent)] hover:-translate-y-0.5"
+                          : "border-[var(--border)] bg-white/78 hover:-translate-y-0.5 hover:border-[var(--accent)]"
                       } ${!model.enabled && !selected ? "opacity-60" : ""}`}
                     >
                       <div className="flex items-start gap-3">
@@ -413,7 +413,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                           <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">模型 ID：{model.modelName}</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">
-                            默认回复字数：{formatReplyLength(model.defaultReplyLength)}
+                            默认回复上限：{formatReplyLength(model.defaultReplyLength)}
                           </p>
                         </div>
                       </div>
@@ -442,7 +442,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
             <div className="mb-5">
               <h2 className="text-2xl font-semibold">成员与顺序</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                调整后的顺序会应用到下一轮对话。历史消息中的旧模型回复仍然保留。
+                调整后的顺序会应用到下一轮对话。历史消息里的旧模型回复仍然保留。
               </p>
             </div>
 
@@ -489,7 +489,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                         clearDragState();
                       }}
                       onDragEnd={clearDragState}
-                      className={`relative overflow-hidden rounded-[1.7rem] border px-4 py-4 transition-all duration-200 ease-out will-change-transform ${
+                      className={`relative overflow-hidden rounded-[1.8rem] border px-4 py-4 transition-all duration-200 ease-out will-change-transform ${
                         isDragging
                           ? "scale-[1.02] border-[var(--accent)] bg-[rgba(191,95,54,0.14)] shadow-[0_24px_60px_rgba(17,17,17,0.12)]"
                           : isDropTarget
@@ -527,7 +527,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                             </div>
                             <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">
-                              默认回复字数：{formatReplyLength(model.defaultReplyLength)}
+                              默认回复上限：{formatReplyLength(model.defaultReplyLength)}
                             </p>
                           </div>
                         </div>

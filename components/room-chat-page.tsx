@@ -2,22 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  startTransition,
-  type KeyboardEvent,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { startTransition, type KeyboardEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import {
   countAssistantRepliesForUserMessage,
   describeClientError,
   describePartialSendResult,
-  findNextUserMessageAfterSequence,
   fetchJson,
+  findNextUserMessageAfterSequence,
   formatDate,
   formatReplyLength,
   getProviderBadgeClassName,
@@ -45,36 +37,13 @@ type PendingRoundState = {
   completedAssistantCount: number;
   expectedAssistantCount: number;
 };
-type RoundTimelineStepState = "done" | "active" | "pending";
-
-function RoomChatSkeleton() {
-  return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="animate-pulse rounded-[2.2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 sm:px-6 sm:py-8">
-        <div className="h-4 w-32 rounded-full bg-[rgba(191,95,54,0.14)]" />
-        <div className="mt-5 h-11 w-72 rounded-2xl bg-zinc-200/80" />
-        <div className="mt-3 h-5 w-full max-w-3xl rounded-xl bg-zinc-200/70" />
-      </section>
-      <section className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
-        <div className="h-[560px] animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)]" />
-        <div className="h-[420px] animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)]" />
-      </section>
-    </main>
-  );
-}
 
 function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
-  if (!feedback) {
-    return null;
-  }
-
-  const toneClassName =
-    feedback.tone === "warning"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-red-200 bg-red-50 text-red-900";
-
+  if (!feedback) return null;
+  const toneClass =
+    feedback.tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900";
   return (
-    <div className={`rounded-[1.4rem] border px-4 py-4 ${toneClassName}`}>
+    <div className={`rounded-[1.4rem] border px-4 py-4 ${toneClass}`}>
       <p className="text-sm font-semibold">{feedback.title}</p>
       <p className="mt-2 text-sm leading-6">{feedback.description}</p>
       <p className="mt-2 text-sm leading-6 opacity-90">建议：{feedback.suggestion}</p>
@@ -82,85 +51,13 @@ function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
   );
 }
 
-function DeliveryBadge({ text, className }: { text: string; className: string }) {
+function Chip({ text, className }: { text: string; className: string }) {
   return <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${className}`}>{text}</span>;
-}
-
-function RoundTimelineStep({
-  index,
-  name,
-  provider,
-  replyLength,
-  state,
-  isLast,
-}: {
-  index: number;
-  name: string;
-  provider: RoomView["roomModels"][number]["model"]["provider"];
-  replyLength: number;
-  state: RoundTimelineStepState;
-  isLast: boolean;
-}) {
-  const circleClassName =
-    state === "done"
-      ? "border-emerald-200 bg-emerald-500 text-white"
-      : state === "active"
-        ? "border-sky-200 bg-sky-500 text-white shadow-[0_0_0_6px_rgba(14,165,233,0.12)]"
-        : "border-zinc-200 bg-white text-zinc-400";
-
-  const lineClassName = state === "done" ? "bg-emerald-300/80" : "bg-zinc-200";
-  const panelClassName =
-    state === "done"
-      ? "border-emerald-200/80 bg-emerald-50/70"
-      : state === "active"
-        ? "border-sky-200/80 bg-sky-50/80"
-        : "border-[var(--border)] bg-white/80";
-
-  const badge =
-    state === "done"
-      ? <DeliveryBadge text="已完成" className="border-emerald-200 bg-emerald-50 text-emerald-700" />
-      : state === "active"
-        ? <DeliveryBadge text="思考中" className="border-sky-200 bg-sky-50 text-sky-700" />
-        : <DeliveryBadge text="等待中" className="border-zinc-200 bg-white/80 text-zinc-600" />;
-
-  const helperText =
-    state === "done"
-      ? "这一位模型已经完成回答。"
-      : state === "active"
-        ? "当前轮到这一位模型生成回复。"
-        : "等待前面的模型先完成。";
-
-  return (
-    <div className="flex gap-3">
-      <div className="flex w-8 flex-col items-center">
-        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${circleClassName}`}>
-          {index + 1}
-        </span>
-        {!isLast ? <span className={`mt-2 h-full min-h-8 w-px ${lineClassName}`} /> : null}
-      </div>
-
-      <div className={`min-w-0 flex-1 rounded-[1.35rem] border px-4 py-3 ${panelClassName}`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(provider)}`}>
-            {getProviderShortName(provider)}
-          </span>
-          <span className="text-sm font-medium">{name}</span>
-          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>
-            {getProviderOptionLabel(provider)}
-          </span>
-          <span className="text-xs text-[var(--muted)]">{formatReplyLength(replyLength)}</span>
-          {badge}
-        </div>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{helperText}</p>
-      </div>
-    </div>
-  );
 }
 
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const router = useRouter();
   const messageListRef = useRef<HTMLDivElement | null>(null);
-
   const [room, setRoom] = useState<RoomView | null>(null);
   const [messages, setMessages] = useState<MessageView[]>([]);
   const [messageInput, setMessageInput] = useState("");
@@ -177,16 +74,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const isBusy = activeAction !== null;
   const isSending = activeAction === "sending";
 
-  async function fetchRoomState() {
-    const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${roomId}`);
-    return data.room;
-  }
-
   async function loadRoom() {
-    const nextRoom = await fetchRoomState();
-    setRoom(nextRoom);
-    setDraftModelIds(nextRoom.roomModels.map((roomModel) => roomModel.modelId));
-    return nextRoom;
+    const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${roomId}`);
+    setRoom(data.room);
+    setDraftModelIds(data.room.roomModels.map((roomModel) => roomModel.modelId));
+    return data.room;
   }
 
   async function fetchMessagesState() {
@@ -200,7 +92,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     return nextMessages;
   }
 
-  function syncPendingRoundFromMessages(nextMessages: MessageView[], baselineSequence: number, expectedAssistantCount: number) {
+  function syncPendingRound(nextMessages: MessageView[], baselineSequence: number, expectedAssistantCount: number) {
     const persistedUserMessage = findNextUserMessageAfterSequence(nextMessages, baselineSequence);
     const completedAssistantCount = persistedUserMessage
       ? countAssistantRepliesForUserMessage(nextMessages, persistedUserMessage.sequence)
@@ -234,9 +126,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       try {
         const nextMessages = await fetchMessagesState();
         setMessages(nextMessages);
-        syncPendingRoundFromMessages(nextMessages, baselineSequence, expectedAssistantCount);
+        syncPendingRound(nextMessages, baselineSequence, expectedAssistantCount);
       } catch {
-        // Ignore intermittent polling errors while the primary send request is still running.
+        // ignore polling blips
       }
 
       if (!settled) {
@@ -249,7 +141,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     setActiveAction("loading");
     try {
       await Promise.all([loadRoom(), loadMessages()]);
-      setNotice("房间已加载。");
+      setNotice("房间已经加载完成。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -265,60 +157,38 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   useEffect(() => {
     const container = messageListRef.current;
-    if (!container) {
-      return;
-    }
-
+    if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages.length, pendingUserContent, isSending]);
 
   const orderedRoomModels = useMemo(() => {
-    if (!room) {
-      return [];
-    }
-
+    if (!room) return [];
     return draftModelIds
       .map((modelId) => room.roomModels.find((roomModel) => roomModel.modelId === modelId))
       .filter((roomModel): roomModel is RoomView["roomModels"][number] => Boolean(roomModel));
   }, [draftModelIds, room]);
 
   const orderDirty = useMemo(() => {
-    if (!room) {
-      return false;
-    }
-
-    return room.roomModels.map((roomModel) => roomModel.modelId).join(",") !== draftModelIds.join(",");
+    if (!room) return false;
+    return room.roomModels.map((item) => item.modelId).join(",") !== draftModelIds.join(",");
   }, [draftModelIds, room]);
 
   const pendingTimeline = useMemo(() => {
-    if (!pendingRound || !isSending) {
-      return [];
-    }
-
-    const expectedAssistantCount = Math.min(pendingRound.expectedAssistantCount, orderedRoomModels.length);
-
-    return orderedRoomModels.slice(0, expectedAssistantCount).map((roomModel, index) => {
-      let state: RoundTimelineStepState = "pending";
-      if (index < pendingRound.completedAssistantCount) {
-        state = "done";
-      } else if (index === pendingRound.completedAssistantCount && pendingRound.completedAssistantCount < expectedAssistantCount) {
-        state = "active";
-      }
-
-      return { roomModel, state };
-    });
+    if (!pendingRound || !isSending) return [];
+    const total = Math.min(pendingRound.expectedAssistantCount, orderedRoomModels.length);
+    return orderedRoomModels.slice(0, total).map((roomModel, index) => ({
+      roomModel,
+      state:
+        index < pendingRound.completedAssistantCount
+          ? "done"
+          : index === pendingRound.completedAssistantCount
+            ? "active"
+            : "pending",
+    }));
   }, [isSending, orderedRoomModels, pendingRound]);
 
-  const activeTimelineItem = useMemo(
-    () => pendingTimeline.find((item) => item.state === "active") ?? null,
-    [pendingTimeline],
-  );
-
   function previewMove(targetId: string) {
-    if (!draggedModelId || draggedModelId === targetId) {
-      return;
-    }
-
+    if (!draggedModelId || draggedModelId === targetId) return;
     setDraftModelIds((current) => reorderIds(current, draggedModelId, targetId));
     setDragOverModelId(targetId);
   }
@@ -329,13 +199,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   async function saveOrder() {
-    if (!room || !orderDirty) {
-      return;
-    }
-
+    if (!room || !orderDirty) return;
     setActiveAction("saving-order");
     setFeedback(null);
-
     try {
       const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${room.id}/order`, {
         method: "PUT",
@@ -343,7 +209,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       });
       setRoom(data.room);
       setDraftModelIds(data.room.roomModels.map((roomModel) => roomModel.modelId));
-      setNotice("排序已保存。");
+      setNotice("排序已经保存。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -352,23 +218,19 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   async function renameRoom() {
-    if (!room) {
-      return;
-    }
-
+    if (!room) return;
     const nextTitle = window.prompt("请输入新的房间名称：", room.title);
-    if (!nextTitle || nextTitle.trim() === room.title) {
-      return;
-    }
+    if (!nextTitle || nextTitle.trim() === room.title) return;
 
     setActiveAction("renaming-room");
+    setFeedback(null);
     try {
       const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${room.id}`, {
         method: "PUT",
         body: JSON.stringify({ title: nextTitle.trim() }),
       });
       setRoom(data.room);
-      setNotice(`房间已重命名为“${data.room.title}”。`);
+      setNotice(`房间已重命名为「${data.room.title}」。`);
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -377,10 +239,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   async function deleteRoom() {
-    if (!room || !window.confirm(`确认删除房间“${room.title}”吗？`)) {
-      return;
-    }
-
+    if (!room || !window.confirm(`确认删除房间「${room.title}」吗？`)) return;
     setActiveAction("deleting-room");
     try {
       await fetchJson(`/api/rooms/${room.id}`, { method: "DELETE" });
@@ -392,9 +251,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   async function sendMessage() {
-    if (!room || !messageInput.trim()) {
-      return;
-    }
+    if (!room || !messageInput.trim()) return;
 
     if (orderDirty) {
       setFeedback({
@@ -409,6 +266,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     const normalizedContent = messageInput.trim();
     const baselineSequence = messages.at(-1)?.sequence ?? 0;
     const expectedAssistantCount = room.roomModels.length;
+
     setActiveAction("sending");
     setMessageInput("");
     setPendingUserContent(normalizedContent);
@@ -435,7 +293,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         setFeedback(describePartialSendResult(result, failedModel));
         setNotice("本轮回复部分完成。");
       } else {
-        setNotice("消息已发送，本轮顺序回复已完成。");
+        setNotice("消息已发送，本轮顺序回复已经完成。");
       }
     } catch (error: unknown) {
       setMessageInput(normalizedContent);
@@ -450,40 +308,39 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-
-      if (!isBusy) {
-        startTransition(() => void sendMessage());
-      }
+      if (!isBusy) startTransition(() => void sendMessage());
     }
   }
 
   if (activeAction === "loading" && !room) {
-    return <RoomChatSkeleton />;
+    return (
+      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+        <div className="h-52 animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)]" />
+        <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
+          <div className="h-[560px] animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)]" />
+          <div className="h-[420px] animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--card)]" />
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2.3rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,236,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
-        <span className="inline-flex rounded-full border border-[rgba(166,73,36,0.16)] bg-[rgba(255,246,232,0.86)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
-          CONVERSATION ROOM
-        </span>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight">{room?.title ?? "正在加载房间..."}</h1>
+            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
+              CONVERSATION ROOM
+            </span>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight">{room?.title ?? "正在加载房间..."}</h1>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
               这里会把模型身份、消息状态和发言顺序清晰展示出来，让多模型协作过程一目了然。
             </p>
             {room ? (
               <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">
-                  {toRoomLabel(room.type)}
-                </span>
-                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">
-                  {room.roomModels.length} 个模型参与
-                </span>
-                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">
-                  累计 {room.messageCount} 条消息
-                </span>
+                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">{toRoomLabel(room.type)}</span>
+                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">{room.roomModels.length} 个模型参与</span>
+                <span className="rounded-full border border-[var(--border)] bg-white/82 px-3 py-2 text-[var(--muted)]">累计 {room.messageCount} 条消息</span>
               </div>
             ) : null}
           </div>
@@ -491,7 +348,6 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             {notice || "可以开始聊天，也可以先调整模型顺序。"}
           </div>
         </div>
-
         <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           <Link href="/rooms" className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)]">返回房间列表</Link>
           <Link href="/rooms/new" className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)]">新建房间</Link>
@@ -512,11 +368,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
       <section className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
         <div className={`${mobilePanel === "chat" ? "block" : "hidden"} rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6 xl:block`}>
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold">聊天区</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">{room ? `${toRoomLabel(room.type)} / 最后更新于 ${formatDate(room.updatedAt)}` : "正在读取房间信息"}</p>
-            </div>
+          <div className="mb-5">
+            <h2 className="text-2xl font-semibold">聊天区</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{room ? `${toRoomLabel(room.type)} · 最后更新于 ${formatDate(room.updatedAt)}` : "正在读取房间信息"}</p>
           </div>
 
           <div className="flex min-h-[420px] flex-col rounded-[1.8rem] border border-[var(--border)] bg-white/75 sm:min-h-[560px]">
@@ -532,14 +386,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   });
                   const badge =
                     status === "completed"
-                      ? <DeliveryBadge text="已完成" className="border-emerald-200 bg-emerald-50 text-emerald-700" />
+                      ? <Chip text="已完成" className="border-emerald-200 bg-emerald-50 text-emerald-700" />
                       : status === "in-progress"
-                        ? <DeliveryBadge text="回复中" className="border-sky-200 bg-sky-50 text-sky-700" />
+                        ? <Chip text="回复中" className="border-sky-200 bg-sky-50 text-sky-700" />
                         : status === "awaiting"
-                          ? <DeliveryBadge text="等待中" className="border-zinc-200 bg-white/80 text-zinc-600" />
+                          ? <Chip text="等待中" className="border-zinc-200 bg-white/80 text-zinc-600" />
                           : status === "partial"
-                            ? <DeliveryBadge text="部分完成" className="border-amber-200 bg-amber-50 text-amber-700" />
-                            : <DeliveryBadge text="已送达" className="border-emerald-200 bg-emerald-50 text-emerald-700" />;
+                            ? <Chip text="部分完成" className="border-amber-200 bg-amber-50 text-amber-700" />
+                            : <Chip text="已送达" className="border-emerald-200 bg-emerald-50 text-emerald-700" />;
 
                   return (
                     <article key={message.id} className="ml-auto max-w-[96%] rounded-[1.7rem] bg-[var(--accent)] px-4 py-3 text-white shadow-[0_12px_24px_rgba(17,17,17,0.06)] sm:max-w-[90%]">
@@ -569,7 +423,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>{getProviderOptionLabel(provider)}</span>
                           <span className="text-xs text-[var(--muted)]">{formatReplyLength(messageModel?.defaultReplyLength ?? 300)}</span>
                         </>
-                      ) : <span className="text-sm font-medium">AI</span>}
+                      ) : (
+                        <span className="text-sm font-medium">AI</span>
+                      )}
                       <span className="text-xs text-[var(--muted)]">{formatDate(message.createdAt)}</span>
                     </div>
                     <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{toRoleLabel(message.role)}</div>
@@ -582,40 +438,37 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 <article className="ml-auto max-w-[96%] rounded-[1.7rem] border border-[var(--accent)] bg-[rgba(191,95,54,0.10)] px-4 py-3 sm:max-w-[90%]">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">用户</span>
-                    <DeliveryBadge text="发送中" className="border-zinc-200 bg-white/80 text-zinc-500" />
+                    <Chip text="发送中" className="border-zinc-200 bg-white/80 text-zinc-500" />
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-7">{pendingUserContent}</p>
                 </article>
               ) : null}
 
               {pendingTimeline.length > 0 ? (
-                <article className={`max-w-[96%] rounded-[1.7rem] border border-dashed px-4 py-4 shadow-[0_12px_24px_rgba(17,17,17,0.04)] sm:max-w-[90%] ${getProviderSoftClassName(activeTimelineItem?.roomModel.model.provider ?? pendingTimeline[0]?.roomModel.model.provider ?? "OPENAI_COMPATIBLE")}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                <article className="max-w-[96%] rounded-[1.7rem] border border-dashed bg-[rgba(248,250,252,0.86)] px-4 py-4 shadow-[0_12px_24px_rgba(17,17,17,0.04)] sm:max-w-[90%]">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">本轮时间线</div>
                       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                        {activeTimelineItem
-                          ? `当前轮到 ${activeTimelineItem.roomModel.model.name} 回复，系统会按顺序继续推进。`
-                          : "本轮模型已全部完成回复，正在同步最终结果。"}
+                        {pendingTimeline.find((item) => item.state === "active")
+                          ? `当前轮到 ${pendingTimeline.find((item) => item.state === "active")?.roomModel.model.name} 回复。`
+                          : "正在同步本轮最终结果。"}
                       </p>
                     </div>
-                    <DeliveryBadge
-                      text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`}
-                      className="border-sky-200 bg-sky-50 text-sky-700"
-                    />
+                    <Chip text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`} className="border-sky-200 bg-sky-50 text-sky-700" />
                   </div>
-
                   <div className="mt-4 space-y-3">
                     {pendingTimeline.map(({ roomModel, state }, index) => (
-                      <RoundTimelineStep
-                        key={roomModel.id}
-                        index={index}
-                        name={roomModel.model.name}
-                        provider={roomModel.model.provider}
-                        replyLength={roomModel.model.defaultReplyLength}
-                        state={state}
-                        isLast={index === pendingTimeline.length - 1}
-                      />
+                      <div key={roomModel.id} className={`rounded-[1.3rem] border px-4 py-3 ${state === "done" ? "border-emerald-200 bg-emerald-50/70" : state === "active" ? "border-sky-200 bg-sky-50/80" : "border-[var(--border)] bg-white/80"}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(roomModel.model.provider)}`}>{getProviderShortName(roomModel.model.provider)}</span>
+                          <span className="rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] text-[var(--muted)]">{index + 1}</span>
+                          <span className="text-sm font-medium">{roomModel.model.name}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(roomModel.model.provider)}`}>{getProviderOptionLabel(roomModel.model.provider)}</span>
+                          <Chip text={state === "done" ? "已完成" : state === "active" ? "思考中" : "等待中"} className={state === "done" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : state === "active" ? "border-sky-200 bg-sky-50 text-sky-700" : "border-zinc-200 bg-white/80 text-zinc-600"} />
+                        </div>
+                        <p className="mt-2 text-sm text-[var(--muted)]">默认回复上限：{formatReplyLength(roomModel.model.defaultReplyLength)}</p>
+                      </div>
                     ))}
                   </div>
                 </article>
@@ -626,7 +479,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               <textarea value={messageInput} onChange={(event) => setMessageInput(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="输入消息并发送，Enter 发送，Shift+Enter 换行..." rows={4} className="w-full resize-none rounded-3xl border border-[var(--border)] bg-white px-4 py-3 outline-none transition focus:border-[var(--accent)]" />
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className={`text-xs ${orderDirty ? "text-amber-700" : "text-[var(--muted)]"}`}>{orderDirty ? "当前有未保存的顺序调整，请先保存排序。" : "系统会按已保存顺序依次回复，并遵守每个模型自己的字数限制。"}</p>
-                <button type="button" onClick={() => startTransition(() => void sendMessage())} disabled={!messageInput.trim() || isBusy} className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto">{isSending ? "等待回复中..." : "发送消息"}</button>
+                <button type="button" onClick={() => startTransition(() => void sendMessage())} disabled={!messageInput.trim() || isBusy} className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto">
+                  {isSending ? "等待回复中..." : "发送消息"}
+                </button>
               </div>
             </div>
           </div>
@@ -635,9 +490,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         <aside className={`${mobilePanel === "order" ? "block" : "hidden"} space-y-6 xl:block`}>
           <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <h2 className="text-2xl font-semibold">模型顺序</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">拖拽卡片即可调整顺序。下一轮会严格按照保存后的顺序从上到下执行。</p>
-            <div className={`mt-4 rounded-3xl border px-4 py-3 text-sm ${orderDirty ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[var(--border)] bg-white/70 text-[var(--muted)]"}`}>{orderDirty ? "当前顺序只在本地生效，服务端还没有保存。" : "当前顺序已经保存。"}</div>
-
+            <p className="mt-1 text-sm text-[var(--muted)]">拖拽卡片就会实时换位。下一轮会严格按照保存后的顺序执行。</p>
+            <div className={`mt-4 rounded-3xl border px-4 py-3 text-sm ${orderDirty ? "border-amber-200 bg-amber-50 text-amber-700" : "border-[var(--border)] bg-white/70 text-[var(--muted)]"}`}>
+              {orderDirty ? "当前顺序只在本地生效，服务端还没有保存。" : "当前顺序已经保存。"}
+            </div>
             <div className="mt-4 space-y-3">
               {orderedRoomModels.map((roomModel, index) => (
                 <div
@@ -675,8 +531,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 </div>
               ))}
             </div>
-
-            <button type="button" onClick={() => startTransition(() => void saveOrder())} disabled={!orderDirty || isBusy} className="mt-6 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300">{activeAction === "saving-order" ? "正在保存..." : "保存排序"}</button>
+            <button type="button" onClick={() => startTransition(() => void saveOrder())} disabled={!orderDirty || isBusy} className="mt-6 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300">
+              {activeAction === "saving-order" ? "正在保存..." : "保存排序"}
+            </button>
           </div>
         </aside>
       </section>

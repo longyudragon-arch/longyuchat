@@ -17,8 +17,8 @@ import {
   getProviderPreset,
   getProviderShortName,
   providerOptions,
-  supportsLocalMockTools,
   supportsAutomaticModelDiscovery,
+  supportsLocalMockTools,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
 import type { DiscoveredModelView, ModelTestResultView, ModelView, ProviderType } from "@/types/app";
@@ -136,7 +136,7 @@ export function ModelsPage() {
 
     try {
       await loadModels();
-      setNotice("模型列表已加载。");
+      setNotice("模型列表已经加载完成。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -204,7 +204,7 @@ export function ModelsPage() {
       { id: "mock-beta", label: "mock-beta", description: "local-mock" },
       { id: "mock-gamma", label: "mock-gamma", description: "local-mock" },
     ]);
-    setNotice("已填入本地模拟模型参数。");
+    setNotice("已经填入本地模拟模型参数。");
     setFeedback(null);
   }
 
@@ -213,7 +213,7 @@ export function ModelsPage() {
       setFeedback({
         title: "请先补全连接信息",
         description: "要自动获取模型列表，至少需要 Base URL 和 API Key。",
-        suggestion: "先填写 Base URL 和 API Key，再点击“获取模型列表”。",
+        suggestion: "请先填写 Base URL 和 API Key，再点击“获取模型列表”。",
         tone: "warning",
       });
       return;
@@ -266,7 +266,7 @@ export function ModelsPage() {
           method: "PUT",
           body: JSON.stringify(payload),
         });
-        setNotice(`已更新“${modelForm.name}”。`);
+        setNotice(`已更新「${modelForm.name}」。`);
       } else {
         await fetchJson("/api/models", {
           method: "POST",
@@ -275,7 +275,7 @@ export function ModelsPage() {
             apiKey: modelForm.apiKey,
           }),
         });
-        setNotice(`已创建“${modelForm.name}”。`);
+        setNotice(`已创建「${modelForm.name}」。`);
       }
 
       resetModelForm();
@@ -316,7 +316,7 @@ export function ModelsPage() {
   }
 
   async function deleteModel(model: ModelView) {
-    const shouldDelete = window.confirm(`确认删除模型“${model.name}”吗？`);
+    const shouldDelete = window.confirm(`确认删除模型「${model.name}」吗？`);
 
     if (!shouldDelete) {
       return;
@@ -339,7 +339,7 @@ export function ModelsPage() {
       }
 
       await loadModels();
-      setNotice(`已删除模型“${model.name}”。`);
+      setNotice(`已删除模型「${model.name}」。`);
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -386,36 +386,36 @@ export function ModelsPage() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
+      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
-              MODELS
+            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
+              MODEL CENTER
             </span>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight">模型管理</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                在这里集中管理模型配置、默认回复字数、启停状态、连接测试和自动拉取模型列表。
+                在这里统一管理 Provider、Base URL、模型 ID、默认回复字数、连接测试和自动发现，后续房间和聊天页会直接使用这里的配置。
               </p>
             </div>
           </div>
 
-          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
-            {isBusy ? "处理中..." : notice || "配置好模型后，就可以去创建单聊或群聊。"}
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
+            {isBusy ? "正在处理..." : notice || "先配置好模型，再去创建单聊或群聊。"}
           </div>
         </div>
 
         {feedback ? <FeedbackPanel feedback={feedback} /> : null}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
         <div className="space-y-6">
           {mockToolsEnabled ? (
             <div className="rounded-[2rem] border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
               <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">Local Test</p>
               <h2 className="mt-3 text-2xl font-semibold">先用本地模拟接口跑通主流程</h2>
               <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                这里会自动填入本地 OpenAI-compatible mock 地址，方便先验证连接测试、模型发现、消息保存和顺序回复。
+                这里会自动填入本地 OpenAI-compatible mock 地址，方便先验证连接测试、模型发现和聊天顺序回复。
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button
@@ -528,8 +528,8 @@ export function ModelsPage() {
                     <p className="text-sm font-medium text-[var(--foreground)]">自动获取模型列表</p>
                     <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
                       {discoverySupported
-                        ? "已支持当前 Provider。点击按钮后，服务端会使用你填写的 Base URL 和 API Key 拉取模型列表。"
-                        : "当前 Provider 暂时还不支持自动获取模型列表，请先手动填写模型 ID。"}
+                        ? "当前 Provider 支持自动发现。填写 Base URL 和 API Key 后，可以先拉取模型列表再选择。"
+                        : "当前 Provider 暂时不支持自动拉取模型列表，请先手动填写模型 ID。"}
                     </p>
                   </div>
                   <button
@@ -559,15 +559,7 @@ export function ModelsPage() {
                         ))}
                       </select>
                     </label>
-                    <p className="mt-3 text-xs text-[var(--muted)]">
-                      当前共获取到 {discoveredModels.length} 个模型。你也可以继续手动修改下面的模型 ID。
-                    </p>
-                    {modelForm.modelName ? (
-                      <p className="mt-2 text-xs text-[var(--muted)]">
-                        当前选择：{discoveredModels.find((model) => model.id === modelForm.modelName)?.description ??
-                          modelForm.modelName}
-                      </p>
-                    ) : null}
+                    <p className="mt-3 text-xs text-[var(--muted)]">当前共获取到 {discoveredModels.length} 个模型。</p>
                   </div>
                 ) : null}
               </div>
@@ -581,15 +573,12 @@ export function ModelsPage() {
                   className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)]"
                 />
                 <p className="text-xs text-[var(--muted)]">
-                  模型 ID 不是随便填的，必须填写当前 Provider 实际支持的模型名。
-                  {selectedProviderPreset.defaultModelName
-                    ? ` ${selectedProviderPreset.label} 可先试 ${selectedProviderPreset.defaultModelName}。`
-                    : " 如果不确定，先点击“获取模型列表”，或去对应平台文档确认当前可用模型。"}
+                  模型 ID 不能随便填写，必须属于当前 Provider 真实支持的模型。
                 </p>
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm font-medium text-[var(--foreground)]">默认回复字数</span>
+                <span className="text-sm font-medium text-[var(--foreground)]">默认回复字数上限</span>
                 <input
                   type="number"
                   min={50}
@@ -606,7 +595,7 @@ export function ModelsPage() {
                   className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)]"
                 />
                 <p className="text-xs text-[var(--muted)]">
-                  这里现在会作为严格字数上限生效。建议先从 200 到 400 字开始，能明显降低日常 token 消耗。
+                  当前会作为严格上限生效。建议先从 200 到 400 字开始，能够明显降低日常 token 消耗。
                 </p>
               </label>
 
@@ -631,12 +620,12 @@ export function ModelsPage() {
         </div>
 
         <div className="space-y-4">
-            <div className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
+          <div className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">当前模型</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                  可以按关键词和 Provider 筛选，也能查看最近一次连接测试状态。
+                  你可以按关键词和 Provider 筛选，也能查看最近一次连接测试状态。
                 </p>
               </div>
               <Link
@@ -677,12 +666,12 @@ export function ModelsPage() {
             {models.length === 0 ? (
               <p className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] px-5 py-6 text-sm text-[var(--muted)]">
                 {mockToolsEnabled
-                  ? "还没有模型。你可以先新增一个真实模型，或者先创建本地 mock 模型。"
+                  ? "还没有模型。你可以先新增真实模型，或者先创建本地 mock 模型。"
                   : "还没有模型。你可以先新增一个真实模型配置，再创建房间开始使用。"}
               </p>
             ) : filteredModels.length === 0 ? (
               <p className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] px-5 py-6 text-sm text-[var(--muted)]">
-                没有符合当前搜索条件的模型，试试清空关键词或切换 Provider 筛选。
+                没有符合当前搜索条件的模型，试试清空关键词或切换 Provider。
               </p>
             ) : (
               filteredModels.map((model) => (
@@ -724,14 +713,11 @@ export function ModelsPage() {
                       <div className="space-y-1 text-sm text-[var(--muted)]">
                         <p>模型 ID：{model.modelName || "未填写"}</p>
                         <p>Base URL：{model.baseUrl}</p>
-                        <p>默认回复字数：{formatReplyLength(model.defaultReplyLength)}</p>
+                        <p>默认回复上限：{formatReplyLength(model.defaultReplyLength)}</p>
                         <p className="text-xs">更新于 {formatDate(model.updatedAt)}</p>
                       </div>
 
-                      <ModelTestBadge
-                        state={model.lastConnectionTest}
-                        isRunning={runningTestModelId === model.id}
-                      />
+                      <ModelTestBadge state={model.lastConnectionTest} isRunning={runningTestModelId === model.id} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap">

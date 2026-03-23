@@ -63,7 +63,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-emerald-200 bg-emerald-50 text-emerald-700",
     iconClassName: "bg-emerald-500 text-white",
-    softClassName: "bg-emerald-50/70",
+    softClassName: "bg-emerald-50/75",
   },
   CLAUDE: {
     label: "Claude",
@@ -74,7 +74,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-amber-200 bg-amber-50 text-amber-700",
     iconClassName: "bg-amber-500 text-white",
-    softClassName: "bg-amber-50/70",
+    softClassName: "bg-amber-50/75",
   },
   GEMINI: {
     label: "Gemini",
@@ -85,18 +85,18 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-sky-200 bg-sky-50 text-sky-700",
     iconClassName: "bg-sky-500 text-white",
-    softClassName: "bg-sky-50/70",
+    softClassName: "bg-sky-50/75",
   },
   GROK: {
     label: "Grok",
-    labelZh: "xAI / Grok",
+    labelZh: "xAI Grok",
     shortName: "GK",
     baseUrl: "https://api.x.ai/v1",
     defaultModelName: "",
     defaultReplyLength: 300,
     badgeClassName: "border-violet-200 bg-violet-50 text-violet-700",
     iconClassName: "bg-violet-500 text-white",
-    softClassName: "bg-violet-50/70",
+    softClassName: "bg-violet-50/75",
   },
   DOUBAO: {
     label: "Doubao",
@@ -107,7 +107,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-orange-200 bg-orange-50 text-orange-700",
     iconClassName: "bg-orange-500 text-white",
-    softClassName: "bg-orange-50/70",
+    softClassName: "bg-orange-50/75",
   },
   DEEPSEEK: {
     label: "DeepSeek",
@@ -118,7 +118,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-cyan-200 bg-cyan-50 text-cyan-700",
     iconClassName: "bg-cyan-500 text-white",
-    softClassName: "bg-cyan-50/70",
+    softClassName: "bg-cyan-50/75",
   },
   MODELSCOPE: {
     label: "ModelScope",
@@ -129,7 +129,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
     iconClassName: "bg-fuchsia-500 text-white",
-    softClassName: "bg-fuchsia-50/70",
+    softClassName: "bg-fuchsia-50/75",
   },
   HUNYUAN: {
     label: "Hunyuan",
@@ -140,7 +140,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-rose-200 bg-rose-50 text-rose-700",
     iconClassName: "bg-rose-500 text-white",
-    softClassName: "bg-rose-50/70",
+    softClassName: "bg-rose-50/75",
   },
   QWEN: {
     label: "Qwen",
@@ -151,7 +151,7 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
     defaultReplyLength: 300,
     badgeClassName: "border-indigo-200 bg-indigo-50 text-indigo-700",
     iconClassName: "bg-indigo-500 text-white",
-    softClassName: "bg-indigo-50/70",
+    softClassName: "bg-indigo-50/75",
   },
 };
 
@@ -192,7 +192,7 @@ export async function fetchJson<T>(input: string, init?: RequestInit) {
 
   if (!response.ok) {
     throw new ClientRequestError(
-      (data as JsonErrorResponse).error ?? "Request failed.",
+      (data as JsonErrorResponse).error ?? "请求失败。",
       response.status,
       (data as JsonErrorResponse).details,
     );
@@ -268,7 +268,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Request failed.";
+  return "请求失败。";
 }
 
 export function describeClientError(error: unknown): ClientErrorFeedback {
@@ -280,7 +280,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "需要先登录",
       description: message,
-      suggestion: "请重新进入登录页完成登录，再继续访问模型、房间或聊天接口。",
+      suggestion: "请先回到登录页完成登录，再继续访问模型、房间或聊天功能。",
       tone: "warning",
     };
   }
@@ -289,7 +289,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "目标内容不存在",
       description: message,
-      suggestion: "它可能已经被删除。回到上一页刷新数据，或重新创建一个新的房间/模型。",
+      suggestion: "它可能已经被删除。请返回上一级重新刷新，或重新创建对应的模型和房间。",
       tone: "error",
     };
   }
@@ -298,25 +298,25 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "房间里存在已停用的模型",
       description: message,
-      suggestion: "请先在模型管理里启用对应模型，或者把它从房间成员里移除后再继续发送消息。",
+      suggestion: "请先在模型管理里重新启用对应模型，或把它从房间成员中移除后再继续发送。",
       tone: "warning",
     };
   }
 
   if (normalized.includes("discover") && normalized.includes("not available yet")) {
     return {
-      title: "当前 Provider 还不能自动拉取模型列表",
+      title: "当前 Provider 暂不支持自动拉取模型列表",
       description: message,
-      suggestion: "先手动填写模型 ID 即可，后续再补该平台原生的模型发现接口。",
+      suggestion: "请先手动填写模型 ID，后续如果接入了该平台原生列表接口，再回来开启自动发现。",
       tone: "warning",
     };
   }
 
   if (normalized.includes("quota") || normalized.includes("billing") || normalized.includes("429")) {
     return {
-      title: "当前账号额度不足或配额已超限",
+      title: "当前额度不足或已超出配额",
       description: message,
-      suggestion: "检查该平台的 billing、quota 和模型可用性；如果是预览模型，确认它是否仅支持付费层。",
+      suggestion: "请检查该平台的计费、额度和模型可用性。如果是预览模型，请确认是否仅支持付费层。",
       tone: "error",
     };
   }
@@ -330,7 +330,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "模型请求超时或网络连接失败",
       description: message,
-      suggestion: "优先检查 Base URL、当前网络、服务器对上游接口的连通性，以及模型服务是否可用。",
+      suggestion: "请检查 Base URL、当前网络、服务器到上游模型接口的连通性，以及模型服务本身是否可用。",
       tone: "error",
     };
   }
@@ -344,7 +344,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "API Key 无效或鉴权失败",
       description: message,
-      suggestion: "请检查 API Key、Base URL 和模型 ID 是否匹配当前 Provider。",
+      suggestion: "请检查 API Key、Base URL、模型 ID 是否属于同一个 Provider，并确认账号已经开通对应的 API 能力。",
       tone: "error",
     };
   }
@@ -353,7 +353,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "请求格式不正确",
       description: message,
-      suggestion: "刷新页面后重试；如果仍然失败，说明当前接口参数或返回格式还需要排查。",
+      suggestion: "请刷新页面后重试。如果仍然失败，说明当前接口参数或返回格式还需要继续排查。",
       tone: "error",
     };
   }
@@ -374,19 +374,20 @@ export function describePartialSendResult(
     return null;
   }
 
-  const derivedFeedback = describeClientError(new Error(result.error ?? "本轮顺序回复在中途停止。"));
+  const fallbackFeedback = describeClientError(new Error(result.error ?? "本轮顺序回复在中途停止。"));
 
   return {
     title: `${failedModelName} 未完成本轮回复`,
-    description: result.error ?? "本轮顺序回复在中途停止，前面已经成功生成的回复仍然会保留。",
-    suggestion: derivedFeedback.suggestion,
+    description:
+      result.error ?? "本轮顺序回复在中途停止，前面已经成功生成的回复仍然会保留。",
+    suggestion: fallbackFeedback.suggestion,
     tone: "warning",
   };
 }
 
 export function getLocalMockBaseUrl() {
   if (!supportsLocalMockTools()) {
-    throw new Error("Local mock tools are disabled in this environment.");
+    throw new Error("当前环境没有启用本地 mock 工具。");
   }
 
   if (typeof window === "undefined") {
@@ -398,7 +399,7 @@ export function getLocalMockBaseUrl() {
 
 export async function ensureLocalMockModels() {
   if (!supportsLocalMockTools()) {
-    throw new Error("Local mock tools are disabled in this environment.");
+    throw new Error("当前环境没有启用本地 mock 工具。");
   }
 
   const baseUrl = getLocalMockBaseUrl();
@@ -426,7 +427,7 @@ export async function ensureLocalMockModels() {
     .filter((model): model is ModelView => Boolean(model));
 
   if (mockModels.length !== localMockDefinitions.length) {
-    throw new Error("Local mock models were not created completely. Please try again.");
+    throw new Error("本地 mock 模型没有完整创建出来，请再试一次。");
   }
 
   return mockModels;
@@ -434,7 +435,7 @@ export async function ensureLocalMockModels() {
 
 export async function bootstrapLocalTestWorkspace() {
   if (!supportsLocalMockTools()) {
-    throw new Error("Local mock tools are disabled in this environment.");
+    throw new Error("当前环境没有启用本地 mock 工具。");
   }
 
   const mockModels = await ensureLocalMockModels();
@@ -505,11 +506,7 @@ export function getUserMessageRoundStatus(input: {
   }
 
   if (isPendingRound && input.sendInProgress) {
-    if (assistantReplyCount === 0) {
-      return "awaiting";
-    }
-
-    return "in-progress";
+    return assistantReplyCount === 0 ? "awaiting" : "in-progress";
   }
 
   if (assistantReplyCount > 0) {

@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import {
   bootstrapLocalTestWorkspace,
   describeClientError,
   fetchJson,
   formatDate,
-  formatReplyLength,
   getProviderBadgeClassName,
   getProviderIconClassName,
   getProviderOptionLabel,
@@ -24,7 +23,7 @@ import type { ProviderType, RoomType, RoomView } from "@/types/app";
 
 type RoomFilterType = RoomType | "ALL";
 
-function compactPreviewContent(content: string, maxLength = 110) {
+function compactPreviewContent(content: string, maxLength = 96) {
   const normalized = content.replace(/\s+/g, " ").trim();
 
   if (normalized.length <= maxLength) {
@@ -107,7 +106,7 @@ export function RoomsPage() {
 
     try {
       await loadRooms();
-      setNotice("房间列表已加载。");
+      setNotice("房间列表已经加载完成。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -163,7 +162,7 @@ export function RoomsPage() {
   }
 
   async function deleteRoom(room: RoomView) {
-    const shouldDelete = window.confirm(`确认删除房间“${room.title}”吗？聊天记录也会一起删除。`);
+    const shouldDelete = window.confirm(`确认删除房间「${room.title}」吗？聊天记录也会一起删除。`);
 
     if (!shouldDelete) {
       return;
@@ -188,22 +187,22 @@ export function RoomsPage() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
+      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
-              ROOMS
+            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
+              ROOM HUB
             </span>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight">房间列表</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                这里负责浏览历史房间、快速进入聊天页，也能直接重命名或删除会话。现在还支持按关键词、房间类型和 Provider 筛选，方便快速定位测试房间。
+                这里是你所有聊天空间的总入口。你可以按关键词、房间类型和 Provider 快速筛选，再回到任意一个房间继续对话。
               </p>
             </div>
           </div>
 
-          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
-            {isBusy ? "处理中..." : notice || "可以继续新建房间，或者进入现有会话。"}
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
+            {isBusy ? "正在处理..." : notice || "可以继续新建房间，或者回到已有会话。"}
           </div>
         </div>
 
@@ -221,7 +220,7 @@ export function RoomsPage() {
           href="/models"
           className="w-full rounded-full border border-[var(--border)] bg-white px-5 py-3 text-center text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto"
         >
-          先配置模型
+          先去配置模型
         </Link>
         {mockToolsEnabled ? (
           <button
@@ -235,34 +234,34 @@ export function RoomsPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+        <article className="rounded-[1.9rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
           <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)]">TOTAL ROOMS</p>
           <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{roomSummary.totalRooms}</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">当前数据库里的全部会话房间。</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">当前数据库里的全部房间数。</p>
         </article>
-        <article className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+        <article className="rounded-[1.9rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
           <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)]">GROUP CHATS</p>
           <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{roomSummary.groupRooms}</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">包含多个模型顺序发言的群聊房间。</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">多模型按顺序发言的群聊房间。</p>
         </article>
-        <article className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+        <article className="rounded-[1.9rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
           <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)]">SINGLE CHATS</p>
           <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{roomSummary.singleRooms}</p>
           <p className="mt-2 text-sm text-[var(--muted)]">只绑定一个模型的单聊房间。</p>
         </article>
-        <article className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
+        <article className="rounded-[1.9rem] border border-[var(--border)] bg-[var(--card)] px-5 py-5 shadow-[0_18px_40px_rgba(17,17,17,0.06)]">
           <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)]">MESSAGES</p>
           <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{roomSummary.totalMessages}</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">当前所有房间累计保存的消息条数。</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">当前所有房间累计保存的消息数。</p>
         </article>
       </section>
 
       <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_160px_220px]">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_220px]">
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="搜索房间名、模型名或模型 ID"
+            placeholder="搜索房间名称、模型名称或模型 ID"
             className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]"
           />
           <select
@@ -297,21 +296,21 @@ export function RoomsPage() {
         {rooms.length === 0 ? (
           <div className="rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-8 text-sm text-[var(--muted)]">
             {mockToolsEnabled
-              ? "还没有房间。你可以先去模型管理页创建模型，或者直接使用本地测试房间。"
-              : "还没有房间。你可以先去模型管理页创建模型，再创建你的第一个正式房间。"}
+              ? "还没有房间。你可以先去模型管理页配置模型，或者直接创建一个本地测试房间。"
+              : "还没有房间。你可以先去模型管理页配置模型，再创建你的第一个正式房间。"}
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="rounded-[2rem] border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-8 text-sm text-[var(--muted)]">
-            没有符合当前筛选条件的房间，试试清空关键词或切换房间类型、Provider 筛选。
+            没有符合当前筛选条件的房间，试试清空关键词或切换类型、Provider。
           </div>
         ) : (
           filteredRooms.map((room) => (
             <article
               key={room.id}
-              className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6"
+              className="rounded-[2.2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6"
             >
               <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-2xl font-semibold">{room.title}</h2>
@@ -326,10 +325,16 @@ export function RoomsPage() {
                       </span>
                     </div>
 
-                    <p className="text-sm text-[var(--muted)]">最后更新于 {formatDate(room.updatedAt)}</p>
+                    <p className="text-sm text-[var(--muted)]">最近更新于 {formatDate(room.updatedAt)}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]"
+                    >
+                      进入聊天
+                    </Link>
                     <Link
                       href={`/rooms/${room.id}/edit`}
                       className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -348,14 +353,8 @@ export function RoomsPage() {
                       onClick={() => startTransition(() => void deleteRoom(room))}
                       className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition hover:bg-red-50"
                     >
-                      删除房间
+                      删除
                     </button>
-                    <Link
-                      href={`/rooms/${room.id}`}
-                      className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]"
-                    >
-                      进入聊天页
-                    </Link>
                   </div>
                 </div>
 
@@ -366,7 +365,7 @@ export function RoomsPage() {
                       className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-white px-3 py-2"
                     >
                       <span
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(
+                        className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(
                           roomModel.model.provider,
                         )}`}
                       >
@@ -389,15 +388,12 @@ export function RoomsPage() {
                         <p className="mt-1 text-xs text-[var(--muted)]">
                           {getProviderOptionLabel(roomModel.model.provider)}
                         </p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {roomModel.model.modelName} / {formatReplyLength(roomModel.model.defaultReplyLength)}
-                        </p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="rounded-[1.7rem] border border-[var(--border)] bg-white/70 px-4 py-4">
+                <div className="rounded-[1.8rem] border border-[var(--border)] bg-white/70 px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[var(--foreground)]">最近一条消息</p>
@@ -408,7 +404,7 @@ export function RoomsPage() {
                       </p>
                     </div>
                     <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">
-                      {room.messageCount > 0 ? "可继续续聊" : "等待首条消息"}
+                      {room.messageCount > 0 ? "可继续聊" : "等待第一条消息"}
                     </span>
                   </div>
                   {room.lastMessagePreview ? (

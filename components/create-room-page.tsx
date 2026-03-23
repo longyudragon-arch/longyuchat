@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import {
   ensureLocalMockModels,
@@ -161,7 +161,7 @@ export function CreateRoomPage() {
         modelIds: mockModels.map((model) => model.id),
         title: current.title || "本地测试群聊",
       }));
-      setNotice("本地测试模型已经加入排序列表，你可以直接拖拽调整。");
+      setNotice("本地测试模型已经加入排序列表，你可以直接拖拽调整顺序。");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "加载本地测试模型失败。");
     } finally {
@@ -199,22 +199,22 @@ export function CreateRoomPage() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] px-5 py-6 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:px-6 sm:py-8">
+      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs font-medium tracking-[0.18em] text-[var(--accent)]">
-              CREATE ROOM
+            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
+              ROOM CREATION
             </span>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight">新建房间</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                模型排序区会在拖拽时实时换位，并保留彩色 provider 标识。这样在建群时就能更清楚地区分谁先发言。
+                从模型筛选、房间类型到拖拽排序，一次把顺序协作的规则配置清楚。右侧排序区会在拖拽时实时换位。
               </p>
             </div>
           </div>
 
-          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/75 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
-            {busy ? "处理中..." : notice || "拖拽右侧卡片即可实时排序。"}
+          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
+            {busy ? "正在处理..." : notice || "拖拽右侧卡片即可实时调整顺序。"}
           </div>
         </div>
 
@@ -225,15 +225,13 @@ export function CreateRoomPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">房间基础信息</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  先选房间类型，再把模型加入右侧排序区。
-                </p>
+                <p className="mt-1 text-sm text-[var(--muted)]">先确定房间类型，再把模型加入右侧的顺序链路。</p>
               </div>
               <Link
                 href="/rooms"
@@ -249,7 +247,7 @@ export function CreateRoomPage() {
                 <input
                   value={roomForm.title}
                   onChange={(event) => setRoomForm((current) => ({ ...current, title: event.target.value }))}
-                  placeholder="例如：产品方案讨论"
+                  placeholder="例如：产品方案讨论群"
                   className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)]"
                 />
               </label>
@@ -279,7 +277,7 @@ export function CreateRoomPage() {
               <div className="mt-5 rounded-3xl border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-4">
                 <p className="text-sm font-medium">本地测试支持</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  如果还没有配置真实模型，可以先一键加载本地 mock 模型，再在右侧直接拖拽排序。
+                  如果你还没配置真实模型，可以先一键加载本地 mock 模型，再在右侧直接拖拽排序测试聊天体验。
                 </p>
                 <button
                   type="button"
@@ -295,7 +293,7 @@ export function CreateRoomPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold">可选模型</h3>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-[var(--muted)]">{toRoomLabel(roomForm.type)}模式</span>
+                  <span className="text-xs text-[var(--muted)]">{toRoomLabel(roomForm.type)} 模式</span>
                   {selectedModels.length > 0 ? (
                     <button
                       type="button"
@@ -336,8 +334,8 @@ export function CreateRoomPage() {
               {models.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-4 text-sm text-[var(--muted)]">
                   {mockToolsEnabled
-                    ? "没有可用模型。先去模型管理页配置，或者加载本地测试模型。"
-                    : "没有可用模型。先去模型管理页配置至少一个已启用模型。"}
+                    ? "没有可用模型。先去模型管理页配置，或者先加载本地测试模型。"
+                    : "没有可用模型。请先去模型管理页启用至少一个模型。"}
                 </p>
               ) : filteredModels.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-4 text-sm text-[var(--muted)]">
@@ -352,10 +350,10 @@ export function CreateRoomPage() {
                       key={model.id}
                       type="button"
                       onClick={() => toggleModel(model.id)}
-                      className={`flex w-full flex-col items-start gap-3 rounded-3xl border px-4 py-4 text-left transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
+                      className={`flex w-full flex-col items-start gap-3 rounded-[1.8rem] border px-4 py-4 text-left transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
                         selected
                           ? "border-[var(--accent)] bg-[rgba(191,95,54,0.08)] shadow-[0_12px_30px_rgba(17,17,17,0.06)]"
-                          : "border-[var(--border)] bg-white/75 hover:border-[var(--accent)] hover:-translate-y-0.5"
+                          : "border-[var(--border)] bg-white/78 hover:-translate-y-0.5 hover:border-[var(--accent)]"
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -371,7 +369,7 @@ export function CreateRoomPage() {
                           <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">模型 ID：{model.modelName}</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">
-                            默认回复字数：{formatReplyLength(model.defaultReplyLength)}
+                            默认回复上限：{formatReplyLength(model.defaultReplyLength)}
                           </p>
                         </div>
                       </div>
@@ -406,13 +404,13 @@ export function CreateRoomPage() {
 
             <div className="mb-4 rounded-3xl border border-[var(--border)] bg-white/70 px-4 py-3 text-sm text-[var(--muted)]">
               当前已选择 {selectedModels.length} 个模型。
-              {roomForm.type === "SINGLE" ? "单聊需要恰好 1 个模型。" : "群聊至少需要 2 个模型。"}
+              {roomForm.type === "SINGLE" ? " 单聊需要恰好 1 个模型。" : " 群聊至少需要 2 个模型。"}
             </div>
 
             <div className="space-y-3">
               {selectedModels.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                  左侧选中模型后，它们会出现在这里。群聊时可以直接拖拽卡片调整先后顺序。
+                  左侧选中模型后，它们会出现在这里。群聊时可以直接拖拽卡片调整顺序。
                 </p>
               ) : (
                 selectedModels.map((model, index) => {
@@ -440,7 +438,7 @@ export function CreateRoomPage() {
                         clearDragState();
                       }}
                       onDragEnd={clearDragState}
-                      className={`relative overflow-hidden rounded-[1.7rem] border px-4 py-4 transition-all duration-200 ease-out will-change-transform ${
+                      className={`relative overflow-hidden rounded-[1.8rem] border px-4 py-4 transition-all duration-200 ease-out will-change-transform ${
                         isDragging
                           ? "scale-[1.02] border-[var(--accent)] bg-[rgba(191,95,54,0.14)] shadow-[0_24px_60px_rgba(17,17,17,0.12)]"
                           : isDropTarget
@@ -469,7 +467,7 @@ export function CreateRoomPage() {
                             <p className="font-medium">{model.name}</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">
-                              默认回复字数：{formatReplyLength(model.defaultReplyLength)}
+                              默认回复上限：{formatReplyLength(model.defaultReplyLength)}
                             </p>
                           </div>
                         </div>
@@ -491,7 +489,7 @@ export function CreateRoomPage() {
             <button
               type="button"
               onClick={() => startTransition(() => void submitRoomForm())}
-              disabled={!canCreateRoom}
+              disabled={!canCreateRoom || busy}
               className="mt-6 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300"
             >
               创建房间并进入聊天
