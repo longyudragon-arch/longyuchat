@@ -45,6 +45,7 @@ type PendingRoundState = {
   completedAssistantCount: number;
   expectedAssistantCount: number;
 };
+type RoundTimelineStepState = "done" | "active" | "pending";
 
 function RoomChatSkeleton() {
   return (
@@ -83,6 +84,77 @@ function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
 
 function DeliveryBadge({ text, className }: { text: string; className: string }) {
   return <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${className}`}>{text}</span>;
+}
+
+function RoundTimelineStep({
+  index,
+  name,
+  provider,
+  replyLength,
+  state,
+  isLast,
+}: {
+  index: number;
+  name: string;
+  provider: RoomView["roomModels"][number]["model"]["provider"];
+  replyLength: number;
+  state: RoundTimelineStepState;
+  isLast: boolean;
+}) {
+  const circleClassName =
+    state === "done"
+      ? "border-emerald-200 bg-emerald-500 text-white"
+      : state === "active"
+        ? "border-sky-200 bg-sky-500 text-white shadow-[0_0_0_6px_rgba(14,165,233,0.12)]"
+        : "border-zinc-200 bg-white text-zinc-400";
+
+  const lineClassName = state === "done" ? "bg-emerald-300/80" : "bg-zinc-200";
+  const panelClassName =
+    state === "done"
+      ? "border-emerald-200/80 bg-emerald-50/70"
+      : state === "active"
+        ? "border-sky-200/80 bg-sky-50/80"
+        : "border-[var(--border)] bg-white/80";
+
+  const badge =
+    state === "done"
+      ? <DeliveryBadge text="已完成" className="border-emerald-200 bg-emerald-50 text-emerald-700" />
+      : state === "active"
+        ? <DeliveryBadge text="思考中" className="border-sky-200 bg-sky-50 text-sky-700" />
+        : <DeliveryBadge text="等待中" className="border-zinc-200 bg-white/80 text-zinc-600" />;
+
+  const helperText =
+    state === "done"
+      ? "这一位模型已经完成回答。"
+      : state === "active"
+        ? "当前轮到这一位模型生成回复。"
+        : "等待前面的模型先完成。";
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex w-8 flex-col items-center">
+        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${circleClassName}`}>
+          {index + 1}
+        </span>
+        {!isLast ? <span className={`mt-2 h-full min-h-8 w-px ${lineClassName}`} /> : null}
+      </div>
+
+      <div className={`min-w-0 flex-1 rounded-[1.35rem] border px-4 py-3 ${panelClassName}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(provider)}`}>
+            {getProviderShortName(provider)}
+          </span>
+          <span className="text-sm font-medium">{name}</span>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>
+            {getProviderOptionLabel(provider)}
+          </span>
+          <span className="text-xs text-[var(--muted)]">{formatReplyLength(replyLength)}</span>
+          {badge}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{helperText}</p>
+      </div>
+    </div>
+  );
 }
 
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
@@ -218,17 +290,29 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     return room.roomModels.map((roomModel) => roomModel.modelId).join(",") !== draftModelIds.join(",");
   }, [draftModelIds, room]);
 
-  const pendingModel = useMemo(() => {
+  const pendingTimeline = useMemo(() => {
     if (!pendingRound || !isSending) {
-      return null;
+      return [];
     }
 
-    if (pendingRound.completedAssistantCount >= pendingRound.expectedAssistantCount) {
-      return null;
-    }
+    const expectedAssistantCount = Math.min(pendingRound.expectedAssistantCount, orderedRoomModels.length);
 
-    return orderedRoomModels[pendingRound.completedAssistantCount] ?? null;
+    return orderedRoomModels.slice(0, expectedAssistantCount).map((roomModel, index) => {
+      let state: RoundTimelineStepState = "pending";
+      if (index < pendingRound.completedAssistantCount) {
+        state = "done";
+      } else if (index === pendingRound.completedAssistantCount && pendingRound.completedAssistantCount < expectedAssistantCount) {
+        state = "active";
+      }
+
+      return { roomModel, state };
+    });
   }, [isSending, orderedRoomModels, pendingRound]);
+
+  const activeTimelineItem = useMemo(
+    () => pendingTimeline.find((item) => item.state === "active") ?? null,
+    [pendingTimeline],
+  );
 
   function previewMove(targetId: string) {
     if (!draggedModelId || draggedModelId === targetId) {
@@ -504,18 +588,35 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 </article>
               ) : null}
 
-              {pendingModel ? (
-                <article className={`max-w-[96%] rounded-[1.7rem] border border-dashed px-4 py-4 shadow-[0_12px_24px_rgba(17,17,17,0.04)] sm:max-w-[90%] ${getProviderSoftClassName(pendingModel.model.provider)}`}>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(pendingModel.model.provider)}`}>{getProviderShortName(pendingModel.model.provider)}</span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium">{pendingModel.model.name}</span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(pendingModel.model.provider)}`}>{getProviderOptionLabel(pendingModel.model.provider)}</span>
-                        <DeliveryBadge text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`} className="border-sky-200 bg-sky-50 text-sky-700" />
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{`当前轮到 ${pendingModel.model.name} 回复。`}</p>
+              {pendingTimeline.length > 0 ? (
+                <article className={`max-w-[96%] rounded-[1.7rem] border border-dashed px-4 py-4 shadow-[0_12px_24px_rgba(17,17,17,0.04)] sm:max-w-[90%] ${getProviderSoftClassName(activeTimelineItem?.roomModel.model.provider ?? pendingTimeline[0]?.roomModel.model.provider ?? "OPENAI_COMPATIBLE")}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">本轮时间线</div>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                        {activeTimelineItem
+                          ? `当前轮到 ${activeTimelineItem.roomModel.model.name} 回复，系统会按顺序继续推进。`
+                          : "本轮模型已全部完成回复，正在同步最终结果。"}
+                      </p>
                     </div>
+                    <DeliveryBadge
+                      text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`}
+                      className="border-sky-200 bg-sky-50 text-sky-700"
+                    />
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {pendingTimeline.map(({ roomModel, state }, index) => (
+                      <RoundTimelineStep
+                        key={roomModel.id}
+                        index={index}
+                        name={roomModel.model.name}
+                        provider={roomModel.model.provider}
+                        replyLength={roomModel.model.defaultReplyLength}
+                        state={state}
+                        isLast={index === pendingTimeline.length - 1}
+                      />
+                    ))}
                   </div>
                 </article>
               ) : null}
