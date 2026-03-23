@@ -7,15 +7,12 @@ import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "r
 import {
   describeClientError,
   fetchJson,
-  formatReplyLength,
-  getProviderBadgeClassName,
   getProviderChineseLabel,
   getProviderIconClassName,
   getProviderOptionLabel,
   getProviderShortName,
   providerOptions,
   reorderIds,
-  toRoomLabel,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
 import type { ModelView, ProviderType, RoomType, RoomView } from "@/types/app";
@@ -221,196 +218,227 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
   return (
     <main className="ly-shell flex flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="ly-dark-panel ly-grid-lines rounded-[2.8rem] px-6 py-8 sm:px-8 sm:py-9">
-          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
-            房间编辑
-          </span>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">在不打断历史消息的前提下重构房间成员与顺序</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
-            这里负责修改房间标题、单聊或群聊类型、参与模型和后续发言顺序。旧消息不会被改写，但新一轮聊天会按这里保存的链路执行。
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">保留历史消息，只改后续轮次的成员与顺序。</div>
-            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">已停用模型会被清楚标记，避免误保存。</div>
-            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">编辑完成后直接回到聊天页继续工作。</div>
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[2.8rem] px-7 py-9 sm:px-10 sm:py-12">
+          <div className="relative z-10">
+            <span className="inline-flex rounded-full border border-white/12 bg-white/10 px-3 py-1 text-[10px] font-bold tracking-[0.24em] text-white/80 uppercase">
+              流水线维护
+            </span>
+            <h1 className="mt-6 text-4xl font-bold tracking-tight sm:text-5xl xl:text-6xl xl:leading-[1.1]">
+              调整你的 AI <br />
+              <span className="text-white/60">协作链路</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-white/70 sm:text-lg">
+              正在编辑房间 {room?.title ? `「${room.title}」` : "配置"}。
+              你可以随时增减成员或调整顺序，这些改动会从下一轮回答开始生效，不影响历史记录。
+            </p>
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 transition-colors hover:bg-white/8">
+                <p className="text-sm font-bold text-white/90">无损重构</p>
+                <p className="mt-1 text-xs text-white/50 leading-relaxed">仅改变后续协作逻辑，完整保留过往聊天上下文。</p>
+              </div>
+              <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 transition-colors hover:bg-white/8">
+                <p className="text-sm font-bold text-white/90">状态检查</p>
+                <p className="mt-1 text-xs text-white/50 leading-relaxed">自动标记已停用模型，确保链路各环节依然可用。</p>
+              </div>
+              <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 transition-colors hover:bg-white/8">
+                <p className="text-sm font-bold text-white/90">即时同步</p>
+                <p className="mt-1 text-xs text-white/50 leading-relaxed">保存后自动刷新，即刻回到聊天页继续协作。</p>
+              </div>
+            </div>
           </div>
+          <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-violet-500 opacity-10 blur-[100px]" />
         </div>
 
-        <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">当前状态</p>
-          <h2 className="mt-3 text-3xl font-semibold">当前正在编辑 {room?.title ? `「${room.title}」` : "房间配置"}</h2>
-          <div className="mt-6 grid gap-3">
-            <Link href={`/rooms/${roomId}`} className="rounded-[1.6rem] bg-[var(--accent)] px-5 py-4 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]">
-              返回聊天页
-            </Link>
-            <Link href="/rooms" className="rounded-[1.6rem] border border-[var(--border)] bg-white/86 px-5 py-4 text-sm font-medium">
-              返回房间列表
-            </Link>
-            <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="rounded-[1.6rem] border border-[var(--border)] bg-white/86 px-5 py-4 text-left text-sm font-medium disabled:opacity-50">
-              撤销当前修改
-            </button>
+        <div className="ly-glass flex flex-col rounded-[2.8rem] p-6 sm:p-8">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+            <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">状态反馈</p>
           </div>
-          <div className="mt-6 rounded-[1.7rem] border border-[var(--border)] bg-white/78 px-4 py-4 text-sm text-[var(--muted)]">
-            {activeAction === "loading"
-              ? "正在加载房间配置..."
-              : activeAction === "saving"
-                ? "正在保存房间配置..."
-                : notice || "右侧顺序区会决定下一轮消息的真实执行顺序。"}
+          <h2 className="mt-4 text-3xl font-bold tracking-tight">操作与快速导航</h2>
+          <div className="mt-8 grid flex-1 gap-4">
+            <Link href={`/rooms/${roomId}`} className="group flex items-center justify-between rounded-[2rem] bg-[var(--accent)] px-7 py-5 text-lg font-bold text-white transition-all hover:bg-[var(--accent-strong)] hover:shadow-[0_20px_40px_rgba(195,90,47,0.2)] active:scale-95">
+              <span>返回聊天页</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+            <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="flex items-center justify-between rounded-[2rem] border border-[var(--border)] bg-white/80 px-7 py-5 text-left font-bold transition-all hover:bg-white active:scale-95 disabled:opacity-40">
+              <span>撤销未保存修改</span>
+              <span className="text-[var(--muted)] opacity-30 text-xs">UNDO CHANGES</span>
+            </button>
+            <Link href="/rooms" className="flex items-center justify-between rounded-[2rem] border border-[var(--border)] bg-white/80 px-7 py-5 text-left font-bold transition-all hover:bg-white active:scale-95">
+              <span>返回房间列表</span>
+              <span className="text-[var(--muted)] opacity-30 text-xs">LIST</span>
+            </Link>
+          </div>
+          <div className="mt-6 flex items-start gap-3 rounded-2xl bg-black/5 px-5 py-4 text-sm text-[var(--muted)]">
+            <p className="leading-relaxed">
+              {activeAction === "loading" ? "正在读取现有配置..." : activeAction === "saving" ? "正在提交变更..." : notice || "你可以随时更改房间标题或调整模型顺序。"}
+            </p>
           </div>
         </div>
       </section>
 
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
-      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">配置面板</p>
-          <h2 className="mt-2 text-2xl font-semibold">调整房间信息与成员选择</h2>
+      <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+        <div className="ly-glass rounded-[2.6rem] p-6 sm:p-8">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+            <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">配置工作台</p>
+          </div>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight">房间与成员信息</h2>
 
-          <div className="mt-5 grid gap-4">
-            <label className="space-y-2">
-              <span className="text-sm font-medium">房间名称</span>
-              <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="w-full rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 outline-none transition focus:border-[var(--accent)]" />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium">房间类型</span>
-              <select value={form.type} onChange={(event) => { const nextType = event.target.value as RoomType; setForm((current) => ({ ...current, type: nextType, modelIds: nextType === "SINGLE" ? current.modelIds.slice(0, 1) : current.modelIds })); clearDragState(); }} className="w-full rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 outline-none transition focus:border-[var(--accent)]">
-                <option value="GROUP">群聊</option>
-                <option value="SINGLE">单聊</option>
-              </select>
-            </label>
-
-            <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
-              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="搜索模型名称、模型 ID 或 Provider" className="rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]" />
-              <select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")} className="rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]">
-                <option value="ALL">全部 Provider</option>
-                {providerOptions.map((provider) => (
-                  <option key={provider} value={provider}>
-                    {getProviderOptionLabel(provider)}
-                  </option>
-                ))}
+          <div className="mt-8 space-y-6">
+            <div className="space-y-2.5">
+              <label className="text-[13px] font-bold text-[var(--muted)] ml-1">房间名称</label>
+              <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="w-full rounded-2xl border border-[var(--border)] bg-white/92 px-5 py-4 text-[15px] font-medium outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5" />
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[13px] font-bold text-[var(--muted)] ml-1">房间类型</label>
+              <select value={form.type} onChange={(event) => { const nextType = event.target.value as RoomType; setForm((current) => ({ ...current, type: nextType, modelIds: nextType === "SINGLE" ? current.modelIds.slice(0, 1) : current.modelIds })); clearDragState(); }} className="w-full rounded-2xl border border-[var(--border)] bg-white/92 px-5 py-4 text-[15px] font-medium outline-none transition focus:border-[var(--accent)]">
+                <option value="GROUP">群聊 (顺序协作)</option>
+                <option value="SINGLE">单聊 (单模型对话)</option>
               </select>
             </div>
 
-            <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/78 px-4 py-3 text-sm text-[var(--muted)]">
-              当前显示 {filteredModels.length} / {models.length} 个模型，已选择 {selectedModels.length} 个。
-            </div>
+            <div className="pt-4 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-[13px] font-bold text-[var(--muted)] ml-1 uppercase tracking-wider">从库中挑选成员</p>
+                <div className="rounded-full bg-black/5 px-3 py-1 text-[10px] font-bold text-[var(--muted)]">已选 {selectedModels.length}</div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="搜索模型库..." className="rounded-xl border border-[var(--border)] bg-white/92 px-4 py-2.5 text-sm outline-none transition focus:border-[var(--accent)]" />
+                <select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")} className="rounded-xl border border-[var(--border)] bg-white/92 px-4 py-2.5 text-sm font-medium outline-none transition focus:border-[var(--accent)]">
+                  <option value="ALL">全部厂商</option>
+                  {providerOptions.map((provider) => (
+                    <option key={provider} value={provider}>
+                      {getProviderOptionLabel(provider)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="grid gap-3">
-              {filteredModels.length === 0 ? (
-                <div className="rounded-[1.8rem] border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                  当前筛选条件下没有匹配模型。
-                </div>
-              ) : (
-                filteredModels.map((model) => {
-                  const selected = form.modelIds.includes(model.id);
+              <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 scrollbar-none">
+                {filteredModels.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--muted)]">未找到可用模型成员</div>
+                ) : (
+                  filteredModels.map((model) => {
+                    const selected = form.modelIds.includes(model.id);
 
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => toggleModel(model.id)}
-                      className={`flex w-full items-start justify-between gap-4 rounded-[1.8rem] border px-4 py-4 text-left transition ${
-                        selected ? "border-[var(--accent)] bg-[rgba(195,90,47,0.08)]" : "border-[var(--border)] bg-white/84 hover:border-[var(--accent)]"
-                      } ${!model.enabled && !selected ? "opacity-60" : ""}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(model.provider)}`}>
-                          {getProviderShortName(model.provider)}
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{model.name}</p>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${model.enabled ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-700"}`}>
-                              {model.enabled ? "已启用" : "已停用"}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-[var(--muted)]">{model.modelName}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderChineseLabel(model.provider)}</span>
-                            <span className="rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</span>
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => toggleModel(model.id)}
+                        className={`group flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-4 text-left transition-all ${
+                          selected ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg" : "border-[var(--border)] bg-white/80 hover:border-[var(--accent)]"
+                        } ${!model.enabled && !selected ? "opacity-50 grayscale" : ""}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-[9px] font-bold tracking-[0.2em] shadow-sm ${selected ? "bg-white/20 text-white" : getProviderIconClassName(model.provider)}`}>
+                            {getProviderShortName(model.provider)}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold tracking-tight text-[14px]">{model.name}</p>
+                              {!model.enabled && <span className="rounded-full bg-red-100 text-red-600 px-1.5 py-0.5 text-[9px] font-bold">已停用</span>}
+                            </div>
+                            <p className={`text-[10px] font-medium opacity-60 truncate ${selected ? "text-white" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                           </div>
                         </div>
-                      </div>
-                      <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{selected ? "已加入" : model.enabled ? "加入" : "不可加入"}</span>
-                    </button>
-                  );
-                })
-              )}
+                        {selected ? (
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20">鉁</span>
+                        ) : (
+                          <span className="rounded-lg border border-[var(--border)] bg-white px-3 py-1 text-[10px] font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">加入</span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="xl:sticky xl:top-28 xl:self-start">
-          <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">顺序状态</p>
-            <h2 className="mt-2 text-2xl font-semibold">当前成员与顺序</h2>
-            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{toRoomLabel(form.type)} 模式下，保存后的顺序会在下一轮聊天里生效。</p>
-
-            {disabledSelectedModels.length > 0 ? (
-              <div className="mt-5 rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
-                当前选择里有 {disabledSelectedModels.length} 个已停用模型，保存前需要先移除或重新启用它们。
-              </div>
-            ) : null}
-
-            <div className="mt-5 rounded-[1.6rem] border border-[var(--border)] bg-white/78 px-4 py-3 text-sm text-[var(--muted)]">
-              {form.type === "SINGLE" ? "单聊需要且只能有 1 个模型。" : "群聊至少需要 2 个模型，拖拽即可重排。"}
+        <div className="xl:sticky xl:top-24 xl:self-start">
+          <div className="ly-glass rounded-[2.6rem] p-6 sm:p-8">
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+              <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">流水线编排</p>
             </div>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight">发言顺序状态</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+              {form.type === "SINGLE" ? "当前为单聊模式，建议只保留最核心的模型。" : "群聊模式下，你可以自由拖拽定义这一组成员的协作流水线。"}
+            </p>
 
-            <div className="mt-5 grid gap-3">
+            {disabledSelectedModels.length > 0 && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-[13px] font-bold text-red-600 animate-pulse">
+                鈯 注意：流水线中有已停用的模型，请先处理。
+              </div>
+            )}
+
+            <div className="mt-8 space-y-4">
               {selectedModels.length === 0 ? (
-                <div className="rounded-[1.8rem] border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">左边选中模型后，它们会出现在这里。</div>
+                <div className="rounded-[2.2rem] border border-dashed border-[var(--border)] bg-white/40 px-6 py-12 text-center">
+                  <p className="text-sm font-bold text-[var(--muted)] opacity-60">请从左侧挑选模型成员加入链路</p>
+                </div>
               ) : (
                 selectedModels.map((model, index) => {
                   const isDragging = draggedModelId === model.id;
                   const isDropTarget = dragOverModelId === model.id && draggedModelId !== model.id;
+                  const isLast = index === selectedModels.length - 1;
 
                   return (
-                    <div
-                      key={model.id}
-                      draggable={form.type === "GROUP"}
-                      onDragStart={(event) => {
-                        setDraggedModelId(model.id);
-                        setDragOverModelId(model.id);
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", model.id);
-                      }}
-                      onDragEnter={() => previewSelectedModelMove(model.id)}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        previewSelectedModelMove(model.id);
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        clearDragState();
-                      }}
-                      onDragEnd={clearDragState}
-                      className={`rounded-[1.8rem] border px-4 py-4 transition ${
-                        isDragging
-                          ? "scale-[1.02] border-[var(--accent)] bg-[rgba(195,90,47,0.14)]"
-                          : isDropTarget
-                            ? "border-[var(--accent)] bg-[rgba(195,90,47,0.08)]"
-                            : "border-[var(--border)] bg-white/84"
-                      } ${form.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(model.provider)}`}>
-                            {getProviderShortName(model.provider)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{index + 1}</span>
-                              <p className="font-medium">{model.name}</p>
+                    <div key={model.id} className="relative">
+                      {!isLast && selectedModels.length > 1 && (
+                        <div className="absolute left-[35px] top-12 bottom-[-1.5rem] w-0.5 bg-gradient-to-b from-[var(--border)] to-transparent" />
+                      )}
+                      <div
+                        draggable={form.type === "GROUP"}
+                        onDragStart={(event) => {
+                          setDraggedModelId(model.id);
+                          setDragOverModelId(model.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", model.id);
+                        }}
+                        onDragEnter={() => previewSelectedModelMove(model.id)}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          previewSelectedModelMove(model.id);
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          clearDragState();
+                        }}
+                        onDragEnd={clearDragState}
+                        className={`relative z-10 rounded-[2rem] border px-5 py-5 transition-all duration-300 ${
+                          isDragging
+                            ? "scale-[1.05] border-[var(--accent)] bg-white shadow-2xl z-20"
+                            : isDropTarget
+                              ? "border-[var(--accent)] bg-[rgba(195,90,47,0.08)] translate-x-2"
+                              : "border-[var(--border)] bg-white/90 hover:shadow-lg"
+                        } ${!model.enabled ? "border-red-200 bg-red-50/30" : ""} ${form.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[rgb(248,246,242)] border border-[var(--border)] text-xs font-bold text-[var(--muted)]">
+                              {index + 1}
+                            </span>
+                            <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[10px] font-bold tracking-[0.2em] shadow-sm ${getProviderIconClassName(model.provider)}`}>
+                              {getProviderShortName(model.provider)}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold tracking-tight">{model.name}</p>
+                                {!model.enabled && <span className="text-[9px] font-bold text-red-500 uppercase">Disabled</span>}
+                              </div>
+                              <p className="mt-0.5 text-[11px] font-bold text-[var(--muted)] opacity-60 uppercase">{getProviderChineseLabel(model.provider)}</p>
                             </div>
-                            <p className="mt-1 text-xs text-[var(--muted)]">{getProviderChineseLabel(model.provider)}</p>
-                            <p className="mt-1 text-xs text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</p>
                           </div>
+                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-xl p-2 text-[var(--muted)] hover:bg-red-50 hover:text-red-500 transition-colors">
+                            <span className="text-lg">鈹</span>
+                          </button>
                         </div>
-                        <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-full border border-red-200 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50">
-                          移除
-                        </button>
                       </div>
                     </div>
                   );
@@ -418,14 +446,22 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => startTransition(() => void saveConfiguration())}
-              disabled={!dirty || !countValid || disabledSelectedModels.length > 0 || activeAction !== null}
-              className="mt-6 w-full rounded-[1.6rem] bg-[var(--accent)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300"
-            >
-              保存配置并返回聊天页
-            </button>
+            <div className="mt-10 space-y-4">
+              <button
+                type="button"
+                onClick={() => startTransition(() => void saveConfiguration())}
+                disabled={!dirty || !countValid || disabledSelectedModels.length > 0 || activeAction !== null}
+                className="w-full rounded-[2rem] bg-[var(--accent)] px-6 py-5 text-lg font-bold text-white shadow-xl shadow-[var(--accent)]/20 transition-all hover:bg-[var(--accent-strong)] hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:translate-y-0"
+              >
+                {activeAction === "saving" ? "正在应用变更..." : "保存并更新流水线"}
+              </button>
+              
+              {!dirty && (
+                <p className="text-center text-[11px] font-bold text-[var(--muted)] opacity-60 uppercase tracking-widest italic">
+                  未检测到任何变更
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </section>
