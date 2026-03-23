@@ -42,10 +42,8 @@ export function CreateRoomPage() {
   const handleInitialLoad = useEffectEvent(async () => {
     setBusy(true);
     setErrorMessage("");
-
     try {
       await loadModels();
-      setNotice("可以开始配置新的顺序协作房间。");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "加载模型失败。");
     } finally {
@@ -89,11 +87,9 @@ export function CreateRoomPage() {
   function toggleModel(modelId: string) {
     setRoomForm((current) => {
       const exists = current.modelIds.includes(modelId);
-
       if (current.type === "SINGLE") {
         return { ...current, modelIds: exists ? [] : [modelId] };
       }
-
       return {
         ...current,
         modelIds: exists ? current.modelIds.filter((id) => id !== modelId) : [...current.modelIds, modelId],
@@ -112,10 +108,7 @@ export function CreateRoomPage() {
   }
 
   function previewSelectedModelMove(targetId: string) {
-    if (!draggedModelId || draggedModelId === targetId) {
-      return;
-    }
-
+    if (!draggedModelId || draggedModelId === targetId) return;
     setRoomForm((current) => {
       const nextModelIds = reorderIds(current.modelIds, draggedModelId, targetId);
       return nextModelIds.join(",") === current.modelIds.join(",")
@@ -128,7 +121,6 @@ export function CreateRoomPage() {
   async function createLocalMockModels() {
     setBusy(true);
     setErrorMessage("");
-
     try {
       const mockModels = await ensureLocalMockModels();
       await loadModels();
@@ -137,7 +129,7 @@ export function CreateRoomPage() {
         type: "GROUP",
         modelIds: mockModels.map((model) => model.id),
       });
-      setNotice("本地测试模型已经加入右侧顺序链路。");
+      setNotice("本地测试模型已加入。");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "加载本地测试模型失败。");
     } finally {
@@ -150,19 +142,13 @@ export function CreateRoomPage() {
       setErrorMessage(roomForm.type === "SINGLE" ? "单聊需要且只能选择 1 个模型。" : "群聊至少需要 2 个模型。");
       return;
     }
-
     setBusy(true);
     setErrorMessage("");
-
     try {
       const title = roomForm.title.trim() || (roomForm.type === "SINGLE" ? "新的单聊房间" : "新的群聊房间");
       const data = await fetchJson<{ room: RoomView }>("/api/rooms", {
         method: "POST",
-        body: JSON.stringify({
-          title,
-          type: roomForm.type,
-          modelIds: roomForm.modelIds,
-        }),
+        body: JSON.stringify({ title, type: roomForm.type, modelIds: roomForm.modelIds }),
       });
       router.push(`/rooms/${data.room.id}`);
     } catch (error: unknown) {
@@ -173,142 +159,107 @@ export function CreateRoomPage() {
   }
 
   return (
-    <main className="ly-shell flex flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
-      <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[3.5rem] px-8 py-10 sm:px-12 sm:py-14 shadow-2xl">
-          <div className="relative z-10 animate-fade-in-up">
-            <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-bold tracking-[0.24em] text-white/90 uppercase backdrop-blur-md shadow-inner">
-              协作编排
-            </span>
-            <h1 className="mt-8 text-5xl font-display font-bold tracking-tight sm:text-6xl xl:text-[4.5rem] xl:leading-[1.1] text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/60">
-              搭建你的 AI <br />
-              <span className="text-white/40 font-light">协作流水线</span>
-            </h1>
-            <p className="mt-8 max-w-2xl text-[1.0625rem] font-medium leading-[1.8] text-white/70">
-              在这里，你可以定义一个多模型协作房间。从模型库中挑选参与者，
-              并按需排列它们的回答顺序。每一条发往该房间的消息，都会按照此链路流转。
-            </p>
-            <div className="mt-12 grid gap-5 sm:grid-cols-3">
-              <div className="rounded-[1.5rem] bg-white/5 p-6 border border-white/10 transition-all duration-500 hover:bg-white/10 hover:border-white/20 backdrop-blur-sm">
-                <p className="text-[14px] font-bold text-white/90">自由组合</p>
-                <p className="mt-2 text-[12px] font-medium text-white/50 leading-relaxed">支持不同厂商的模型在同一链路中协作。</p>
-              </div>
-              <div className="rounded-[1.5rem] bg-white/5 p-6 border border-white/10 transition-all duration-500 hover:bg-white/10 hover:border-white/20 backdrop-blur-sm">
-                <p className="text-[14px] font-bold text-white/90">顺序流转</p>
-                <p className="mt-2 text-[12px] font-medium text-white/50 leading-relaxed">右侧列表即为回答顺序，实时拖拽，即刻生效。</p>
-              </div>
-              <div className="rounded-[1.5rem] bg-white/5 p-6 border border-white/10 transition-all duration-500 hover:bg-white/10 hover:border-white/20 backdrop-blur-sm">
-                <p className="text-[14px] font-bold text-white/90">灵活扩展</p>
-                <p className="mt-2 text-[12px] font-medium text-white/50 leading-relaxed">随时可以在编辑页增减成员或重排顺序。</p>
-              </div>
-            </div>
-          </div>
-          <div className="absolute -right-24 -top-24 h-[28rem] w-[28rem] rounded-full bg-[linear-gradient(135deg,#f48498,#993c50)] opacity-15 blur-[120px] animate-pulse-slow" />
+    <main className="ly-shell flex flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
+      {/* ─ Page header ─ */}
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-display font-bold tracking-tight sm:text-2xl">新建房间</h1>
+          <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)] sm:text-[13px]">
+            挑选模型，定义回答顺序，创建多模型协作房间。
+          </p>
         </div>
-
-        <div className="ly-glass flex flex-col rounded-[3.5rem] p-8 sm:p-10 shadow-xl shadow-[var(--accent)]/5">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_12px_var(--accent)]" />
-            <p className="text-[11px] font-bold tracking-[0.2em] text-[var(--accent)] uppercase">房间配置</p>
-          </div>
-          <h2 className="mt-5 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">定义房间基础信息</h2>
-          <div className="mt-10 space-y-6 flex-1">
-            <div className="space-y-3">
-              <label className="text-[12px] font-bold tracking-wide text-[var(--muted)] uppercase ml-2">房间名称</label>
-              <input value={roomForm.title} onChange={(event) => setRoomForm((current) => ({ ...current, title: event.target.value }))} className="w-full rounded-[1.5rem] border border-white/40 bg-white/50 px-6 py-4.5 text-[15px] font-medium outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 backdrop-blur-md shadow-inner" placeholder="例如：产品评审小组 / 深度逻辑分析" />
-            </div>
-            <div className="space-y-3">
-              <label className="text-[12px] font-bold tracking-wide text-[var(--muted)] uppercase ml-2">房间类型</label>
-              <select value={roomForm.type} onChange={(event) => { const nextType = event.target.value as RoomType; setRoomForm((current) => ({ ...current, type: nextType, modelIds: nextType === "SINGLE" ? current.modelIds.slice(0, 1) : current.modelIds })); clearDragState(); }} className="w-full rounded-[1.5rem] border border-white/40 bg-white/50 px-6 py-4.5 text-[15px] font-medium outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md shadow-inner appearance-none cursor-pointer">
-                <option value="GROUP">群聊 (多模型顺序协作)</option>
-                <option value="SINGLE">单聊 (单模型快速对话)</option>
-              </select>
-            </div>
-            {mockToolsEnabled ? (
-              <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} className="w-full flex items-center justify-between rounded-[1.5rem] border border-sky-200/50 bg-sky-50/50 px-6 py-5 text-[14px] font-bold text-sky-700 transition-all duration-300 hover:bg-sky-50 hover:shadow-md active:scale-95 backdrop-blur-sm">
-                <span>一键加载本地测试模型</span>
-                <span className="text-[10px] opacity-60 tracking-[0.1em]">快速配置</span>
-              </button>
-            ) : null}
-          </div>
-          <div className="mt-8 flex items-start gap-4 rounded-[1.5rem] border border-[var(--border)] bg-white/40 px-6 py-5 text-[14px] text-[var(--muted)] backdrop-blur-sm transition-colors hover:bg-white/60">
-            <p className="leading-relaxed font-medium">
-              {busy ? "正在同步模型状态..." : notice || "请在下方左侧选择模型，右侧定义它们的发言顺序。"}
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition hover:bg-white/60 active:scale-95">
+            返回列表
+          </Link>
+          {mockToolsEnabled && (
+            <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} disabled={busy} className="rounded-xl border border-sky-200/50 bg-sky-50/50 px-4 py-2 text-[13px] font-bold text-sky-700 transition hover:bg-sky-50 active:scale-95 disabled:opacity-50">
+              加载测试模型
+            </button>
+          )}
         </div>
       </section>
 
-      {errorMessage ? (
-        <div className="rounded-[2rem] border border-red-200/50 bg-red-50/80 px-8 py-5 text-[14px] font-bold text-red-600 shadow-lg shadow-red-500/10 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+      {/* ─ Room config ─ */}
+      <section className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
+            <input value={roomForm.title} onChange={(e) => setRoomForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" placeholder="例如：产品评审小组" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
+            <select value={roomForm.type} onChange={(e) => { const t = e.target.value as RoomType; setRoomForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
+              <option value="GROUP">群聊 (多模型顺序协作)</option>
+              <option value="SINGLE">单聊 (单模型快速对话)</option>
+            </select>
+          </div>
+        </div>
+        {(notice || busy) && (
+          <p className="mt-3 text-[12px] font-medium text-[var(--accent)]">{busy ? "正在同步模型状态..." : notice}</p>
+        )}
+      </section>
+
+      {errorMessage && (
+        <div className="rounded-xl border border-red-200/50 bg-red-50/80 px-4 py-3 text-[13px] font-bold text-red-600">
           提示：{errorMessage}
         </div>
-      ) : null}
+      )}
 
-      <section className="grid gap-8 xl:grid-cols-[0.88fr_1.12fr]">
-        <div className="ly-glass rounded-[3.5rem] p-8 sm:p-10 shadow-lg shadow-black/5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_12px_var(--accent)]" />
-                <p className="text-[11px] font-bold tracking-[0.2em] text-[var(--accent)] uppercase">模型库</p>
-              </div>
-              <h2 className="mt-5 text-4xl font-display font-bold tracking-tight text-[var(--foreground)]">挑选参与成员</h2>
-            </div>
+      {/* ─ Model selection + ordering ─ */}
+      <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+        {/* Left: model library */}
+        <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-display font-bold tracking-tight">挑选参与成员</h2>
             {selectedModels.length > 0 && (
-              <button type="button" onClick={clearSelection} className="rounded-full border border-white/60 bg-white/50 px-5 py-2.5 text-[12px] font-bold text-[var(--muted)] shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-red-200 hover:text-red-500 hover:bg-white">
+              <button type="button" onClick={clearSelection} className="rounded-lg border border-white/60 bg-white/50 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:border-red-200 hover:text-red-500">
                 清空已选
               </button>
             )}
           </div>
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-[1fr_220px]">
-            <div className="relative group">
-              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-sm font-bold opacity-40 group-focus-within:opacity-100 group-focus-within:text-[var(--accent)] transition-all duration-300">搜索</span>
-              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="搜索模型..." className="w-full rounded-[1.75rem] border border-white/40 bg-white/50 pl-14 pr-6 py-5 text-[15px] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 backdrop-blur-md shadow-inner" />
-            </div>
-            <select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")} className="w-full rounded-[1.75rem] border border-white/40 bg-white/50 px-6 py-5 text-[15px] font-bold text-[var(--foreground)] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none shadow-sm cursor-pointer">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/50 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/50 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
               <option value="ALL">全部厂商</option>
-              {providerOptions.map((provider) => (
-                <option key={provider} value={provider}>
-                  {getProviderOptionLabel(provider)}
-                </option>
+              {providerOptions.map((p) => (
+                <option key={p} value={p}>{getProviderOptionLabel(p)}</option>
               ))}
             </select>
           </div>
 
-          <div className="mt-8 space-y-4">
+          <div className="mt-4 space-y-2">
             {filteredModels.length === 0 ? (
-              <div className="rounded-[2.5rem] border border-dashed border-white/60 bg-white/20 px-8 py-14 text-center text-[15px] font-medium text-[var(--muted)] backdrop-blur-sm">
-                没有找到匹配的模型成员
+              <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
+                没有找到匹配的模型
               </div>
             ) : (
               filteredModels.map((model) => {
                 const selected = roomForm.modelIds.includes(model.id);
-
                 return (
                   <button
                     key={model.id}
                     type="button"
                     onClick={() => toggleModel(model.id)}
-                    className={`group flex w-full items-center justify-between gap-5 rounded-[2.5rem] border px-6 py-6 text-left transition-all duration-500 hover:-translate-y-1 ${
-                      selected ? "border-[var(--accent)]/50 bg-[linear-gradient(135deg,rgba(153,60,80,0.8),rgba(199,87,111,0.8))] shadow-xl shadow-[var(--accent)]/20 backdrop-blur-md" : "border-white/40 bg-white/30 hover:bg-white/60 hover:border-white/80 hover:shadow-[0_16px_40px_rgba(47,46,51,0.06)] backdrop-blur-md"
+                    className={`group flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5 ${
+                      selected
+                        ? "border-[var(--accent)]/50 bg-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
+                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-md"
                     }`}
                   >
-                    <div className="flex items-center gap-5">
-                      <span className={`inline-flex h-14 w-14 items-center justify-center rounded-[1.4rem] text-[11px] font-bold tracking-[0.2em] shadow-md transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${selected ? "bg-white/20 text-white shadow-[0_0_16px_rgba(255,255,255,0.2)]" : getProviderIconClassName(model.provider)}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-[9px] font-bold tracking-wide shadow-sm transition-transform group-hover:scale-105 ${selected ? "bg-white/20 text-white" : getProviderIconClassName(model.provider)}`}>
                         {getProviderShortName(model.provider)}
                       </span>
                       <div className="min-w-0">
-                        <p className={`text-[16px] font-display font-bold tracking-tight ${selected ? "text-white" : "text-[var(--foreground)]"}`}>{model.name}</p>
-                        <p className={`mt-1 text-[12px] font-medium tracking-wide truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
+                        <p className={`text-[14px] font-display font-bold tracking-tight ${selected ? "text-white" : ""}`}>{model.name}</p>
+                        <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                       </div>
                     </div>
-                    {selected ? (
-                      <span className="inline-flex h-10 items-center justify-center rounded-full bg-white/20 px-4 text-[12px] font-bold text-white shadow-inner backdrop-blur-md transition-transform duration-300 group-hover:scale-105">已选</span>
-                    ) : (
-                      <span className="rounded-full border border-white/60 bg-white/50 px-5 py-2.5 text-[12px] font-bold text-[var(--muted)] shadow-sm transition-colors duration-300 group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] group-hover:bg-white">加入</span>
-                    )}
+                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/50 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
+                      {selected ? "已选" : "加入"}
+                    </span>
                   </button>
                 );
               })
@@ -316,22 +267,19 @@ export function CreateRoomPage() {
           </div>
         </div>
 
-        <div className="xl:sticky xl:top-28 xl:self-start">
-          <div className="ly-glass rounded-[3.5rem] p-8 sm:p-10 shadow-lg shadow-black/5">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_12px_var(--accent)]" />
-              <p className="text-[11px] font-bold tracking-[0.2em] text-[var(--accent)] uppercase">流水线编排</p>
-            </div>
-            <h2 className="mt-5 text-4xl font-display font-bold tracking-tight text-[var(--foreground)]">发言顺序</h2>
-            <p className="mt-3 text-[14px] font-medium leading-relaxed text-[var(--muted)] opacity-90">
-              {roomForm.type === "SINGLE" ? "当前为单聊模式，只能保留 1 个模型。" : "当前为群聊模式，你可以通过拖拽来调整模型回答的先后顺序。"}
+        {/* Right: ordering + submit */}
+        <div className="xl:sticky xl:top-20 xl:self-start">
+          <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+            <h2 className="text-lg font-display font-bold tracking-tight">发言顺序</h2>
+            <p className="mt-1 text-[12px] font-medium text-[var(--muted)]">
+              {roomForm.type === "SINGLE" ? "单聊模式，只保留 1 个模型。" : "群聊模式，拖拽调整回答顺序。"}
             </p>
 
-            <div className="mt-10 space-y-5">
+            <div className="mt-5 space-y-2">
               {selectedModels.length === 0 ? (
-                <div className="rounded-[2.5rem] border border-dashed border-white/60 bg-white/20 px-8 py-16 text-center backdrop-blur-sm">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--foreground)]/5 text-xl font-bold text-[var(--foreground)]/25 shadow-inner">→</div>
-                  <p className="mt-5 text-[15px] font-bold text-[var(--muted)] opacity-70">请从左侧模型库中挑选成员</p>
+                <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-10 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--foreground)]/5 text-lg font-bold text-[var(--foreground)]/25">→</div>
+                  <p className="mt-3 text-[13px] font-bold text-[var(--muted)] opacity-70">从左侧挑选模型</p>
                 </div>
               ) : (
                 selectedModels.map((model, index) => {
@@ -342,49 +290,43 @@ export function CreateRoomPage() {
                   return (
                     <div key={model.id} className="relative">
                       {!isLast && selectedModels.length > 1 && (
-                        <div className="absolute left-[40px] top-14 bottom-[-1.5rem] w-1 bg-[linear-gradient(180deg,rgba(153,60,80,0.3),rgba(153,60,80,0.05))] rounded-full" />
+                        <div className="absolute left-[28px] top-12 bottom-[-0.75rem] w-0.5 bg-[var(--accent)]/20 rounded-full" />
                       )}
                       <div
                         draggable={roomForm.type === "GROUP"}
-                        onDragStart={(event) => {
+                        onDragStart={(e) => {
                           setDraggedModelId(model.id);
                           setDragOverModelId(model.id);
-                          event.dataTransfer.effectAllowed = "move";
-                          event.dataTransfer.setData("text/plain", model.id);
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", model.id);
                         }}
                         onDragEnter={() => previewSelectedModelMove(model.id)}
-                        onDragOver={(event) => {
-                          event.preventDefault();
-                          previewSelectedModelMove(model.id);
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          clearDragState();
-                        }}
+                        onDragOver={(e) => { e.preventDefault(); previewSelectedModelMove(model.id); }}
+                        onDrop={(e) => { e.preventDefault(); clearDragState(); }}
                         onDragEnd={clearDragState}
-                        className={`relative z-10 rounded-[2.5rem] border px-6 py-6 transition-all duration-300 ${
+                        className={`relative z-10 rounded-xl border px-4 py-3.5 transition-all duration-300 ${
                           isDragging
-                            ? "scale-[1.05] border-[var(--accent)] bg-[rgba(255,255,255,0.95)] shadow-2xl shadow-[var(--accent)]/10 ring-4 ring-[var(--accent)]/10 z-20"
+                            ? "scale-[1.03] border-[var(--accent)] bg-white/95 shadow-lg z-20"
                             : isDropTarget
-                              ? "border-[var(--accent)] bg-[rgba(153,60,80,0.05)] translate-x-3 backdrop-blur-md"
-                              : "border-white/50 bg-white/40 hover:bg-white/60 hover:shadow-[0_16px_40px_rgba(47,46,51,0.04)] backdrop-blur-md"
+                              ? "border-[var(--accent)] bg-[var(--accent)]/5 translate-x-2"
+                              : "border-white/50 bg-white/40 hover:bg-white/60"
                         } ${roomForm.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
-                        <div className="flex items-center justify-between gap-5">
-                          <div className="flex items-center gap-5">
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f48498,#993c50)] text-[13px] font-bold text-white shadow-md shadow-[var(--accent)]/20 relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white shadow-sm relative z-10">
                               {index + 1}
                             </span>
-                            <span className={`inline-flex h-14 w-14 items-center justify-center rounded-[1.25rem] text-[11px] font-bold tracking-[0.2em] shadow-md ${getProviderIconClassName(model.provider)}`}>
+                            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm ${getProviderIconClassName(model.provider)}`}>
                               {getProviderShortName(model.provider)}
                             </span>
                             <div className="min-w-0">
-                              <p className="text-[16px] font-display font-bold tracking-tight text-[var(--foreground)]">{model.name}</p>
-                              <p className="mt-1 text-[11px] font-bold tracking-widest text-[var(--muted)] opacity-60 uppercase">{getProviderChineseLabel(model.provider)}</p>
+                              <p className="text-[14px] font-display font-bold tracking-tight">{model.name}</p>
+                              <p className="text-[10px] font-bold tracking-wider text-[var(--muted)] opacity-60 uppercase">{getProviderChineseLabel(model.provider)}</p>
                             </div>
                           </div>
-                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-2xl p-3 text-[var(--muted)] opacity-60 hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition-all duration-300">
-                            <span className="text-sm font-bold">移除</span>
+                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-lg p-2 text-[var(--muted)] opacity-60 hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition">
+                            <span className="text-[11px] font-bold">移除</span>
                           </button>
                         </div>
                       </div>
@@ -394,25 +336,22 @@ export function CreateRoomPage() {
               )}
             </div>
 
-            <div className="mt-12 space-y-5">
+            <div className="mt-6 space-y-3">
               <button
                 type="button"
                 onClick={() => startTransition(() => void submitRoomForm())}
                 disabled={!canCreateRoom || busy}
-                className="w-full relative overflow-hidden rounded-[2.5rem] bg-[linear-gradient(135deg,#993c50,#c7576f)] px-8 py-6 text-[18px] font-display font-bold text-white shadow-[0_16px_32px_rgba(153,60,80,0.2)] transition-all duration-500 hover:shadow-[0_24px_48px_rgba(153,60,80,0.3)] hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_16px_32px_rgba(153,60,80,0.2)] group"
+                className="w-full rounded-xl bg-[var(--accent)] px-5 py-3.5 text-[15px] font-bold text-white shadow-md shadow-[var(--accent)]/20 transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                <span className="relative z-10">{busy ? "正在创建工作流..." : "完成并进入房间"}</span>
-                {!busy && canCreateRoom && (
-                  <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-[100%] group-hover:animate-[shimmer_1.5s_infinite]" />
-                )}
+                {busy ? "正在创建..." : "完成并进入房间"}
               </button>
 
-              <div className="flex items-center justify-center gap-6 pt-2">
-                <Link href="/rooms" className="text-[13px] font-bold text-[var(--muted)] hover:text-[var(--accent)] transition-colors">
+              <div className="flex items-center justify-center gap-4">
+                <Link href="/rooms" className="text-[12px] font-bold text-[var(--muted)] hover:text-[var(--accent)] transition-colors">
                   返回房间列表
                 </Link>
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--border)]" />
-                <button type="button" onClick={clearSelection} className="text-[13px] font-bold text-[var(--muted)] hover:text-red-500 transition-colors">
+                <span className="h-1 w-1 rounded-full bg-[var(--border)]" />
+                <button type="button" onClick={clearSelection} className="text-[12px] font-bold text-[var(--muted)] hover:text-red-500 transition-colors">
                   重置所有挑选
                 </button>
               </div>
