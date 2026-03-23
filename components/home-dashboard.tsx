@@ -46,7 +46,7 @@ export function HomeDashboard() {
           <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-6">
             <Link
               href="/rooms/new"
-              className="rounded-full bg-white/95 px-5 py-2.5 text-[13px] font-bold text-[#2b2a30] transition-all duration-300 hover:bg-white hover:shadow-[0_8px_24px_rgba(255,255,255,0.15)] hover:-translate-y-0.5 active:scale-95 sm:px-6 sm:py-3"
+              className="rounded-full bg-[linear-gradient(135deg,#f48498,#993c50)] px-5 py-2.5 text-[13px] font-bold text-white transition-all duration-300 hover:shadow-[0_12px_28px_rgba(153,60,80,0.32)] hover:-translate-y-0.5 active:scale-95 sm:px-6 sm:py-3"
             >
               立即创建房间
             </Link>
