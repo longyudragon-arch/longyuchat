@@ -22,14 +22,14 @@ const navItems = [
 function BrandBlock() {
   return (
     <Link href="/" className="inline-flex min-w-0 items-center gap-3 group">
-      <span className="inline-flex h-11 w-11 items-center justify-center rounded-[1.125rem] bg-[linear-gradient(135deg,#f48498,#993c50)] text-[14px] font-display font-bold text-white shadow-[0_8px_24px_rgba(153,60,80,0.25)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_12px_32px_rgba(153,60,80,0.35)]">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#f48498,#993c50)] text-[13px] font-display font-bold text-white shadow-[0_8px_24px_rgba(153,60,80,0.25)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_12px_32px_rgba(153,60,80,0.35)] sm:h-11 sm:w-11 sm:rounded-[1.125rem] sm:text-[14px]">
         LY
       </span>
       <span className="min-w-0 flex flex-col justify-center">
-        <span className="block truncate text-[16px] font-display font-bold tracking-tight text-[var(--foreground)] sm:text-[18px]">
+        <span className="block truncate text-[15px] font-display font-bold tracking-tight text-[var(--foreground)] sm:text-[18px]">
           Longyu Chat
         </span>
-        <span className="mt-0.5 block truncate text-[10px] font-bold tracking-[0.2em] text-[var(--muted)] uppercase">
+        <span className="mt-0.5 hidden truncate text-[10px] font-bold tracking-[0.2em] text-[var(--muted)] uppercase sm:block">
           多模型工作台
         </span>
       </span>
@@ -76,15 +76,15 @@ export function AppNavigation() {
   const isLoginPage = pathname === "/login";
 
   return (
-    <header className="sticky top-0 z-40 px-4 pb-2 pt-4 sm:px-6 sm:pb-4 sm:pt-6">
+    <header className="sticky top-0 z-40 px-3 pb-2 pt-3 sm:px-6 sm:pb-4 sm:pt-6">
       <div className="ly-shell">
-        <div className="ly-glass overflow-hidden rounded-[2rem] px-5 py-3 sm:rounded-[2.5rem] sm:px-6 sm:py-4 transition-all duration-500 hover:shadow-[0_32px_80px_rgba(47,46,51,0.06)]">
+        <div className="ly-glass overflow-hidden rounded-[1.6rem] px-4 py-3 sm:rounded-[2.5rem] sm:px-6 sm:py-4 transition-all duration-500 hover:shadow-[0_32px_80px_rgba(47,46,51,0.06)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center justify-between gap-4">
               <BrandBlock />
               <div className="flex items-center gap-2">
                 {session?.mode === "app" ? (
-                  <span className="shrink-0 rounded-full bg-[var(--accent)]/5 px-3 py-1.5 text-[10px] font-bold tracking-[0.15em] text-[var(--accent)] uppercase border border-[var(--accent)]/10">
+                  <span className="shrink-0 rounded-full bg-[var(--accent)]/5 px-2.5 py-1 text-[9px] font-bold tracking-[0.12em] text-[var(--accent)] uppercase border border-[var(--accent)]/10 sm:px-3 sm:py-1.5 sm:text-[10px] sm:tracking-[0.15em]">
                     已登录
                   </span>
                 ) : null}
@@ -98,7 +98,7 @@ export function AppNavigation() {
 
             {!isLoginPage && (
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                <nav className="-mx-2 flex snap-x gap-2 overflow-x-auto px-2 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-none">
+                <nav className="-mx-1.5 flex snap-x gap-1.5 overflow-x-auto px-1.5 pb-1 sm:mx-0 sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-none">
                   {navItems.map((item) => {
                     const active = item.match(pathname);
 
@@ -106,7 +106,7 @@ export function AppNavigation() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`shrink-0 snap-start whitespace-nowrap rounded-full px-5 py-2.5 text-center text-[14px] font-bold transition-all duration-300 ease-out active:scale-95 ${
+                        className={`shrink-0 snap-start whitespace-nowrap rounded-full px-4 py-2 text-center text-[13px] font-bold transition-all duration-300 ease-out active:scale-95 sm:px-5 sm:py-2.5 sm:text-[14px] ${
                           active
                             ? "bg-[linear-gradient(135deg,#993c50,#c7576f)] text-white shadow-md shadow-[var(--accent)]/20"
                             : "text-[var(--muted)] hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"

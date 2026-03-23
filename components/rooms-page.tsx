@@ -179,7 +179,39 @@ export function RoomsPage() {
 
   return (
     <main className="ly-shell flex flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
-      <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-4 lg:hidden">
+        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[2.2rem] px-5 py-8 shadow-2xl">
+          <div className="relative z-10">
+            <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.24em] text-white/90 uppercase backdrop-blur-md">
+              房间中心
+            </span>
+            <h1 className="mt-5 text-[2rem] font-display font-bold tracking-tight leading-[1.12]">
+              继续上一轮
+              <br />
+              或开启新协作
+            </h1>
+            <p className="mt-4 text-[14px] leading-relaxed text-white/80 font-medium">
+              手机上优先帮你回到房间、查看最新进展，再决定是否创建新的聊天工作流。
+            </p>
+            <div className="mt-7 grid grid-cols-2 gap-3">
+              <Link href="/rooms/new" className="rounded-[1.15rem] bg-white/95 px-4 py-3.5 text-center text-[14px] font-bold text-[#2b2a30] transition-all duration-300 hover:bg-white active:scale-95 shadow-[0_8px_24px_rgba(255,255,255,0.15)]">
+                新建房间
+              </Link>
+              <Link href="/models" className="rounded-[1.15rem] border border-white/20 bg-white/5 px-4 py-3.5 text-center text-[14px] font-bold text-white transition-all duration-300 hover:bg-white/15 active:scale-95 backdrop-blur-md">
+                管理模型
+              </Link>
+            </div>
+          </div>
+          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[linear-gradient(135deg,#c98af0,#f48498)] opacity-20 blur-[70px]" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard label="房间总数" value={roomSummary.totalRooms} description="全部房间" />
+          <SummaryCard label="消息总量" value={roomSummary.totalMessages} description="累计消息" />
+        </div>
+      </section>
+
+      <section className="hidden gap-8 lg:grid xl:grid-cols-[1.1fr_0.9fr]">
         <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[3.5rem] px-8 py-10 sm:px-12 sm:py-14 shadow-2xl">
           <div className="relative z-10 animate-fade-in-up">
             <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-bold tracking-[0.24em] text-white/90 uppercase backdrop-blur-md shadow-inner">
@@ -260,14 +292,14 @@ export function RoomsPage() {
 
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
-      <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="hidden gap-6 sm:grid-cols-2 xl:grid-cols-4 lg:grid">
         <SummaryCard label="房间总数" value={roomSummary.totalRooms} description="当前数据库里的全部房间数。" />
         <SummaryCard label="群聊房间" value={roomSummary.groupRooms} description="多模型按顺序发言的群聊房间。" />
         <SummaryCard label="单聊房间" value={roomSummary.singleRooms} description="只绑定一个模型的单聊房间。" />
         <SummaryCard label="消息总量" value={roomSummary.totalMessages} description="所有房间累计保存的消息数。" />
       </section>
 
-      <section className="ly-glass rounded-[3.5rem] p-8 sm:p-10 shadow-lg shadow-black/5">
+      <section className="ly-glass rounded-[2.2rem] p-5 sm:rounded-[3.5rem] sm:p-10 shadow-lg shadow-black/5">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -281,20 +313,20 @@ export function RoomsPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-[1fr_200px_240px]">
+        <div className="mt-6 grid gap-3 sm:mt-8 sm:gap-5 sm:grid-cols-2 lg:grid-cols-[1fr_200px_240px]">
           <div className="relative group">
             <span className="absolute left-5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]/50 group-focus-within:text-[var(--accent)] transition-all duration-300">搜索</span>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="搜索房间名称、模型名称或模型 ID"
-              className="w-full rounded-[1.75rem] border border-white/40 bg-white/50 pl-14 pr-6 py-5 text-[15px] font-medium outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 backdrop-blur-md shadow-inner"
+              className="w-full rounded-[1.35rem] border border-white/40 bg-white/50 pl-14 pr-5 py-4 text-[14px] font-medium outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 backdrop-blur-md shadow-inner sm:rounded-[1.75rem] sm:pr-6 sm:py-5 sm:text-[15px]"
             />
           </div>
           <select
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value as RoomFilterType)}
-            className="w-full rounded-[1.75rem] border border-white/40 bg-white/50 px-6 py-5 text-[15px] font-bold text-[var(--foreground)] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none shadow-sm cursor-pointer"
+            className="w-full rounded-[1.35rem] border border-white/40 bg-white/50 px-5 py-4 text-[14px] font-bold text-[var(--foreground)] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none shadow-sm cursor-pointer sm:rounded-[1.75rem] sm:px-6 sm:py-5 sm:text-[15px]"
           >
             <option value="ALL">全部类型</option>
             <option value="GROUP">群聊</option>
@@ -303,7 +335,7 @@ export function RoomsPage() {
           <select
             value={providerFilter}
             onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")}
-            className="w-full rounded-[1.75rem] border border-white/40 bg-white/50 px-6 py-5 text-[15px] font-bold text-[var(--foreground)] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none shadow-sm cursor-pointer"
+            className="w-full rounded-[1.35rem] border border-white/40 bg-white/50 px-5 py-4 text-[14px] font-bold text-[var(--foreground)] outline-none transition-all duration-300 focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none shadow-sm cursor-pointer sm:rounded-[1.75rem] sm:px-6 sm:py-5 sm:text-[15px]"
           >
             <option value="ALL">全部 Provider</option>
             {providerOptions.map((provider) => (
@@ -315,7 +347,7 @@ export function RoomsPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-2">
         {rooms.length === 0 ? (
           <div className="ly-glass rounded-[3rem] px-8 py-12 text-[15px] font-medium leading-relaxed text-[var(--muted)] text-center shadow-sm xl:col-span-2">
             {mockToolsEnabled
