@@ -223,7 +223,7 @@ export function HomeDashboard() {
           </div>
 
           <section className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">NEXT ACTION</p>
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">下一步</p>
             <h2 className="mt-3 text-2xl font-semibold">如果你是第一次用，最推荐这样开始</h2>
             <ol className="mt-5 grid gap-3 text-sm leading-7 text-[var(--muted)]">
               <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">

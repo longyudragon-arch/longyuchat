@@ -5,6 +5,7 @@ import type {
   JsonErrorResponse,
   MessageView,
   MessageRole,
+  ModelTestResultView,
   ModelView,
   ProviderType,
   RoomView,
@@ -221,6 +222,28 @@ export function getProviderLabel(provider: ProviderType) {
 export function getProviderOptionLabel(provider: ProviderType) {
   const preset = getProviderPreset(provider);
   return `${preset.labelZh} / ${preset.label}`;
+}
+
+export function getProviderChineseLabel(provider: ProviderType) {
+  return getProviderPreset(provider).labelZh;
+}
+
+export function formatModelTestMessage(state: ModelTestResultView | null) {
+  if (!state) {
+    return "还没有执行过连接测试。";
+  }
+
+  const normalized = state.message.trim().toLowerCase();
+
+  if (normalized === "connection test succeeded." || normalized === "connection test succeeded") {
+    return "连接测试成功。";
+  }
+
+  if (normalized === "connection test failed." || normalized === "connection test failed") {
+    return "连接测试失败。";
+  }
+
+  return state.message;
 }
 
 export function getProviderBadgeClassName(provider: ProviderType) {

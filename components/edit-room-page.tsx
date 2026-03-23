@@ -9,6 +9,7 @@ import {
   fetchJson,
   formatReplyLength,
   getProviderBadgeClassName,
+  getProviderChineseLabel,
   getProviderIconClassName,
   getProviderOptionLabel,
   getProviderShortName,
@@ -223,7 +224,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="ly-dark-panel ly-grid-lines rounded-[2.8rem] px-6 py-8 sm:px-8 sm:py-9">
           <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
-            ROOM EDITOR
+            房间编辑
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">在不打断历史消息的前提下重构房间成员与顺序</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
@@ -237,7 +238,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         </div>
 
         <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">ROOM STATUS</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">当前状态</p>
           <h2 className="mt-3 text-3xl font-semibold">当前正在编辑 {room?.title ? `「${room.title}」` : "房间配置"}</h2>
           <div className="mt-6 grid gap-3">
             <Link href={`/rooms/${roomId}`} className="rounded-[1.6rem] bg-[var(--accent)] px-5 py-4 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)]">
@@ -264,7 +265,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">CONFIG PANEL</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">配置面板</p>
           <h2 className="mt-2 text-2xl font-semibold">调整房间信息与成员选择</h2>
 
           <div className="mt-5 grid gap-4">
@@ -327,7 +328,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                           </div>
                           <p className="mt-1 text-xs text-[var(--muted)]">{model.modelName}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderOptionLabel(model.provider)}</span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderChineseLabel(model.provider)}</span>
                             <span className="rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</span>
                           </div>
                         </div>
@@ -343,7 +344,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
         <div className="xl:sticky xl:top-28 xl:self-start">
           <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">PIPELINE STATUS</p>
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">顺序状态</p>
             <h2 className="mt-2 text-2xl font-semibold">当前成员与顺序</h2>
             <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{toRoomLabel(form.type)} 模式下，保存后的顺序会在下一轮聊天里生效。</p>
 
@@ -403,7 +404,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                               <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{index + 1}</span>
                               <p className="font-medium">{model.name}</p>
                             </div>
-                            <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
+                            <p className="mt-1 text-xs text-[var(--muted)]">{getProviderChineseLabel(model.provider)}</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</p>
                           </div>
                         </div>

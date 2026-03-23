@@ -29,7 +29,10 @@ function BrandBlock() {
         <span className="block truncate text-base font-semibold tracking-tight text-[var(--foreground)] sm:text-lg">
           Longyu Chat
         </span>
-        <span className="block truncate text-xs tracking-[0.18em] text-[var(--muted)] sm:text-[11px]">
+        <span className="mt-0.5 block truncate text-[11px] tracking-[0.16em] text-[var(--muted)] sm:hidden">
+          多模型工作台
+        </span>
+        <span className="mt-0.5 hidden truncate text-xs tracking-[0.18em] text-[var(--muted)] sm:block sm:text-[11px]">
           MULTI-MODEL WORKSPACE
         </span>
       </span>
@@ -91,7 +94,7 @@ export function AppNavigation() {
 
             {!isLoginPage ? (
               <div className="flex flex-col gap-3 xl:items-end">
-                <nav className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+                <nav className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
                   {navItems.map((item) => {
                     const active = item.match(pathname);
 
@@ -99,9 +102,9 @@ export function AppNavigation() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`min-w-0 rounded-[1rem] px-3 py-2 text-center text-sm transition sm:rounded-full sm:px-4 ${
+                        className={`shrink-0 snap-start whitespace-nowrap rounded-full px-3.5 py-2 text-center text-[13px] transition sm:px-4 sm:text-sm ${
                           active
-                            ? "border border-[rgba(31,47,68,0.10)] bg-[var(--navy-soft)] text-[var(--navy)] shadow-[0_10px_20px_rgba(31,47,68,0.10)]"
+                            ? "border border-[rgba(31,47,68,0.12)] bg-[var(--navy-soft)] text-[var(--navy)] shadow-[0_10px_20px_rgba(31,47,68,0.10)]"
                             : "border border-[var(--border)] bg-white/72 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                         }`}
                       >

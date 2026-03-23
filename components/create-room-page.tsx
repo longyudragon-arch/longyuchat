@@ -9,6 +9,7 @@ import {
   fetchJson,
   formatReplyLength,
   getProviderBadgeClassName,
+  getProviderChineseLabel,
   getProviderIconClassName,
   getProviderOptionLabel,
   getProviderShortName,
@@ -179,7 +180,7 @@ export function CreateRoomPage() {
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="ly-dark-panel ly-grid-lines rounded-[2.8rem] px-6 py-8 sm:px-8 sm:py-9">
           <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
-            SEQUENCE BUILDER
+            协作链路
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">把模型拖进一条清晰的协作链路里</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
@@ -193,7 +194,7 @@ export function CreateRoomPage() {
         </div>
 
         <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">ROOM BRIEF</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">房间概要</p>
           <h2 className="mt-3 text-3xl font-semibold">先定义房间，再定义发言顺序</h2>
           <div className="mt-6 grid gap-4">
             <label className="space-y-2">
@@ -224,7 +225,7 @@ export function CreateRoomPage() {
         <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">MODEL LIBRARY</p>
+              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">模型库</p>
               <h2 className="mt-2 text-2xl font-semibold">从模型库中挑选参与者</h2>
             </div>
             {selectedModels.length > 0 ? (
@@ -274,7 +275,7 @@ export function CreateRoomPage() {
                         <p className="font-medium">{model.name}</p>
                         <p className="mt-1 text-xs text-[var(--muted)]">{model.modelName}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderOptionLabel(model.provider)}</span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderChineseLabel(model.provider)}</span>
                           <span className="rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</span>
                         </div>
                       </div>
@@ -289,7 +290,7 @@ export function CreateRoomPage() {
 
         <div className="xl:sticky xl:top-28 xl:self-start">
           <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">PIPELINE</p>
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">发言顺序</p>
             <h2 className="mt-2 text-2xl font-semibold">当前房间的发言顺序</h2>
             <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{toRoomLabel(roomForm.type)} 模式下，右侧顺序会成为后续回答的真实执行顺序。</p>
 
@@ -343,7 +344,7 @@ export function CreateRoomPage() {
                               <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{index + 1}</span>
                               <p className="font-medium">{model.name}</p>
                             </div>
-                            <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
+                            <p className="mt-1 text-xs text-[var(--muted)]">{getProviderChineseLabel(model.provider)}</p>
                             <p className="mt-1 text-xs text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</p>
                           </div>
                         </div>

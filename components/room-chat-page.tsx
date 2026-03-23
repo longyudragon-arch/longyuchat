@@ -13,8 +13,8 @@ import {
   formatDate,
   formatReplyLength,
   getProviderBadgeClassName,
+  getProviderChineseLabel,
   getProviderIconClassName,
-  getProviderOptionLabel,
   getProviderShortName,
   getProviderSoftClassName,
   getUserMessageRoundStatus,
@@ -165,7 +165,7 @@ function TimelineStepCard({
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(roomModel.model.provider)}`}
             >
-              {getProviderOptionLabel(roomModel.model.provider)}
+              {getProviderChineseLabel(roomModel.model.provider)}
             </span>
             <Chip
               text={state === "done" ? "已完成" : state === "active" ? "思考中" : state === "pending" ? "等待中" : "待命"}
@@ -538,6 +538,18 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     ? `${timelineDescription}${notice ? ` ${notice}` : ""}`
                     : "顺序已经准备好。发送消息后，模型会按当前顺序依次作答。"}
                 </p>
+                {currentFocusModel ? (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <Chip
+                      text={getProviderChineseLabel(currentFocusModel.model.provider)}
+                      className={`${getProviderBadgeClassName(currentFocusModel.model.provider)} border-white/10`}
+                    />
+                    <Chip
+                      text={formatReplyLength(currentFocusModel.model.defaultReplyLength)}
+                      className="border-white/12 bg-white/8 text-white/80"
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -624,14 +636,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                     const statusText =
                       status === "completed"
-                        ? "双对勾 · 已完成"
+                        ? "已完成"
                         : status === "partial"
                           ? "部分完成"
                           : status === "in-progress"
                             ? "进行中"
                             : status === "awaiting"
                               ? "等待中"
-                              : "单对勾 · 已送达";
+                              : "已送达";
 
                     return (
                       <article key={message.id} className="ml-auto max-w-[94%] sm:max-w-[86%]">
@@ -665,7 +677,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             <>
                               <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(provider)}`}>{getProviderShortName(provider)}</span>
                               <span className="text-sm font-medium">{messageModel?.name ?? "AI"}</span>
-                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>{getProviderOptionLabel(provider)}</span>
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>{getProviderChineseLabel(provider)}</span>
                               <span className="text-xs text-[var(--muted)]">{formatReplyLength(messageModel?.defaultReplyLength ?? 300)}</span>
                             </>
                           ) : (
@@ -757,7 +769,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[var(--border)] bg-[rgb(248,246,242)] px-3 py-1 text-xs text-[var(--muted)]">{index + 1}</span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(roomModel.model.provider)}`}>{getProviderOptionLabel(roomModel.model.provider)}</span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(roomModel.model.provider)}`}>{getProviderChineseLabel(roomModel.model.provider)}</span>
                       </div>
                       <p className="mt-2 font-medium">{roomModel.model.name}</p>
                       <p className="mt-1 text-xs text-[var(--muted)]">默认回复上限：{formatReplyLength(roomModel.model.defaultReplyLength)}</p>
