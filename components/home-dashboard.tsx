@@ -2,13 +2,8 @@ import Link from "next/link";
 
 import { LocalTestLauncher } from "@/components/local-test-launcher";
 
-const workflowHighlights = [
-  "先配模型，再建房间，再看 AI 依次作答。",
-  "聊天页会显示轮次时间线、顺序进度和部分成功提示。",
-  "支持私有部署、手机访问和微信打开，适合个人长期使用。",
-];
-
 const actionCards = [
+
   {
     href: "/models",
     eyebrow: "步骤 01",
@@ -54,68 +49,63 @@ const quickFacts = [
 export function HomeDashboard() {
   return (
     <main className="ly-shell flex flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      {/* Mobile Hero (only visible on small screens) */}
       <section className="grid gap-4 lg:hidden">
-        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[2.4rem] px-5 py-6">
-          <div className="relative">
-            <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-white/78">
-              移动工作台
+        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[2.8rem] px-6 py-8">
+          <div className="relative z-10">
+            <span className="inline-flex rounded-full border border-white/12 bg-white/10 px-3 py-1 text-[10px] font-bold tracking-[0.24em] text-white/80 uppercase">
+              AI 协作工作台
             </span>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight">把多个 AI 放进同一间房里协作回答</h1>
-            <p className="mt-3 text-sm leading-7 text-white/74">
-              手机上也不该只是缩小版网页。这里保留了最重要的能力：快速进房间、清楚看顺序、直接发消息。
+            <h1 className="mt-5 text-3xl font-bold tracking-tight leading-tight">
+              把多个 AI <br />
+              放进同一间房
+            </h1>
+            <p className="mt-4 text-[15px] leading-relaxed text-white/70">
+              这里保留了最核心的协作能力：录入模型、定义顺序、即时对话。
             </p>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-8 grid grid-cols-2 gap-3">
               <Link
                 href="/rooms/new"
-                className="rounded-[1.5rem] bg-white px-4 py-4 text-center text-sm font-medium text-[var(--foreground)] transition hover:bg-[#fff4ea]"
+                className="rounded-2xl bg-white px-4 py-4 text-center text-sm font-bold text-[var(--foreground)] transition active:scale-95 shadow-lg shadow-black/10"
               >
                 新建房间
               </Link>
               <Link
                 href="/rooms"
-                className="rounded-[1.5rem] border border-white/14 bg-white/8 px-4 py-4 text-center text-sm font-medium text-white transition hover:bg-white/12"
+                className="rounded-2xl border border-white/14 bg-white/10 px-4 py-4 text-center text-sm font-bold text-white transition active:scale-95"
               >
                 继续聊天
               </Link>
             </div>
-
-            <div className="mt-6 grid gap-3">
-              {quickFacts.map((fact) => (
-                <div
-                  key={fact.label}
-                  className="flex items-center justify-between rounded-[1.4rem] border border-white/10 bg-white/7 px-4 py-4"
-                >
-                  <p className="text-sm text-white/70">{fact.label}</p>
-                  <p className="text-base font-semibold text-white">{fact.value}</p>
-                </div>
-              ))}
-            </div>
           </div>
+          <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[var(--accent)] opacity-20 blur-[60px]" />
         </div>
 
-        <div className="ly-glass rounded-[2.2rem] p-5">
+        <div className="ly-glass rounded-[2.6rem] p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">立即开始</p>
-              <h2 className="mt-2 text-2xl font-semibold">先做真正有用的三步</h2>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">立即开始</p>
+              </div>
+              <h2 className="mt-3 text-2xl font-bold tracking-tight">引导三步走</h2>
             </div>
-            <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-1 text-xs text-[var(--muted)]">手机优先</span>
           </div>
 
-          <div className="mt-5 grid gap-3">
-            {actionCards.map((card) => (
+          <div className="mt-6 grid gap-3">
+            {actionCards.map((card, index) => (
               <Link
                 key={card.href}
                 href={card.href}
-                className="rounded-[1.6rem] border border-[var(--border)] bg-white/84 px-4 py-4 transition hover:border-[var(--accent)]"
+                className="group relative rounded-[2rem] border border-[var(--border)] bg-white/80 px-5 py-5 transition-all active:scale-[0.98]"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-[var(--accent-strong)]">{card.eyebrow}</p>
-                  <span className="text-sm font-medium text-[var(--accent)]">{card.cta}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-[var(--muted)] opacity-40 uppercase">STEP 0{index + 1}</span>
+                  <span className="text-[11px] font-bold text-[var(--accent)]">{card.cta} 鈫</span>
                 </div>
-                <h3 className="mt-2 text-xl font-semibold">{card.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{card.body}</p>
+                <h3 className="mt-2 text-lg font-bold tracking-tight text-[var(--foreground)]">{card.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)] opacity-80">{card.body}</p>
               </Link>
             ))}
           </div>
@@ -124,95 +114,97 @@ export function HomeDashboard() {
         <LocalTestLauncher />
       </section>
 
-      <section className="hidden gap-6 lg:grid xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[2.8rem] px-6 py-7 sm:px-8 sm:py-8">
-          <div className="relative">
-            <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
-              LONGYU CHAT 工作台
+      {/* Desktop Layout */}
+      <section className="hidden gap-6 lg:grid xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="ly-dark-panel ly-grid-lines relative overflow-hidden rounded-[3rem] px-10 py-12 flex flex-col justify-center">
+          <div className="relative z-10">
+            <span className="inline-flex rounded-full border border-white/12 bg-white/10 px-3 py-1 text-[10px] font-bold tracking-[0.24em] text-white/80 uppercase">
+              Productivity Redefined
             </span>
-            <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              进入你的多模型协作工作台
+            <h1 className="mt-8 text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl xl:leading-[1.05]">
+              多模型顺序协作 <br />
+              <span className="text-white/50">极简实验场</span>
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/74 sm:text-base sm:leading-8">
-              首页的任务不是解释概念，而是带你直接进入工作流：配置模型、创建房间、继续聊天，然后看多个 AI
-              按顺序依次回复。
+            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/70">
+              首页带你直达核心：先配置模型入口，再按需编排协作流水线。
+              发送一条消息，即可见证多个 AI 按照你的意志依次作答。
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 href="/rooms/new"
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-[var(--foreground)] transition hover:bg-[#fff4ea]"
+                className="rounded-full bg-white px-8 py-4 text-base font-bold text-[var(--foreground)] transition hover:bg-[#fff4ea] hover:shadow-xl active:scale-95 shadow-lg shadow-black/10"
               >
                 立即创建房间
               </Link>
               <Link
                 href="/rooms"
-                className="rounded-full border border-white/14 bg-white/8 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/12"
+                className="rounded-full border border-white/14 bg-white/10 px-8 py-4 text-base font-bold text-white transition hover:bg-white/15 active:scale-95"
               >
-                查看已有房间
+                查看历史记录
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3">
-              {workflowHighlights.map((item) => (
-                <div
-                  key={item}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm leading-6 text-white/82"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="mt-12 grid gap-4 sm:grid-cols-3">
               {quickFacts.map((fact) => (
                 <div
                   key={fact.label}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-white/86"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-5 ring-1 ring-white/10 transition-colors hover:bg-white/8"
                 >
-                  <p className="text-xs font-semibold tracking-[0.16em] text-white/50">{fact.label}</p>
-                  <p className="mt-2 text-lg font-semibold">{fact.value}</p>
+                  <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">{fact.label}</p>
+                  <p className="mt-2 text-xl font-bold text-white/90">{fact.value}</p>
                 </div>
               ))}
             </div>
           </div>
+          {/* Decorative elements */}
+          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-blue-500 opacity-10 blur-[120px]" />
+          <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-amber-500 opacity-5 blur-[80px]" />
         </div>
 
-        <aside className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
+        <aside className="ly-glass flex flex-col rounded-[3rem] p-8 xl:p-10">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">立即开始</p>
-              <h2 className="mt-3 text-3xl font-semibold">直接开始，而不是先看长说明</h2>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">快速导航</p>
+              </div>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight">从这里开始你的实验</h2>
             </div>
-            <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-1 text-xs text-[var(--muted)]">
-              三步上手
+            <span className="rounded-full bg-black/5 px-4 py-2 text-[11px] font-bold text-[var(--muted)]">
+              入门引导
             </span>
           </div>
 
-          <div className="mt-6 grid gap-4">
-            {actionCards.map((card) => (
+          <div className="mt-10 grid flex-1 gap-5">
+            {actionCards.map((card, index) => (
               <Link
                 key={card.href}
                 href={card.href}
-                className="rounded-[2rem] border border-[var(--border)] bg-white/84 px-5 py-5 transition hover:-translate-y-1 hover:border-[var(--accent)]"
+                className="group relative flex flex-col rounded-[2.2rem] border border-[var(--border)] bg-white/84 px-7 py-6 transition-all hover:border-[var(--accent)] hover:shadow-2xl hover:shadow-[var(--accent)]/10 hover:-translate-y-1 active:scale-[0.98]"
               >
-                <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">{card.eyebrow}</p>
-                <h3 className="mt-2 text-2xl font-semibold">{card.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{card.body}</p>
-                <span className="mt-5 inline-flex text-sm font-medium text-[var(--accent)]">{card.cta}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.25em] text-[var(--muted)] opacity-30 uppercase">Task 0{index + 1}</span>
+                  <span className="text-xs font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1">{card.cta} 鈫</span>
+                </div>
+                <h3 className="mt-3 text-2xl font-bold tracking-tight text-[var(--foreground)]">{card.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)] opacity-80">{card.body}</p>
               </Link>
             ))}
           </div>
         </aside>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="grid gap-5 lg:grid-cols-2">
+      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-6 sm:grid-cols-2">
           {experienceCards.map((card) => (
-            <article key={card.title} className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
-              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">{card.eyebrow}</p>
-              <h2 className="mt-3 text-2xl font-semibold">{card.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{card.body}</p>
+            <article key={card.title} className="ly-glass rounded-[2.6rem] p-7 sm:p-8 flex flex-col justify-between">
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">{card.eyebrow}</p>
+                <h2 className="mt-4 text-2xl font-bold tracking-tight">{card.title}</h2>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--muted)] opacity-90">{card.body}</p>
+              </div>
+              <div className="mt-8 h-1 w-12 rounded-full bg-[var(--border)]" />
             </article>
           ))}
         </div>
@@ -222,20 +214,26 @@ export function HomeDashboard() {
             <LocalTestLauncher />
           </div>
 
-          <section className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">下一步</p>
-            <h2 className="mt-3 text-2xl font-semibold">如果你是第一次用，最推荐这样开始</h2>
-            <ol className="mt-5 grid gap-3 text-sm leading-7 text-[var(--muted)]">
-              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
-                1. 先到模型管理页配置至少 2 个可用模型。
-              </li>
-              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
-                2. 去新建房间页拖拽出你希望的回复顺序。
-              </li>
-              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
-                3. 进入聊天页，看 AI 按顺序逐条出现，而不是一次性全部返回。
-              </li>
-            </ol>
+          <section className="ly-glass rounded-[2.6rem] p-7 sm:p-8">
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+              <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--accent-strong)] uppercase">使用建议</p>
+            </div>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight">新手配置 Checklist</h2>
+            <div className="mt-8 space-y-3">
+              <div className="flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-white/60 p-4 transition-colors hover:bg-white/80">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[10px] font-bold text-[var(--accent)]">1</span>
+                <p className="text-sm font-medium leading-relaxed">先在「模型管理」录入至少 2 个已开启连接测试的模型。</p>
+              </div>
+              <div className="flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-white/60 p-4 transition-colors hover:bg-white/80">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[10px] font-bold text-[var(--accent)]">2</span>
+                <p className="text-sm font-medium leading-relaxed">去「新建房间」挑选这 2 个模型，并拖动排列顺序。</p>
+              </div>
+              <div className="flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-white/60 p-4 transition-colors hover:bg-white/80">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[10px] font-bold text-[var(--accent)]">3</span>
+                <p className="text-sm font-medium leading-relaxed">进入聊天，发送一条指令，看模型如何串联接力回答。</p>
+              </div>
+            </div>
           </section>
         </div>
       </section>
