@@ -13,7 +13,8 @@ const navItems = [
   {
     href: "/rooms",
     label: "房间列表",
-    match: (pathname: string) => pathname === "/rooms" || /^\/rooms\/[^/]+(?:\/edit)?$/.test(pathname),
+    match: (pathname: string) =>
+      pathname === "/rooms" || /^\/rooms\/(?!new(?:\/|$))[^/]+(?:\/edit)?$/.test(pathname),
   },
   { href: "/rooms/new", label: "新建房间", match: (pathname: string) => pathname === "/rooms/new" },
 ];
