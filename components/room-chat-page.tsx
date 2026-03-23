@@ -13,8 +13,10 @@ import {
 } from "react";
 
 import {
+  countAssistantRepliesForUserMessage,
   describeClientError,
   describePartialSendResult,
+  findNextUserMessageAfterSequence,
   fetchJson,
   formatDate,
   formatReplyLength,
@@ -23,6 +25,7 @@ import {
   getProviderOptionLabel,
   getProviderShortName,
   getProviderSoftClassName,
+  getUserMessageRoundStatus,
   reorderIds,
   sendRoomMessageRequest,
   toRoleLabel,
@@ -36,6 +39,12 @@ interface RoomChatPageProps {
 }
 
 type RoomAction = "loading" | "sending" | "saving-order" | "renaming-room" | "deleting-room" | null;
+type PendingRoundState = {
+  baselineSequence: number;
+  userSequence: number | null;
+  completedAssistantCount: number;
+  expectedAssistantCount: number;
+};
 
 function RoomChatSkeleton() {
   return (
@@ -76,27 +85,6 @@ function DeliveryBadge({ text, className }: { text: string; className: string })
   return <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${className}`}>{text}</span>;
 }
 
-function getUserMessageDeliveryStatus(message: MessageView, messages: MessageView[], expectedAssistantCount: number) {
-  const nextUserMessage = messages.find((candidate) => candidate.role === "USER" && candidate.sequence > message.sequence);
-  const nextUserSequence = nextUserMessage?.sequence ?? Number.POSITIVE_INFINITY;
-  const assistantMessagesInRound = messages.filter(
-    (candidate) =>
-      candidate.role === "ASSISTANT" &&
-      candidate.sequence > message.sequence &&
-      candidate.sequence < nextUserSequence,
-  );
-
-  if (assistantMessagesInRound.length === 0) {
-    return "sent" as const;
-  }
-
-  if (assistantMessagesInRound.length >= expectedAssistantCount) {
-    return "completed" as const;
-  }
-
-  return "partial" as const;
-}
-
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const router = useRouter();
   const messageListRef = useRef<HTMLDivElement | null>(null);
@@ -108,6 +96,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const [feedback, setFeedback] = useState<ClientErrorFeedback | null>(null);
   const [notice, setNotice] = useState("");
   const [activeAction, setActiveAction] = useState<RoomAction>("loading");
+  const [pendingRound, setPendingRound] = useState<PendingRoundState | null>(null);
   const [draftModelIds, setDraftModelIds] = useState<string[]>([]);
   const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
   const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
@@ -116,15 +105,72 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const isBusy = activeAction !== null;
   const isSending = activeAction === "sending";
 
-  async function loadRoom() {
+  async function fetchRoomState() {
     const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${roomId}`);
-    setRoom(data.room);
-    setDraftModelIds(data.room.roomModels.map((roomModel) => roomModel.modelId));
+    return data.room;
+  }
+
+  async function loadRoom() {
+    const nextRoom = await fetchRoomState();
+    setRoom(nextRoom);
+    setDraftModelIds(nextRoom.roomModels.map((roomModel) => roomModel.modelId));
+    return nextRoom;
+  }
+
+  async function fetchMessagesState() {
+    const data = await fetchJson<{ messages: MessageView[] }>(`/api/rooms/${roomId}/messages`);
+    return data.messages;
   }
 
   async function loadMessages() {
-    const data = await fetchJson<{ messages: MessageView[] }>(`/api/rooms/${roomId}/messages`);
-    setMessages(data.messages);
+    const nextMessages = await fetchMessagesState();
+    setMessages(nextMessages);
+    return nextMessages;
+  }
+
+  function syncPendingRoundFromMessages(nextMessages: MessageView[], baselineSequence: number, expectedAssistantCount: number) {
+    const persistedUserMessage = findNextUserMessageAfterSequence(nextMessages, baselineSequence);
+    const completedAssistantCount = persistedUserMessage
+      ? countAssistantRepliesForUserMessage(nextMessages, persistedUserMessage.sequence)
+      : 0;
+
+    setPendingRound({
+      baselineSequence,
+      userSequence: persistedUserMessage?.sequence ?? null,
+      completedAssistantCount,
+      expectedAssistantCount,
+    });
+
+    if (persistedUserMessage) {
+      setPendingUserContent("");
+    }
+
+    setNotice(`姝ｅ湪绛夊緟 AI 渚濇鍥炲锛?${completedAssistantCount}/${expectedAssistantCount}`);
+  }
+
+  async function watchSequentialReplies(
+    baselineSequence: number,
+    expectedAssistantCount: number,
+    requestPromise: Promise<unknown>,
+  ) {
+    let settled = false;
+    void requestPromise.finally(() => {
+      settled = true;
+    });
+
+    while (!settled) {
+      try {
+        const nextMessages = await fetchMessagesState();
+        setMessages(nextMessages);
+        syncPendingRoundFromMessages(nextMessages, baselineSequence, expectedAssistantCount);
+      } catch {
+        // Ignore intermittent polling errors while the primary send request is still running.
+      }
+
+      if (!settled) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      }
+    }
   }
 
   const handleInitialLoad = useEffectEvent(async () => {
@@ -265,15 +311,27 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     }
 
     const normalizedContent = messageInput.trim();
+    const baselineSequence = messages.at(-1)?.sequence ?? 0;
+    const expectedAssistantCount = room.roomModels.length;
     setActiveAction("sending");
+    setMessageInput("");
     setPendingUserContent(normalizedContent);
     setFeedback(null);
+    setPendingRound({
+      baselineSequence,
+      userSequence: null,
+      completedAssistantCount: 0,
+      expectedAssistantCount,
+    });
+    setNotice(`姝ｅ湪绛夊緟 AI 渚濇鍥炲锛?0/${expectedAssistantCount}`);
 
     try {
-      const result = await sendRoomMessageRequest(room.id, normalizedContent);
-      setMessageInput("");
-      setPendingUserContent("");
+      const requestPromise = sendRoomMessageRequest(room.id, normalizedContent);
+      await watchSequentialReplies(baselineSequence, expectedAssistantCount, requestPromise);
+      const result = await requestPromise;
       await Promise.all([loadMessages(), loadRoom()]);
+      setPendingRound(null);
+      setPendingUserContent("");
 
       if (result.status === "partial") {
         const failedModel =
@@ -284,7 +342,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         setNotice("消息已发送，本轮顺序回复已完成。");
       }
     } catch (error: unknown) {
+      setMessageInput(normalizedContent);
       setPendingUserContent("");
+      setPendingRound(null);
       setFeedback(describeClientError(error));
     } finally {
       setActiveAction(null);
@@ -367,7 +427,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             <div ref={messageListRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
               {messages.map((message) => {
                 if (message.role === "USER") {
-                  const status = getUserMessageDeliveryStatus(message, messages, room?.roomModels.length ?? 1);
+                  const status = getUserMessageRoundStatus({
+                    message,
+                    messages,
+                    expectedAssistantCount: room?.roomModels.length ?? 1,
+                    pendingRoundUserSequence: pendingRound?.userSequence,
+                    sendInProgress: isSending,
+                  });
                   const badge =
                     status === "completed"
                       ? <DeliveryBadge text="已完成" className="border-emerald-200 bg-emerald-50 text-emerald-700" />

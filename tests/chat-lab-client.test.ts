@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  countAssistantRepliesForUserMessage,
   ClientRequestError,
   describeClientError,
   describePartialSendResult,
+  findNextUserMessageAfterSequence,
+  getUserMessageRoundStatus,
   supportsAutomaticModelDiscovery,
 } from "@/lib/client/chat-lab-client";
+import type { MessageView } from "@/types/app";
 
 describe("describeClientError", () => {
   it("returns API key guidance for authentication failures", () => {
@@ -66,5 +70,114 @@ describe("supportsAutomaticModelDiscovery", () => {
     expect(supportsAutomaticModelDiscovery("HUNYUAN")).toBe(false);
     expect(supportsAutomaticModelDiscovery("QWEN")).toBe(false);
     expect(supportsAutomaticModelDiscovery("CLAUDE")).toBe(false);
+  });
+});
+
+describe("message round helpers", () => {
+  const messages: MessageView[] = [
+    {
+      id: "user-1",
+      roomId: "room-1",
+      sequence: 1,
+      role: "USER",
+      modelId: null,
+      model: null,
+      content: "Hello",
+      createdAt: "2026-03-23T10:00:00.000Z",
+    },
+    {
+      id: "assistant-1",
+      roomId: "room-1",
+      sequence: 2,
+      role: "ASSISTANT",
+      modelId: "model-a",
+      model: null,
+      content: "Reply A",
+      createdAt: "2026-03-23T10:00:01.000Z",
+    },
+    {
+      id: "user-2",
+      roomId: "room-1",
+      sequence: 3,
+      role: "USER",
+      modelId: null,
+      model: null,
+      content: "Next",
+      createdAt: "2026-03-23T10:00:02.000Z",
+    },
+    {
+      id: "assistant-2",
+      roomId: "room-1",
+      sequence: 4,
+      role: "ASSISTANT",
+      modelId: "model-a",
+      model: null,
+      content: "Reply B",
+      createdAt: "2026-03-23T10:00:03.000Z",
+    },
+  ];
+
+  it("finds the next persisted user message after a baseline sequence", () => {
+    expect(findNextUserMessageAfterSequence(messages, 1)?.id).toBe("user-2");
+    expect(findNextUserMessageAfterSequence(messages, 3)).toBeNull();
+  });
+
+  it("counts only the assistant replies in the current user round", () => {
+    expect(countAssistantRepliesForUserMessage(messages, 1)).toBe(1);
+    expect(countAssistantRepliesForUserMessage(messages, 3)).toBe(1);
+  });
+
+  it("distinguishes between awaiting, in-progress, partial, and completed rounds", () => {
+    expect(
+      getUserMessageRoundStatus({
+        message: messages[2],
+        messages: [messages[0], messages[2]],
+        expectedAssistantCount: 2,
+        pendingRoundUserSequence: 3,
+        sendInProgress: true,
+      }),
+    ).toBe("awaiting");
+
+    expect(
+      getUserMessageRoundStatus({
+        message: messages[2],
+        messages,
+        expectedAssistantCount: 2,
+        pendingRoundUserSequence: 3,
+        sendInProgress: true,
+      }),
+    ).toBe("in-progress");
+
+    expect(
+      getUserMessageRoundStatus({
+        message: messages[2],
+        messages,
+        expectedAssistantCount: 2,
+        pendingRoundUserSequence: null,
+        sendInProgress: false,
+      }),
+    ).toBe("partial");
+
+    expect(
+      getUserMessageRoundStatus({
+        message: messages[2],
+        messages: [
+          ...messages,
+          {
+            id: "assistant-3",
+            roomId: "room-1",
+            sequence: 5,
+            role: "ASSISTANT",
+            modelId: "model-b",
+            model: null,
+            content: "Reply C",
+            createdAt: "2026-03-23T10:00:04.000Z",
+          },
+        ],
+        expectedAssistantCount: 2,
+        pendingRoundUserSequence: 3,
+        sendInProgress: true,
+      }),
+    ).toBe("completed");
   });
 });

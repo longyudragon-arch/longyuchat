@@ -3,6 +3,7 @@ import type {
   AuthSessionView,
   DiscoveredModelView,
   JsonErrorResponse,
+  MessageView,
   MessageRole,
   ModelView,
   ProviderType,
@@ -471,6 +472,51 @@ export function reorderIds(ids: string[], draggedId: string, targetId: string) {
   const [movedId] = nextIds.splice(sourceIndex, 1);
   nextIds.splice(targetIndex, 0, movedId);
   return nextIds;
+}
+
+export function findNextUserMessageAfterSequence(messages: MessageView[], baselineSequence: number) {
+  return messages.find((message) => message.role === "USER" && message.sequence > baselineSequence) ?? null;
+}
+
+export function countAssistantRepliesForUserMessage(messages: MessageView[], userSequence: number) {
+  const nextUserMessage = messages.find((message) => message.role === "USER" && message.sequence > userSequence);
+  const nextUserSequence = nextUserMessage?.sequence ?? Number.POSITIVE_INFINITY;
+
+  return messages.filter(
+    (message) =>
+      message.role === "ASSISTANT" && message.sequence > userSequence && message.sequence < nextUserSequence,
+  ).length;
+}
+
+export type UserMessageRoundStatus = "sent" | "awaiting" | "in-progress" | "partial" | "completed";
+
+export function getUserMessageRoundStatus(input: {
+  message: MessageView;
+  messages: MessageView[];
+  expectedAssistantCount: number;
+  pendingRoundUserSequence?: number | null;
+  sendInProgress?: boolean;
+}): UserMessageRoundStatus {
+  const assistantReplyCount = countAssistantRepliesForUserMessage(input.messages, input.message.sequence);
+  const isPendingRound = input.pendingRoundUserSequence === input.message.sequence;
+
+  if (assistantReplyCount >= input.expectedAssistantCount) {
+    return "completed";
+  }
+
+  if (isPendingRound && input.sendInProgress) {
+    if (assistantReplyCount === 0) {
+      return "awaiting";
+    }
+
+    return "in-progress";
+  }
+
+  if (assistantReplyCount > 0) {
+    return "partial";
+  }
+
+  return "sent";
 }
 
 export async function sendRoomMessageRequest(roomId: string, content: string) {
