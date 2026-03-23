@@ -9,8 +9,8 @@ import {
 } from "@/lib/client/chat-lab-client";
 
 const capabilityList = [
-  "模型配置、连接测试、单聊、群聊和历史续聊全部在同一套工作流中完成。",
-  "多模型群聊突出“依次发言”和“协作进度”，不是普通聊天窗口的堆砌。",
+  "模型配置、连接测试、单聊、群聊和历史续聊全部在同一套工作流里完成。",
+  "多模型群聊强调“依次发言”和“协作进度”，不是普通聊天窗口的简单堆叠。",
   "支持私有部署、手机访问和微信打开，适合个人长期使用与持续迭代。",
   "已经具备本地 mock、备份、日志和健康检查等基础运维能力。",
 ];
@@ -49,7 +49,8 @@ export function HomeDashboard() {
               让多个 AI 在同一间房里按顺序协作发言
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/74 sm:text-base sm:leading-8">
-              这不是一个普通聊天页，而是一套把“模型配置、顺序协作、私有部署、移动访问”串成闭环的中文工作台。你可以配置多个模型，让它们轮流作答，再回到历史房间继续聊。
+              这不是一个普通聊天页，而是一套把“模型配置、顺序协作、私有部署、移动访问”串成闭环的中文工作台。
+              你可以配置多个模型，让它们轮流作答，再回到历史房间继续聊。
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -82,9 +83,10 @@ export function HomeDashboard() {
 
         <aside className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
           <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">COLLABORATION MAP</p>
-          <h2 className="mt-3 text-3xl font-semibold">顺序协作不只是在等回复</h2>
+          <h2 className="mt-3 text-3xl font-semibold">顺序协作不只是“等回复”</h2>
           <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-            你可以把不同 Provider 的模型放进同一个房间里，按照你指定的顺序轮流回复。聊天页会保留用户消息状态、顺序时间线和部分成功反馈，方便你看清谁先答、谁中途失败、谁还在等待。
+            你可以把不同 Provider 的模型放进同一个房间里，按照你指定的顺序轮流回复。
+            聊天页会保留用户消息状态、顺序时间线和部分成功反馈，方便你看清谁先答、谁中途失败、谁还在等待。
           </p>
 
           <div className="mt-6 grid gap-3">
@@ -106,7 +108,7 @@ export function HomeDashboard() {
               <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">STEP 03</p>
               <p className="mt-2 text-lg font-semibold">看 AI 依次作答</p>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                用户发出消息后，模型会逐个落库、逐个出现，并以时间线方式展示正在轮到谁。
+                用户发出消息后，模型会逐个落库、逐个出现，并以时间线方式展示当前轮到谁。
               </p>
             </div>
           </div>
@@ -118,7 +120,8 @@ export function HomeDashboard() {
           <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">PROVIDER IDENTITY</p>
           <h2 className="mt-3 text-3xl font-semibold">统一的模型身份体系</h2>
           <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-            不同 Provider 在模型管理、房间配置和聊天页里使用统一的颜色、缩写和标签，方便你在一眼之间识别是谁在说话。
+            不同 Provider 在模型管理、房间配置和聊天页里使用统一的颜色、缩写和标签，
+            方便你在一眼之间识别是谁在说话。
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -135,7 +138,8 @@ export function HomeDashboard() {
           <div className="mt-6 rounded-[1.8rem] border border-[var(--border)] bg-[var(--navy)] px-4 py-4 text-white shadow-[0_20px_40px_rgba(31,47,68,0.16)]">
             <p className="text-sm font-semibold">适合当前阶段的部署方式</p>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              当前版本已经具备站内登录、移动端基础体验、自动备份、日志轮转和一键更新脚本，适合个人服务器长期使用。
+              当前版本已经具备站内登录、移动端基础体验、自动备份、日志轮转和一键更新脚本，
+              适合个人服务器长期使用。
             </p>
           </div>
         </div>

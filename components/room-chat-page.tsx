@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +31,7 @@ interface RoomChatPageProps {
 }
 
 type RoomAction = "loading" | "sending" | "saving-order" | "renaming-room" | "deleting-room" | null;
+
 type PendingRoundState = {
   baselineSequence: number;
   userSequence: number | null;
@@ -40,8 +41,12 @@ type PendingRoundState = {
 
 function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
   if (!feedback) return null;
+
   const toneClass =
-    feedback.tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-900";
+    feedback.tone === "warning"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : "border-red-200 bg-red-50 text-red-900";
+
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${toneClass}`}>
       <p className="text-sm font-semibold">{feedback.title}</p>
@@ -106,10 +111,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     });
 
     if (persistedUserMessage) setPendingUserContent("");
-    setNotice(`本轮协作正在推进：${completedAssistantCount}/${expectedAssistantCount}`);
+    setNotice(`本轮协作正在推进，已完成 ${completedAssistantCount}/${expectedAssistantCount} 个模型回复。`);
   }
 
-  async function watchSequentialReplies(baselineSequence: number, expectedAssistantCount: number, requestPromise: Promise<unknown>) {
+  async function watchSequentialReplies(
+    baselineSequence: number,
+    expectedAssistantCount: number,
+    requestPromise: Promise<unknown>,
+  ) {
     let settled = false;
     void requestPromise.finally(() => {
       settled = true;
@@ -121,7 +130,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         setMessages(nextMessages);
         syncPendingRound(nextMessages, baselineSequence, expectedAssistantCount);
       } catch {}
-      if (!settled) await new Promise((resolve) => setTimeout(resolve, 900));
+
+      if (!settled) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      }
     }
   }
 
@@ -167,7 +179,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     return orderedRoomModels.slice(0, total).map((roomModel, index) => ({
       roomModel,
       state:
-        index < pendingRound.completedAssistantCount ? "done" : index === pendingRound.completedAssistantCount ? "active" : "pending",
+        index < pendingRound.completedAssistantCount
+          ? "done"
+          : index === pendingRound.completedAssistantCount
+            ? "active"
+            : "pending",
     }));
   }, [isSending, orderedRoomModels, pendingRound]);
 
@@ -188,6 +204,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     if (!room || !orderDirty) return;
     setActiveAction("saving-order");
     setFeedback(null);
+
     try {
       const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${room.id}/order`, {
         method: "PUT",
@@ -195,7 +212,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       });
       setRoom(data.room);
       setDraftModelIds(data.room.roomModels.map((item) => item.modelId));
-      setNotice("排序已经保存。");
+      setNotice("顺序已经保存。");
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -207,8 +224,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     if (!room) return;
     const nextTitle = window.prompt("请输入新的房间名称：", room.title);
     if (!nextTitle || nextTitle.trim() === room.title) return;
+
     setActiveAction("renaming-room");
     setFeedback(null);
+
     try {
       const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${room.id}`, {
         method: "PUT",
@@ -226,6 +245,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   async function deleteRoom() {
     if (!room || !window.confirm(`确认删除房间「${room.title}」吗？`)) return;
     setActiveAction("deleting-room");
+
     try {
       await fetchJson(`/api/rooms/${room.id}`, { method: "DELETE" });
       router.push("/rooms");
@@ -237,6 +257,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   async function sendMessage() {
     if (!room || !messageInput.trim()) return;
+
     if (orderDirty) {
       setFeedback({
         title: "请先保存排序",
@@ -256,7 +277,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     setPendingUserContent(normalizedContent);
     setFeedback(null);
     setPendingRound({ baselineSequence, userSequence: null, completedAssistantCount: 0, expectedAssistantCount });
-    setNotice(`本轮协作正在推进：0/${expectedAssistantCount}`);
+    setNotice(`本轮协作开始，准备依次等待 ${expectedAssistantCount} 个模型回复。`);
 
     try {
       const requestPromise = sendRoomMessageRequest(room.id, normalizedContent);
@@ -265,10 +286,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       await Promise.all([loadMessages(), loadRoom()]);
       setPendingRound(null);
       setPendingUserContent("");
+
       if (result.status === "partial") {
         const failedModel = room.roomModels.find((item) => item.modelId === result.failedModelId)?.model.name ?? "未知模型";
         setFeedback(describePartialSendResult(result, failedModel));
-        setNotice("本轮回复部分完成。");
+        setNotice("这一轮只完成了部分回复。");
       } else {
         setNotice("消息已发送，本轮顺序回复已经完成。");
       }
@@ -285,7 +307,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (!isBusy) startTransition(() => void sendMessage());
+      if (!isBusy) {
+        startTransition(() => void sendMessage());
+      }
     }
   }
 
@@ -305,36 +329,65 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     <main className="ly-shell flex flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="ly-dark-panel ly-grid-lines overflow-hidden rounded-[2.8rem] px-6 py-7 sm:px-8 sm:py-9">
-          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">CONVERSATION ROOM</span>
+          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
+            CONVERSATION ROOM
+          </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">{room?.title ?? "正在加载房间..."}</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">这里不只是消息列表，而是一套清楚展示“谁先说、谁正在思考、谁已经完成”的多模型协作工作区。</p>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
+            这里不只是消息列表，而是一套清楚展示“谁先说、谁正在思考、谁已经完成”的多模型协作工作区。
+          </p>
           <div className="mt-6 flex flex-wrap gap-2 text-sm">
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">{room ? toRoomLabel(room.type) : "房间"}</span>
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">{room?.roomModels.length ?? 0} 个模型参与</span>
             <span className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-white/78">累计 {room?.messageCount ?? 0} 条消息</span>
           </div>
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <Link href="/rooms" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">返回房间列表</Link>
-            <Link href={`/rooms/${roomId}/edit`} className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">编辑当前房间</Link>
-            <Link href="/rooms/new" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">新建另一个房间</Link>
+            <Link href="/rooms" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+              返回房间列表
+            </Link>
+            <Link href={`/rooms/${roomId}/edit`} className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+              编辑当前房间
+            </Link>
+            <Link href="/rooms/new" className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm text-white/82 transition hover:bg-white/10">
+              新建另一个房间
+            </Link>
           </div>
         </div>
 
         <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-[var(--navy-soft)] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[var(--navy)]">LIVE ORDER</span>
+            <span className="rounded-full bg-[var(--navy-soft)] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[var(--navy)]">
+              LIVE ORDER
+            </span>
             <span className="text-sm text-[var(--muted)]">{notice || "可以直接开始聊天，也可以先调整模型顺序。"}</span>
           </div>
           <h2 className="mt-4 text-2xl font-semibold">当前轮次与模型链路</h2>
-          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">用户消息发出后，模型会严格按当前顺序逐个回复。你可以在等待时直接看到本轮已经完成到哪一步。</p>
+          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+            用户消息发出后，模型会严格按当前顺序逐个回复。你可以在等待时直接看到这一轮已经完成到哪一步。
+          </p>
           <div className="mt-6 flex flex-wrap items-center gap-2">
             {orderedRoomModels.map((roomModel, index) => {
               const timelineItem = pendingTimeline.find((item) => item.roomModel.id === roomModel.id);
               const state = timelineItem?.state ?? "idle";
+
               return (
                 <div key={roomModel.id} className="flex items-center gap-2">
-                  <div className={`flex items-center gap-3 rounded-full border px-3 py-2 ${state === "done" ? "border-emerald-200 bg-emerald-50" : state === "active" ? "border-sky-200 bg-sky-50 shadow-[0_0_0_6px_rgba(14,165,233,0.08)]" : "border-[var(--border)] bg-white/86"}`}>
-                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(roomModel.model.provider)}`}>{getProviderShortName(roomModel.model.provider)}</span>
+                  <div
+                    className={`flex items-center gap-3 rounded-full border px-3 py-2 ${
+                      state === "done"
+                        ? "border-emerald-200 bg-emerald-50"
+                        : state === "active"
+                          ? "border-sky-200 bg-sky-50 shadow-[0_0_0_6px_rgba(14,165,233,0.08)]"
+                          : "border-[var(--border)] bg-white/86"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl text-[10px] font-semibold tracking-[0.2em] ${getProviderIconClassName(
+                        roomModel.model.provider,
+                      )}`}
+                    >
+                      {getProviderShortName(roomModel.model.provider)}
+                    </span>
                     <div>
                       <p className="text-sm font-medium leading-5">{roomModel.model.name}</p>
                       <p className="text-[10px] text-[var(--muted)]">{state === "done" ? "已完成" : state === "active" ? "思考中" : "等待中"}</p>
@@ -346,8 +399,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             })}
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => startTransition(() => void renameRoom())} disabled={!room || isBusy} className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:opacity-60">重命名房间</button>
-            <button type="button" onClick={() => startTransition(() => void deleteRoom())} disabled={!room || isBusy} className="rounded-[1.4rem] border border-red-200 bg-white/84 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60">删除房间</button>
+            <button type="button" onClick={() => startTransition(() => void renameRoom())} disabled={!room || isBusy} className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:opacity-60">
+              重命名房间
+            </button>
+            <button type="button" onClick={() => startTransition(() => void deleteRoom())} disabled={!room || isBusy} className="rounded-[1.4rem] border border-red-200 bg-white/84 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60">
+              删除房间
+            </button>
           </div>
         </div>
       </section>
@@ -356,8 +413,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
       <section className="xl:hidden">
         <div className="ly-glass grid grid-cols-2 gap-2 rounded-[1.6rem] p-2">
-          <button type="button" onClick={() => setMobilePanel("chat")} className={`rounded-[1.2rem] px-4 py-3 text-sm font-medium ${mobilePanel === "chat" ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--muted)]"}`}>聊天</button>
-          <button type="button" onClick={() => setMobilePanel("order")} className={`rounded-[1.2rem] px-4 py-3 text-sm font-medium ${mobilePanel === "order" ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--muted)]"}`}>顺序</button>
+          <button type="button" onClick={() => setMobilePanel("chat")} className={`rounded-[1.2rem] px-4 py-3 text-sm font-medium ${mobilePanel === "chat" ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--muted)]"}`}>
+            聊天
+          </button>
+          <button type="button" onClick={() => setMobilePanel("order")} className={`rounded-[1.2rem] px-4 py-3 text-sm font-medium ${mobilePanel === "order" ? "bg-[var(--accent)] text-white" : "bg-white/70 text-[var(--muted)]"}`}>
+            顺序
+          </button>
         </div>
       </section>
 
@@ -368,7 +429,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">CHAT STREAM</p>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-semibold">顺序协作消息流</h2>
-                <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-1 text-xs text-[var(--muted)]">{room ? `${toRoomLabel(room.type)} · 最后更新 ${formatDate(room.updatedAt)}` : "正在读取房间"}</span>
+                <span className="rounded-full border border-[var(--border)] bg-white/78 px-3 py-1 text-xs text-[var(--muted)]">
+                  {room ? `${toRoomLabel(room.type)} · 最后更新 ${formatDate(room.updatedAt)}` : "正在读取房间"}
+                </span>
               </div>
             </div>
 
@@ -383,23 +446,37 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                       pendingRoundUserSequence: pendingRound?.userSequence,
                       sendInProgress: isSending,
                     });
+
                     const statusChipClass =
-                      status === "completed" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : status === "partial" ? "border-amber-200 bg-amber-50 text-amber-700"
-                      : status === "in-progress" ? "border-sky-200 bg-sky-50 text-sky-700"
-                      : status === "awaiting" ? "border-zinc-200 bg-white/80 text-zinc-600"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700";
+                      status === "completed"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : status === "partial"
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : status === "in-progress"
+                            ? "border-sky-200 bg-sky-50 text-sky-700"
+                            : status === "awaiting"
+                              ? "border-zinc-200 bg-white/80 text-zinc-600"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700";
+
                     const statusText =
-                      status === "completed" ? "双对勾 已完成"
-                      : status === "partial" ? "部分完成"
-                      : status === "in-progress" ? "进行中"
-                      : status === "awaiting" ? "等待中"
-                      : "单对勾 已送达";
+                      status === "completed"
+                        ? "双对勾 · 已完成"
+                        : status === "partial"
+                          ? "部分完成"
+                          : status === "in-progress"
+                            ? "进行中"
+                            : status === "awaiting"
+                              ? "等待中"
+                              : "单对勾 · 已送达";
+
                     return (
                       <article key={message.id} className="ml-auto max-w-[96%] sm:max-w-[86%]">
                         <div className="rounded-[2rem] rounded-tr-[0.6rem] bg-[linear-gradient(135deg,#c35a2f,#8f3416)] px-5 py-4 text-white shadow-[0_18px_36px_rgba(143,52,22,0.22)]">
                           <div className="mb-3 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/70"><span>{toRoleLabel(message.role)}</span><span>{formatDate(message.createdAt)}</span></div>
+                            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/70">
+                              <span>{toRoleLabel(message.role)}</span>
+                              <span>{formatDate(message.createdAt)}</span>
+                            </div>
                             <Chip text={statusText} className={statusChipClass} />
                           </div>
                           <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
@@ -411,6 +488,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   const roomModel = room?.roomModels.find((candidate) => candidate.modelId === message.modelId) ?? null;
                   const messageModel = roomModel?.model ?? message.model;
                   const provider = messageModel?.provider;
+
                   return (
                     <article key={message.id} className="max-w-[96%] sm:max-w-[86%]">
                       <div className={`rounded-[2rem] rounded-tl-[0.6rem] px-5 py-4 shadow-[0_16px_34px_rgba(17,17,17,0.06)] ${provider ? getProviderSoftClassName(provider) : "bg-white/78"}`}>
@@ -422,7 +500,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                               <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(provider)}`}>{getProviderOptionLabel(provider)}</span>
                               <span className="text-xs text-[var(--muted)]">{formatReplyLength(messageModel?.defaultReplyLength ?? 300)}</span>
                             </>
-                          ) : <span className="text-sm font-medium">AI</span>}
+                          ) : (
+                            <span className="text-sm font-medium">AI</span>
+                          )}
                           <span className="text-xs text-[var(--muted)]">{formatDate(message.createdAt)}</span>
                         </div>
                         <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">{toRoleLabel(message.role)}</div>
@@ -450,7 +530,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="text-[10px] uppercase tracking-[0.18em] text-sky-700">ROUND TIMELINE</div>
-                          <p className="mt-2 text-sm leading-6 text-sky-900">{activeTimelineModel ? `当前轮到 ${activeTimelineModel} 回复。` : "正在同步本轮最终结果。"}</p>
+                          <p className="mt-2 text-sm leading-6 text-sky-900">{activeTimelineModel ? `当前轮到 ${activeTimelineModel} 回复。` : "正在同步这一轮的最终结果。"}</p>
                         </div>
                         <Chip text={`${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? room?.roomModels.length ?? 0}`} className="border-sky-200 bg-white/90 text-sky-700" />
                       </div>
@@ -501,8 +581,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     event.dataTransfer.setData("text/plain", roomModel.modelId);
                   }}
                   onDragEnter={() => previewMove(roomModel.modelId)}
-                  onDragOver={(event) => { event.preventDefault(); previewMove(roomModel.modelId); }}
-                  onDrop={(event) => { event.preventDefault(); clearDragState(); }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    previewMove(roomModel.modelId);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    clearDragState();
+                  }}
                   onDragEnd={clearDragState}
                   className={`rounded-[1.8rem] border px-4 py-4 transition-all ${dragOverModelId === roomModel.modelId && draggedModelId !== roomModel.modelId ? "border-[var(--accent)] bg-[rgba(195,90,47,0.10)]" : "border-[var(--border)] bg-white/82"}`}
                 >

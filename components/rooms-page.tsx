@@ -183,17 +183,17 @@ export function RoomsPage() {
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">所有协作房间的统一入口</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
-            从这里查看历史会话、最近一条消息、参与模型顺序与房间类型。你可以把它当成你的多模型工作台首页，快速回到任何一次对话现场。
+            从这里查看历史会话、最近一条消息、参与模型顺序与房间类型。你可以把它当成多模型工作台首页，快速回到任何一次对话现场。
           </p>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] text-white/60">FILTER</p>
-              <p className="mt-2 text-lg font-semibold text-white">按房间、模型、Provider 快速定位</p>
+              <p className="mt-2 text-lg font-semibold text-white">按房间、模型与 Provider 快速定位</p>
             </div>
             <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] text-white/60">CONTEXT</p>
-              <p className="mt-2 text-lg font-semibold text-white">直接看到每个房间最近聊到哪一步</p>
+              <p className="mt-2 text-lg font-semibold text-white">直接看到每个房间最近聊到了哪一步</p>
             </div>
             <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] text-white/60">CONTROL</p>
@@ -209,7 +209,7 @@ export function RoomsPage() {
               <h2 className="mt-3 text-3xl font-semibold">围绕房间继续推进工作</h2>
             </div>
             <p className="text-sm leading-7 text-[var(--muted)]">
-              这块区域保留给高频动作。你可以立刻新建真实房间，先去配置模型，或者一键生成本地演示环境来验证顺序回复体验。
+              这里保留给高频动作。你可以立刻新建正式房间、先去配置模型，或者一键生成本地演示环境来验证顺序回复体验。
             </p>
           </div>
 

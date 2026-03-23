@@ -62,7 +62,7 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
               用站内登录替代浏览器级认证，让访问体验真正可控
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
-              这一页会成为你所有设备统一的进入入口。无论是桌面浏览器、手机浏览器，还是微信内打开，都会走同一套登录流程。
+              这一页会成为你所有设备统一的进入入口。无论是桌面浏览器、手机浏览器，还是微信内打开，都走同一套登录流程。
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
