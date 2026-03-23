@@ -42,6 +42,61 @@ type PendingRoundState = {
 type TimelineState = "done" | "active" | "pending" | "idle";
 type OrderedRoomModel = RoomView["roomModels"][number];
 
+function getProviderMessageChrome(provider: OrderedRoomModel["model"]["provider"]) {
+  switch (provider) {
+    case "OPENAI_COMPATIBLE":
+      return {
+        accentClassName: "bg-emerald-500",
+        borderClassName: "border-emerald-200/80",
+      };
+    case "CLAUDE":
+      return {
+        accentClassName: "bg-amber-500",
+        borderClassName: "border-amber-200/80",
+      };
+    case "GEMINI":
+      return {
+        accentClassName: "bg-sky-500",
+        borderClassName: "border-sky-200/80",
+      };
+    case "GROK":
+      return {
+        accentClassName: "bg-violet-500",
+        borderClassName: "border-violet-200/80",
+      };
+    case "DOUBAO":
+      return {
+        accentClassName: "bg-orange-500",
+        borderClassName: "border-orange-200/80",
+      };
+    case "DEEPSEEK":
+      return {
+        accentClassName: "bg-cyan-500",
+        borderClassName: "border-cyan-200/80",
+      };
+    case "MODELSCOPE":
+      return {
+        accentClassName: "bg-fuchsia-500",
+        borderClassName: "border-fuchsia-200/80",
+      };
+    case "HUNYUAN":
+      return {
+        accentClassName: "bg-rose-500",
+        borderClassName: "border-rose-200/80",
+      };
+    case "QWEN":
+      return {
+        accentClassName: "bg-indigo-500",
+        borderClassName: "border-indigo-200/80",
+      };
+    default:
+      return {
+        accentClassName: "bg-zinc-400",
+        borderClassName: "border-[var(--border)]",
+      };
+  }
+}
+
 function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback | null }) {
   if (!feedback) return null;
 
@@ -597,10 +652,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   const roomModel = room?.roomModels.find((candidate) => candidate.modelId === message.modelId) ?? null;
                   const messageModel = roomModel?.model ?? message.model;
                   const provider = messageModel?.provider;
+                  const chrome = provider ? getProviderMessageChrome(provider) : null;
 
                   return (
                     <article key={message.id} className="max-w-[94%] sm:max-w-[86%]">
-                      <div className={`rounded-[1.7rem] rounded-tl-[0.55rem] px-4 py-3 shadow-[0_14px_28px_rgba(17,17,17,0.05)] sm:rounded-[2rem] sm:px-5 sm:py-4 ${provider ? getProviderSoftClassName(provider) : "bg-white/78"}`}>
+                      <div
+                        className={`overflow-hidden rounded-[1.7rem] rounded-tl-[0.55rem] border px-4 py-3 shadow-[0_14px_28px_rgba(17,17,17,0.05)] sm:rounded-[2rem] sm:px-5 sm:py-4 ${provider ? `${getProviderSoftClassName(provider)} ${chrome?.borderClassName}` : "border-[var(--border)] bg-white/78"}`}
+                      >
+                        {chrome ? <div className={`-mx-4 -mt-3 mb-3 h-1.5 sm:-mx-5 sm:-mt-4 ${chrome.accentClassName}`} /> : null}
                         <div className="mb-2.5 flex flex-wrap items-center gap-2">
                           {provider ? (
                             <>
