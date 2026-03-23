@@ -1,16 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-quicksand), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
   color-scheme: light;
-  --background: #efe5d4;
-  --foreground: #161311;
-  --muted: #6f655d;
-  --card: rgba(255, 250, 244, 0.86);
-  --card-strong: rgba(255, 255, 255, 0.94);
-  --border: rgba(34, 24, 18, 0.08);
-  --accent: #c35a2f;
-  --accent-strong: #8f3416;
-  --accent-soft: rgba(195, 90, 47, 0.12);
+  --background: #f9f5fc;
+  --foreground: #2f2e33;
+  --muted: #8a898f;
+  --card: rgba(255, 255, 255, 0.4);
+  --card-strong: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 255, 255, 0.25);
+  --accent: #993c50;
+  --accent-strong: #f48498;
+  --accent-soft: rgba(153, 60, 80, 0.12);
   --navy: #1f2f44;
   --navy-soft: rgba(31, 47, 68, 0.1);
 }
@@ -20,10 +25,7 @@
 }
 
 html {
-  background:
-    radial-gradient(circle at 12% 14%, rgba(195, 90, 47, 0.22), transparent 24%),
-    radial-gradient(circle at 86% 18%, rgba(31, 47, 68, 0.16), transparent 22%),
-    linear-gradient(180deg, #faf5ee 0%, #f0e7da 42%, #e7ddcf 100%);
+  background: var(--background);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -32,21 +34,36 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--foreground);
-  font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
   overflow-x: hidden;
   position: relative;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+@keyframes slow-mesh {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
   pointer-events: none;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
-    radial-gradient(circle at 14% 18%, rgba(195, 90, 47, 0.1), transparent 24%),
-    radial-gradient(circle at 84% 16%, rgba(31, 47, 68, 0.1), transparent 22%);
+    radial-gradient(circle at 20% 30%, rgba(244, 132, 152, 0.18), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(133, 161, 237, 0.15), transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(199, 138, 240, 0.12), transparent 40%);
+  background-size: 100% 100%;
+  animation: slow-mesh 30s ease-in-out infinite alternate;
   z-index: -1;
 }
 
@@ -56,10 +73,10 @@ body::after {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(17, 17, 17, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 17, 17, 0.02) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: linear-gradient(rgba(0, 0, 0, 0.3), transparent 78%);
+    linear-gradient(rgba(47, 46, 51, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 46, 51, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.2), transparent 80%);
   z-index: -1;
 }
 
@@ -82,22 +99,25 @@ a {
   margin-inline: auto;
 }
 
+/* Luminous Glass Rule: 24px+ blur, highly translucent base, ghost border */
 .ly-glass {
-  background: linear-gradient(180deg, rgba(255, 251, 246, 0.92), rgba(255, 255, 255, 0.76));
-  border: 1px solid rgba(34, 24, 18, 0.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--border);
   box-shadow:
-    0 18px 48px rgba(23, 16, 12, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.56);
-  backdrop-filter: blur(18px);
+    0 24px 64px rgba(47, 46, 51, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
 }
 
 .ly-dark-panel {
   background:
-    radial-gradient(circle at top left, rgba(255, 184, 138, 0.18), transparent 30%),
-    linear-gradient(145deg, #1f2f44, #182434 62%, #121a26);
-  color: #f7efe5;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 64px rgba(17, 18, 24, 0.22);
+    radial-gradient(circle at top left, rgba(244, 132, 152, 0.15), transparent 30%),
+    linear-gradient(145deg, #2b2a30, #1c1b1f 62%, #141316);
+  color: #f9f5fc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 32px 80px rgba(20, 19, 22, 0.3);
+  backdrop-filter: blur(24px);
 }
 
 .ly-grid-lines {
@@ -111,8 +131,8 @@ a {
   border-radius: inherit;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 22px 22px;
-  mask-image: linear-gradient(rgba(0, 0, 0, 0.3), transparent 72%);
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.4), transparent 75%);
 }

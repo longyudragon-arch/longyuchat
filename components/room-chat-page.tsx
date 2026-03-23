@@ -510,7 +510,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/rooms" className="inline-flex items-center rounded-2xl bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-95">
-                返回列表
+                返回房间列表
               </Link>
               <button type="button" onClick={() => startTransition(() => void renameRoom())} disabled={!room || isBusy} className="inline-flex items-center rounded-2xl bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-95">
                 重命名
@@ -543,7 +543,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               <div className="flex items-start gap-5">
                 <div className="relative">
                   <span className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xs font-bold tracking-[0.2em] shadow-lg ${currentFocusModel ? getProviderIconClassName(currentFocusModel.model.provider) : "bg-white/10 text-white/50"}`}>
-                    {currentFocusModel ? getProviderShortName(currentFocusModel.model.provider) : "READY"}
+                    {currentFocusModel ? getProviderShortName(currentFocusModel.model.provider) : "待命"}
                   </span>
                   {isSending && (
                     <span className="absolute -right-1 -top-1 flex h-4 w-4">
@@ -759,7 +759,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               </div>
 
               <div className="sticky bottom-0 z-20 border-t border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,248,242,0.94),rgba(255,255,255,0.98))] px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:bg-transparent sm:px-6 sm:pb-4">
-                <textarea value={messageInput} onChange={(event) => setMessageInput(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="输入消息并发送，Enter 发送，Shift+Enter 换行..." rows={4} className="w-full resize-none rounded-[1.6rem] border border-[var(--border)] bg-white/92 px-4 py-4 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(195,90,47,0.12)] sm:rounded-[1.8rem]" />
+                <textarea value={messageInput} onChange={(event) => setMessageInput(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="输入消息后回车发送，按 Shift + 回车换行..." rows={4} className="w-full resize-none rounded-[1.6rem] border border-[var(--border)] bg-white/92 px-4 py-4 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(195,90,47,0.12)] sm:rounded-[1.8rem]" />
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className={`text-xs ${orderDirty ? "text-amber-700" : "text-[var(--muted)]"}`}>{orderDirty ? "当前有未保存的顺序调整，请先保存排序。" : "系统会按已保存顺序依次回复，并遵守每个模型自己的字数限制。"}</p>
                   <button type="button" onClick={() => startTransition(() => void sendMessage())} disabled={!messageInput.trim() || isBusy} className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300">{isSending ? "等待回复中..." : "发送消息"}</button>

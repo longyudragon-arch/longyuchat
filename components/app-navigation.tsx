@@ -22,15 +22,15 @@ const navItems = [
 function BrandBlock() {
   return (
     <Link href="/" className="inline-flex min-w-0 items-center gap-3 group">
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#ffd0a8,#c35a2f)] text-[13px] font-bold text-white shadow-[0_12px_32px_rgba(195,90,47,0.2)] transition-transform group-hover:scale-105">
+      <span className="inline-flex h-11 w-11 items-center justify-center rounded-[1.125rem] bg-[linear-gradient(135deg,#f48498,#993c50)] text-[14px] font-display font-bold text-white shadow-[0_8px_24px_rgba(153,60,80,0.25)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_12px_32px_rgba(153,60,80,0.35)]">
         LY
       </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[15px] font-bold tracking-tight text-[var(--foreground)] sm:text-[17px]">
+      <span className="min-w-0 flex flex-col justify-center">
+        <span className="block truncate text-[16px] font-display font-bold tracking-tight text-[var(--foreground)] sm:text-[18px]">
           Longyu Chat
         </span>
-        <span className="mt-0.5 block truncate text-[10px] font-bold tracking-[0.2em] text-[var(--muted)] opacity-50 uppercase">
-          AI Workspace
+        <span className="mt-0.5 block truncate text-[10px] font-bold tracking-[0.2em] text-[var(--muted)] uppercase">
+          多模型工作台
         </span>
       </span>
     </Link>
@@ -76,21 +76,21 @@ export function AppNavigation() {
   const isLoginPage = pathname === "/login";
 
   return (
-    <header className="sticky top-0 z-40 px-3 pb-1 pt-3 sm:px-5 sm:pb-2 sm:pt-4">
+    <header className="sticky top-0 z-40 px-4 pb-2 pt-4 sm:px-6 sm:pb-4 sm:pt-6">
       <div className="ly-shell">
-        <div className="ly-glass overflow-hidden rounded-2xl px-4 py-3 sm:rounded-[2rem] sm:px-6 sm:py-4 shadow-[0_12px_40px_rgba(17,17,17,0.04)]">
+        <div className="ly-glass overflow-hidden rounded-[2rem] px-5 py-3 sm:rounded-[2.5rem] sm:px-6 sm:py-4 transition-all duration-500 hover:shadow-[0_32px_80px_rgba(47,46,51,0.06)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center justify-between gap-4">
               <BrandBlock />
               <div className="flex items-center gap-2">
                 {session?.mode === "app" ? (
-                  <span className="shrink-0 rounded-full bg-[var(--navy)]/5 px-2.5 py-1 text-[9px] font-bold tracking-[0.15em] text-[var(--navy)] uppercase border border-[var(--navy)]/10">
-                    Secure
+                  <span className="shrink-0 rounded-full bg-[var(--accent)]/5 px-3 py-1.5 text-[10px] font-bold tracking-[0.15em] text-[var(--accent)] uppercase border border-[var(--accent)]/10">
+                    已登录
                   </span>
                 ) : null}
                 {isLoginPage && (
-                  <div className="rounded-full bg-[var(--accent)]/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] uppercase">
-                    Login
+                  <div className="rounded-full bg-[var(--accent)]/10 px-4 py-2 text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] uppercase">
+                    登录页
                   </div>
                 )}
               </div>
@@ -98,7 +98,7 @@ export function AppNavigation() {
 
             {!isLoginPage && (
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                <nav className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+                <nav className="-mx-2 flex snap-x gap-2 overflow-x-auto px-2 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-none">
                   {navItems.map((item) => {
                     const active = item.match(pathname);
 
@@ -106,10 +106,10 @@ export function AppNavigation() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`shrink-0 snap-start whitespace-nowrap rounded-xl px-4 py-2 text-center text-[13px] font-bold transition-all active:scale-95 ${
+                        className={`shrink-0 snap-start whitespace-nowrap rounded-full px-5 py-2.5 text-center text-[14px] font-bold transition-all duration-300 ease-out active:scale-95 ${
                           active
-                            ? "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20"
-                            : "text-[var(--muted)] hover:bg-black/5 hover:text-[var(--foreground)]"
+                            ? "bg-[linear-gradient(135deg,#993c50,#c7576f)] text-white shadow-md shadow-[var(--accent)]/20"
+                            : "text-[var(--muted)] hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"
                         }`}
                       >
                         {item.label}
@@ -119,25 +119,25 @@ export function AppNavigation() {
                 </nav>
 
                 {(session?.mode === "app" && session.authenticated) || session?.mode === "basic" ? (
-                  <div className="flex items-center gap-2 xl:ml-4 xl:border-l xl:border-[var(--border)] xl:pl-4">
+                  <div className="flex items-center gap-3 xl:ml-6 xl:border-l xl:border-[var(--border)] xl:pl-6">
                     {session?.mode === "app" && session.authenticated && (
                       <>
-                        <span className="hidden text-[11px] font-bold text-[var(--muted)] opacity-60 uppercase tracking-wider xl:inline">
-                          User: {session.username ?? "owner"}
+                        <span className="hidden text-[12px] font-bold text-[var(--muted)] uppercase tracking-widest xl:inline">
+                          账号：{session.username ?? "owner"}
                         </span>
                         <button
                           type="button"
                           onClick={() => startTransition(() => void logout())}
                           disabled={loggingOut}
-                          className="rounded-xl bg-red-500/10 px-4 py-2 text-[12px] font-bold text-red-500 transition hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
+                          className="rounded-full bg-red-500/10 px-5 py-2.5 text-[13px] font-bold text-red-500 transition-all duration-300 hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
                         >
                           {loggingOut ? "..." : "退出"}
                         </button>
                       </>
                     )}
                     {session?.mode === "basic" && (
-                      <span className="rounded-xl bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-600 uppercase tracking-tight">
-                        Basic Auth
+                      <span className="rounded-full bg-amber-500/10 px-4 py-2.5 text-[12px] font-bold text-amber-600 uppercase tracking-tight">
+                        基础保护
                       </span>
                     )}
                   </div>
