@@ -1,12 +1,6 @@
 import Link from "next/link";
 
 import { LocalTestLauncher } from "@/components/local-test-launcher";
-import {
-  getProviderBadgeClassName,
-  getProviderOptionLabel,
-  getProviderShortName,
-  providerOptions,
-} from "@/lib/client/chat-lab-client";
 
 const workflowHighlights = [
   "先配模型，再建房间，再看 AI 依次作答。",
@@ -38,17 +32,23 @@ const actionCards = [
   },
 ];
 
-const supportCards = [
+const experienceCards = [
   {
-    eyebrow: "WORKFLOW",
-    title: "顺序协作是核心，不是装饰",
-    body: "这个产品最重要的体验不是“能聊天”，而是“多个模型按你指定的顺序轮流回答”，所以首页更应该服务于进入工作流，而不是解释概念。",
+    eyebrow: "IN CHAT",
+    title: "看到真实的顺序协作过程",
+    body: "用户消息发出后，AI 不会等全部完成才一起出现，而是会按顺序逐条回答，并配合时间线告诉你当前轮到谁。",
   },
   {
-    eyebrow: "DEPLOYMENT",
-    title: "已经适合个人长期部署",
-    body: "当前版本具备站内登录、移动端访问、自动备份、日志轮转和一键更新脚本，适合放在自己的服务器上长期使用。",
+    eyebrow: "RELIABILITY",
+    title: "失败也不会把已经完成的内容抹掉",
+    body: "如果某个模型中途失败，前面已经成功的回复会被保留，页面也会明确告诉你是部分完成还是全部完成。",
   },
+];
+
+const quickFacts = [
+  { label: "单聊与群聊", value: "都能创建" },
+  { label: "顺序回复", value: "依次落库渲染" },
+  { label: "聊天历史", value: "刷新后仍保留" },
 ];
 
 export function HomeDashboard() {
@@ -64,7 +64,8 @@ export function HomeDashboard() {
               进入你的多模型协作工作台
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/74 sm:text-base sm:leading-8">
-              用最短路径进入真正有价值的操作：配置模型、创建房间、继续聊天，然后看多个 AI 按顺序依次回复。
+              首页的任务不是解释概念，而是带你直接进入工作流：配置模型、创建房间、继续聊天，然后看多个 AI
+              按顺序依次回复。
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -89,6 +90,18 @@ export function HomeDashboard() {
                   className="rounded-[1.5rem] border border-white/10 bg-white/7 px-4 py-4 text-sm leading-6 text-white/82"
                 >
                   {item}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {quickFacts.map((fact) => (
+                <div
+                  key={fact.label}
+                  className="rounded-[1.5rem] border border-white/10 bg-white/6 px-4 py-4 text-white/86"
+                >
+                  <p className="text-xs font-semibold tracking-[0.16em] text-white/50">{fact.label}</p>
+                  <p className="mt-2 text-lg font-semibold">{fact.value}</p>
                 </div>
               ))}
             </div>
@@ -123,37 +136,34 @@ export function HomeDashboard() {
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="ly-glass rounded-[2.6rem] p-5 sm:p-6">
-          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">PROVIDER IDENTITY</p>
-          <h2 className="mt-3 text-3xl font-semibold">统一的模型身份体系</h2>
-          <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-            不同 Provider 在模型管理、房间配置和聊天页里使用统一的颜色、缩写和标签，方便你在一眼之间识别是谁在说话。
-          </p>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {providerOptions.map((provider) => (
-              <span
-                key={provider}
-                className={`rounded-full border px-3 py-1 text-xs font-medium ${getProviderBadgeClassName(provider)}`}
-              >
-                {getProviderShortName(provider)} / {getProviderOptionLabel(provider)}
-              </span>
-            ))}
-          </div>
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid gap-5 lg:grid-cols-2">
+          {experienceCards.map((card) => (
+            <article key={card.title} className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
+              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">{card.eyebrow}</p>
+              <h2 className="mt-3 text-2xl font-semibold">{card.title}</h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{card.body}</p>
+            </article>
+          ))}
         </div>
 
         <div className="flex flex-col gap-6">
           <LocalTestLauncher />
 
-          <section className="grid gap-5 lg:grid-cols-2">
-            {supportCards.map((card) => (
-              <article key={card.title} className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
-                <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">{card.eyebrow}</p>
-                <h2 className="mt-3 text-2xl font-semibold">{card.title}</h2>
-                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{card.body}</p>
-              </article>
-            ))}
+          <section className="ly-glass rounded-[2.2rem] p-5 sm:p-6">
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">NEXT ACTION</p>
+            <h2 className="mt-3 text-2xl font-semibold">如果你是第一次用，最推荐这样开始</h2>
+            <ol className="mt-5 grid gap-3 text-sm leading-7 text-[var(--muted)]">
+              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
+                1. 先到模型管理页配置至少 2 个可用模型。
+              </li>
+              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
+                2. 去新建房间页拖拽出你希望的回复顺序。
+              </li>
+              <li className="rounded-[1.4rem] border border-[var(--border)] bg-white/84 px-4 py-4">
+                3. 进入聊天页，看 AI 按顺序逐条出现，而不是一次性全部返回。
+              </li>
+            </ol>
           </section>
         </div>
       </section>
