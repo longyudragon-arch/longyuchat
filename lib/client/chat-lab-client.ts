@@ -289,7 +289,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "目标内容不存在",
       description: message,
-      suggestion: "它可能已经被删除。请返回上一级重新刷新，或重新创建对应的模型和房间。",
+      suggestion: "它可能已经被删除。请返回上一层重新刷新，或重新创建对应的模型和房间。",
       tone: "error",
     };
   }
@@ -298,14 +298,14 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     return {
       title: "房间里存在已停用的模型",
       description: message,
-      suggestion: "请先在模型管理里重新启用对应模型，或把它从房间成员中移除后再继续发送。",
+      suggestion: "请先在模型管理里重新启用对应模型，或把它们从房间成员中移除后再继续发送。",
       tone: "warning",
     };
   }
 
   if (normalized.includes("discover") && normalized.includes("not available yet")) {
     return {
-      title: "当前 Provider 暂不支持自动拉取模型列表",
+      title: "当前 Provider 暂不支持自动获取模型列表",
       description: message,
       suggestion: "请先手动填写模型 ID，后续如果接入了该平台原生列表接口，再回来开启自动发现。",
       tone: "warning",

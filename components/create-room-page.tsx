@@ -41,38 +41,13 @@ export function CreateRoomPage() {
     setModels(data.models.filter((model) => model.enabled));
   }
 
-  const selectedModels = useMemo(
-    () =>
-      roomForm.modelIds
-        .map((modelId) => models.find((model) => model.id === modelId))
-        .filter((model): model is ModelView => Boolean(model)),
-    [models, roomForm.modelIds],
-  );
-
-  const filteredModels = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return models.filter((model) => {
-      const matchesProvider = providerFilter === "ALL" || model.provider === providerFilter;
-      const searchableText = [model.name, model.modelName, getProviderOptionLabel(model.provider)]
-        .join(" ")
-        .toLowerCase();
-      const matchesQuery = normalizedQuery.length === 0 || searchableText.includes(normalizedQuery);
-
-      return matchesProvider && matchesQuery;
-    });
-  }, [models, providerFilter, searchQuery]);
-
-  const canCreateRoom =
-    roomForm.type === "SINGLE" ? selectedModels.length === 1 : selectedModels.length >= 2;
-
   const handleInitialLoad = useEffectEvent(async () => {
     setBusy(true);
     setErrorMessage("");
 
     try {
       await loadModels();
-      setNotice("可以开始配置房间。");
+      setNotice("可以开始配置新的顺序协作房间。");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "加载模型失败。");
     } finally {
@@ -86,6 +61,28 @@ export function CreateRoomPage() {
     });
   }, []);
 
+  const selectedModels = useMemo(
+    () =>
+      roomForm.modelIds
+        .map((modelId) => models.find((model) => model.id === modelId))
+        .filter((model): model is ModelView => Boolean(model)),
+    [models, roomForm.modelIds],
+  );
+
+  const filteredModels = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return models.filter((model) => {
+      const matchesProvider = providerFilter === "ALL" || model.provider === providerFilter;
+      const matchesQuery =
+        query.length === 0 ||
+        [model.name, model.modelName, getProviderOptionLabel(model.provider)].join(" ").toLowerCase().includes(query);
+      return matchesProvider && matchesQuery;
+    });
+  }, [models, providerFilter, searchQuery]);
+
+  const canCreateRoom =
+    roomForm.type === "SINGLE" ? selectedModels.length === 1 : selectedModels.length >= 2;
+
   function clearDragState() {
     setDraggedModelId(null);
     setDragOverModelId(null);
@@ -96,10 +93,7 @@ export function CreateRoomPage() {
       const exists = current.modelIds.includes(modelId);
 
       if (current.type === "SINGLE") {
-        return {
-          ...current,
-          modelIds: exists ? [] : [modelId],
-        };
+        return { ...current, modelIds: exists ? [] : [modelId] };
       }
 
       return {
@@ -109,22 +103,13 @@ export function CreateRoomPage() {
     });
   }
 
-  function removeSelectedModel(modelId: string) {
-    setRoomForm((current) => ({
-      ...current,
-      modelIds: current.modelIds.filter((id) => id !== modelId),
-    }));
-
-    if (draggedModelId === modelId) {
-      clearDragState();
-    }
+  function clearSelection() {
+    setRoomForm((current) => ({ ...current, modelIds: [] }));
+    clearDragState();
   }
 
-  function clearSelection() {
-    setRoomForm((current) => ({
-      ...current,
-      modelIds: [],
-    }));
+  function removeSelectedModel(modelId: string) {
+    setRoomForm((current) => ({ ...current, modelIds: current.modelIds.filter((id) => id !== modelId) }));
     clearDragState();
   }
 
@@ -135,15 +120,9 @@ export function CreateRoomPage() {
 
     setRoomForm((current) => {
       const nextModelIds = reorderIds(current.modelIds, draggedModelId, targetId);
-
-      if (nextModelIds.join(",") === current.modelIds.join(",")) {
-        return current;
-      }
-
-      return {
-        ...current,
-        modelIds: nextModelIds,
-      };
+      return nextModelIds.join(",") === current.modelIds.join(",")
+        ? current
+        : { ...current, modelIds: nextModelIds };
     });
     setDragOverModelId(targetId);
   }
@@ -155,13 +134,12 @@ export function CreateRoomPage() {
     try {
       const mockModels = await ensureLocalMockModels();
       await loadModels();
-      setRoomForm((current) => ({
-        ...current,
+      setRoomForm({
+        title: "本地测试群聊",
         type: "GROUP",
         modelIds: mockModels.map((model) => model.id),
-        title: current.title || "本地测试群聊",
-      }));
-      setNotice("本地测试模型已经加入排序列表，你可以直接拖拽调整顺序。");
+      });
+      setNotice("本地测试模型已经加入右侧顺序链路。");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "加载本地测试模型失败。");
     } finally {
@@ -171,7 +149,7 @@ export function CreateRoomPage() {
 
   async function submitRoomForm() {
     if (!canCreateRoom) {
-      setErrorMessage(roomForm.type === "SINGLE" ? "单聊需要恰好选择 1 个模型。" : "群聊至少需要 2 个模型。");
+      setErrorMessage(roomForm.type === "SINGLE" ? "单聊需要且只能选择 1 个模型。" : "群聊至少需要 2 个模型。");
       return;
     }
 
@@ -188,7 +166,6 @@ export function CreateRoomPage() {
           modelIds: roomForm.modelIds,
         }),
       });
-
       router.push(`/rooms/${data.room.id}`);
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "创建房间失败。");
@@ -198,220 +175,131 @@ export function CreateRoomPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
-      <section className="rounded-[2.4rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(255,247,238,0.96),rgba(255,255,255,0.90))] px-5 py-6 shadow-[0_30px_90px_rgba(17,17,17,0.09)] sm:px-6 sm:py-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <span className="inline-flex rounded-full border border-[rgba(191,95,54,0.14)] bg-[rgba(255,246,232,0.88)] px-3 py-1 text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">
-              ROOM CREATION
-            </span>
-            <div>
-              <h1 className="text-4xl font-semibold tracking-tight">新建房间</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                从模型筛选、房间类型到拖拽排序，一次把顺序协作的规则配置清楚。右侧排序区会在拖拽时实时换位。
-              </p>
-            </div>
-          </div>
-
-          <div className="w-full rounded-3xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm text-[var(--muted)] lg:w-auto">
-            {busy ? "正在处理..." : notice || "拖拽右侧卡片即可实时调整顺序。"}
+    <main className="ly-shell flex flex-col gap-6 px-4 py-6 sm:px-5 sm:py-8">
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="ly-dark-panel ly-grid-lines rounded-[2.8rem] px-6 py-8 sm:px-8 sm:py-9">
+          <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold tracking-[0.24em] text-white/78">
+            SEQUENCE BUILDER
+          </span>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">把模型拖进一条清晰的协作链路里</h1>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
+            左边负责定义房间身份和挑选模型，右边负责拖拽排序。这样建房过程不再像填表，而更像真正搭建一条多模型顺序工作流。
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">单聊与群聊共用同一套页面，切换时自动调整约束。</div>
+            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">右侧顺序区支持实时拖拽重排，所见即所得。</div>
+            <div className="rounded-[1.7rem] border border-white/10 bg-white/7 px-4 py-4 text-white/82">本地 mock 和真实模型都能直接加入这条链路。</div>
           </div>
         </div>
 
-        {errorMessage ? (
-          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </p>
-        ) : null}
+        <div className="ly-glass rounded-[2.8rem] p-5 sm:p-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">ROOM BRIEF</p>
+          <h2 className="mt-3 text-3xl font-semibold">先定义房间，再定义发言顺序</h2>
+          <div className="mt-6 grid gap-4">
+            <label className="space-y-2">
+              <span className="text-sm font-medium">房间名称</span>
+              <input value={roomForm.title} onChange={(event) => setRoomForm((current) => ({ ...current, title: event.target.value }))} className="w-full rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 outline-none transition focus:border-[var(--accent)]" placeholder="例如：产品评审群 / 深度分析组" />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">房间类型</span>
+              <select value={roomForm.type} onChange={(event) => { const nextType = event.target.value as RoomType; setRoomForm((current) => ({ ...current, type: nextType, modelIds: nextType === "SINGLE" ? current.modelIds.slice(0, 1) : current.modelIds })); clearDragState(); }} className="w-full rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 outline-none transition focus:border-[var(--accent)]">
+                <option value="GROUP">群聊</option>
+                <option value="SINGLE">单聊</option>
+              </select>
+            </label>
+            {mockToolsEnabled ? (
+              <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} className="rounded-[1.4rem] border border-[var(--border)] bg-white/86 px-4 py-3 text-left text-sm font-medium transition hover:border-[var(--accent)]">
+                一键加载本地测试模型
+              </button>
+            ) : null}
+            <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/78 px-4 py-4 text-sm text-[var(--muted)]">
+              {busy ? "正在处理..." : notice || "先在左边选模型，再到右边拖拽它们的回答顺序。"}
+            </div>
+            {errorMessage ? <div className="rounded-[1.6rem] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">{errorMessage}</div> : null}
+          </div>
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <div className="space-y-6">
-          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold">房间基础信息</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">先确定房间类型，再把模型加入右侧的顺序链路。</p>
-              </div>
-              <Link
-                href="/rooms"
-                className="rounded-full border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                返回房间列表
-              </Link>
+      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">MODEL LIBRARY</p>
+              <h2 className="mt-2 text-2xl font-semibold">从模型库中挑选参与者</h2>
             </div>
-
-            <div className="grid gap-3">
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-[var(--foreground)]">房间名称</span>
-                <input
-                  value={roomForm.title}
-                  onChange={(event) => setRoomForm((current) => ({ ...current, title: event.target.value }))}
-                  placeholder="例如：产品方案讨论群"
-                  className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)]"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-[var(--foreground)]">房间类型</span>
-                <select
-                  value={roomForm.type}
-                  onChange={(event) => {
-                    const nextType = event.target.value as RoomType;
-                    setRoomForm((current) => ({
-                      ...current,
-                      type: nextType,
-                      modelIds: nextType === "SINGLE" ? current.modelIds.slice(0, 1) : current.modelIds,
-                    }));
-                    clearDragState();
-                  }}
-                  className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)]"
-                >
-                  <option value="GROUP">群聊</option>
-                  <option value="SINGLE">单聊</option>
-                </select>
-              </label>
-            </div>
-
-            {mockToolsEnabled ? (
-              <div className="mt-5 rounded-3xl border border-[var(--border)] bg-[rgba(191,95,54,0.08)] p-4">
-                <p className="text-sm font-medium">本地测试支持</p>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  如果你还没配置真实模型，可以先一键加载本地 mock 模型，再在右侧直接拖拽排序测试聊天体验。
-                </p>
-                <button
-                  type="button"
-                  onClick={() => startTransition(() => void createLocalMockModels())}
-                  className="mt-4 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] sm:w-auto"
-                >
-                  加载本地测试模型
-                </button>
-              </div>
+            {selectedModels.length > 0 ? (
+              <button type="button" onClick={clearSelection} className="text-sm text-[var(--accent)]">
+                清空已选
+              </button>
             ) : null}
+          </div>
 
-            <div className="mt-5 space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-lg font-semibold">可选模型</h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-[var(--muted)]">{toRoomLabel(roomForm.type)} 模式</span>
-                  {selectedModels.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="text-xs font-medium text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
-                    >
-                      清空已选
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_220px]">
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="搜索模型名称、模型 ID 或 Provider" className="rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]" />
+            <select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")} className="rounded-[1.4rem] border border-[var(--border)] bg-white/92 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]">
+              <option value="ALL">全部 Provider</option>
+              {providerOptions.map((provider) => (
+                <option key={provider} value={provider}>
+                  {getProviderOptionLabel(provider)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="搜索模型名称、模型 ID 或 Provider"
-                  className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]"
-                />
-                <select
-                  value={providerFilter}
-                  onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")}
-                  className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-[var(--accent)]"
-                >
-                  <option value="ALL">全部 Provider</option>
-                  {providerOptions.map((provider) => (
-                    <option key={provider} value={provider}>
-                      {getProviderOptionLabel(provider)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <div className="mt-4 rounded-[1.6rem] border border-[var(--border)] bg-white/78 px-4 py-3 text-sm text-[var(--muted)]">
+            当前显示 {filteredModels.length} / {models.length} 个模型，已选择 {selectedModels.length} 个。
+          </div>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3 text-sm text-[var(--muted)]">
-                当前显示 {filteredModels.length} / {models.length} 个可用模型，已选择 {selectedModels.length} 个。
-              </div>
+          <div className="mt-5 grid gap-3">
+            {filteredModels.length === 0 ? (
+              <div className="rounded-[1.8rem] border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">当前筛选条件下没有可选模型。</div>
+            ) : (
+              filteredModels.map((model) => {
+                const selected = roomForm.modelIds.includes(model.id);
 
-              {models.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-4 text-sm text-[var(--muted)]">
-                  {mockToolsEnabled
-                    ? "没有可用模型。先去模型管理页配置，或者先加载本地测试模型。"
-                    : "没有可用模型。请先去模型管理页启用至少一个模型。"}
-                </p>
-              ) : filteredModels.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-4 text-sm text-[var(--muted)]">
-                  当前筛选条件下没有可选模型，试试清空关键词或切换 Provider。
-                </p>
-              ) : (
-                filteredModels.map((model) => {
-                  const selected = roomForm.modelIds.includes(model.id);
-
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => toggleModel(model.id)}
-                      className={`flex w-full flex-col items-start gap-3 rounded-[1.8rem] border px-4 py-4 text-left transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
-                        selected
-                          ? "border-[var(--accent)] bg-[rgba(191,95,54,0.08)] shadow-[0_12px_30px_rgba(17,17,17,0.06)]"
-                          : "border-[var(--border)] bg-white/78 hover:-translate-y-0.5 hover:border-[var(--accent)]"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(
-                            model.provider,
-                          )}`}
-                        >
-                          {getProviderShortName(model.provider)}
-                        </span>
-                        <div>
-                          <p className="font-medium">{model.name}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">模型 ID：{model.modelName}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            默认回复上限：{formatReplyLength(model.defaultReplyLength)}
-                          </p>
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => toggleModel(model.id)}
+                    className={`flex w-full items-start justify-between gap-4 rounded-[1.8rem] border px-4 py-4 text-left transition ${
+                      selected ? "border-[var(--accent)] bg-[rgba(195,90,47,0.08)]" : "border-[var(--border)] bg-white/84 hover:border-[var(--accent)]"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(model.provider)}`}>
+                        {getProviderShortName(model.provider)}
+                      </span>
+                      <div>
+                        <p className="font-medium">{model.name}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">{model.modelName}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getProviderBadgeClassName(model.provider)}`}>{getProviderOptionLabel(model.provider)}</span>
+                          <span className="rounded-full border border-[var(--border)] bg-white px-2 py-0.5 text-[10px] text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</span>
                         </div>
                       </div>
-                      <div className="flex w-full flex-row items-center justify-between gap-2 sm:w-auto sm:flex-col sm:items-end">
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-medium ${getProviderBadgeClassName(
-                            model.provider,
-                          )}`}
-                        >
-                          {getProviderShortName(model.provider)}
-                        </span>
-                        <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">
-                          {selected ? "已加入" : "加入"}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                    </div>
+                    <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{selected ? "已加入" : "加入"}</span>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_20px_60px_rgba(17,17,17,0.08)] sm:p-6">
-            <div className="mb-5">
-              <h2 className="text-2xl font-semibold">参与顺序</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                群聊模式下，拖拽卡片就会实时交换位置；单聊只保留 1 个模型，不需要排序。
-              </p>
+        <div className="xl:sticky xl:top-28 xl:self-start">
+          <div className="ly-glass rounded-[2.5rem] p-5 sm:p-6">
+            <p className="text-xs font-semibold tracking-[0.18em] text-[var(--accent-strong)]">PIPELINE</p>
+            <h2 className="mt-2 text-2xl font-semibold">当前房间的发言顺序</h2>
+            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{toRoomLabel(roomForm.type)} 模式下，右侧顺序会成为后续回答的真实执行顺序。</p>
+
+            <div className="mt-5 rounded-[1.6rem] border border-[var(--border)] bg-white/78 px-4 py-3 text-sm text-[var(--muted)]">
+              {roomForm.type === "SINGLE" ? "单聊需要且只能有 1 个模型。" : "群聊至少需要 2 个模型，拖拽即可重排。"}
             </div>
 
-            <div className="mb-4 rounded-3xl border border-[var(--border)] bg-white/70 px-4 py-3 text-sm text-[var(--muted)]">
-              当前已选择 {selectedModels.length} 个模型。
-              {roomForm.type === "SINGLE" ? " 单聊需要恰好 1 个模型。" : " 群聊至少需要 2 个模型。"}
-            </div>
-
-            <div className="space-y-3">
+            <div className="mt-5 grid gap-3">
               {selectedModels.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                  左侧选中模型后，它们会出现在这里。群聊时可以直接拖拽卡片调整顺序。
-                </p>
+                <div className="rounded-[1.8rem] border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">左边选择模型后，它们会出现在这里。群聊模式下可以继续拖拽排序。</div>
               ) : (
                 selectedModels.map((model, index) => {
                   const isDragging = draggedModelId === model.id;
@@ -430,7 +318,6 @@ export function CreateRoomPage() {
                       onDragEnter={() => previewSelectedModelMove(model.id)}
                       onDragOver={(event) => {
                         event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
                         previewSelectedModelMove(model.id);
                       }}
                       onDrop={(event) => {
@@ -438,45 +325,29 @@ export function CreateRoomPage() {
                         clearDragState();
                       }}
                       onDragEnd={clearDragState}
-                      className={`relative overflow-hidden rounded-[1.8rem] border px-4 py-4 transition-all duration-200 ease-out will-change-transform ${
+                      className={`rounded-[1.8rem] border px-4 py-4 transition ${
                         isDragging
-                          ? "scale-[1.02] border-[var(--accent)] bg-[rgba(191,95,54,0.14)] shadow-[0_24px_60px_rgba(17,17,17,0.12)]"
+                          ? "scale-[1.02] border-[var(--accent)] bg-[rgba(195,90,47,0.14)]"
                           : isDropTarget
-                            ? "translate-x-1 border-[var(--accent)] bg-[rgba(191,95,54,0.10)] shadow-[0_18px_40px_rgba(17,17,17,0.10)]"
-                            : "border-[var(--border)] bg-white/80"
-                      } ${roomForm.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+                            ? "border-[var(--accent)] bg-[rgba(195,90,47,0.08)]"
+                            : "border-[var(--border)] bg-white/84"
+                      } ${roomForm.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                     >
-                      <div
-                        className={`absolute inset-x-4 top-0 h-1 rounded-full bg-[var(--accent)] transition-opacity ${
-                          isDropTarget ? "opacity-100" : "opacity-0"
-                        }`}
-                      />
-                      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(
-                              model.provider,
-                            )}`}
-                          >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-semibold tracking-[0.2em] ${getProviderIconClassName(model.provider)}`}>
                             {getProviderShortName(model.provider)}
                           </span>
-                          <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">
-                            {index + 1}
-                          </span>
                           <div>
-                            <p className="font-medium">{model.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)]">{index + 1}</span>
+                              <p className="font-medium">{model.name}</p>
+                            </div>
                             <p className="mt-1 text-xs text-[var(--muted)]">{getProviderOptionLabel(model.provider)}</p>
-                            <p className="mt-1 text-xs text-[var(--muted)]">
-                              默认回复上限：{formatReplyLength(model.defaultReplyLength)}
-                            </p>
+                            <p className="mt-1 text-xs text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)}</p>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => removeSelectedModel(model.id)}
-                          className="w-full rounded-full border border-red-200 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 sm:w-auto"
-                        >
+                        <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-full border border-red-200 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50">
                           移除
                         </button>
                       </div>
@@ -490,10 +361,14 @@ export function CreateRoomPage() {
               type="button"
               onClick={() => startTransition(() => void submitRoomForm())}
               disabled={!canCreateRoom || busy}
-              className="mt-6 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300"
+              className="mt-6 w-full rounded-[1.6rem] bg-[var(--accent)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-zinc-300"
             >
               创建房间并进入聊天
             </button>
+
+            <Link href="/rooms" className="mt-3 inline-flex text-sm text-[var(--muted)] hover:text-[var(--accent)]">
+              返回房间列表
+            </Link>
           </div>
         </div>
       </section>
