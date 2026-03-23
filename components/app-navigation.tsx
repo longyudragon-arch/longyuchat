@@ -76,7 +76,7 @@ export function AppNavigation() {
   const isLoginPage = pathname === "/login";
 
   return (
-    <header className="relative z-40 px-3 pb-2 pt-3 xl:sticky xl:top-0 sm:px-6 sm:pb-4 sm:pt-6">
+    <header className="sticky top-0 z-40 px-3 pb-2 pt-3 sm:px-6 sm:pb-4 sm:pt-6">
       <div className="ly-shell">
         <div className="ly-glass overflow-hidden rounded-[1.6rem] px-4 py-3 sm:rounded-[2.5rem] sm:px-6 sm:py-4 transition-all duration-500 hover:shadow-[0_32px_80px_rgba(47,46,51,0.06)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
