@@ -2,13 +2,17 @@
 
 :root {
   color-scheme: light;
-  --background: #f6f4ee;
-  --foreground: #111111;
-  --muted: #645f5a;
-  --card: rgba(255, 255, 255, 0.84);
-  --border: rgba(17, 17, 17, 0.08);
-  --accent: #bf5f36;
-  --accent-strong: #8a3819;
+  --background: #efe5d4;
+  --foreground: #161311;
+  --muted: #6f655d;
+  --card: rgba(255, 250, 244, 0.86);
+  --card-strong: rgba(255, 255, 255, 0.94);
+  --border: rgba(34, 24, 18, 0.08);
+  --accent: #c35a2f;
+  --accent-strong: #8f3416;
+  --accent-soft: rgba(195, 90, 47, 0.12);
+  --navy: #1f2f44;
+  --navy-soft: rgba(31, 47, 68, 0.1);
 }
 
 * {
@@ -16,7 +20,10 @@
 }
 
 html {
-  background: radial-gradient(circle at top, #fff6e8 0%, #f6f4ee 42%, #efe9df 100%);
+  background:
+    radial-gradient(circle at 12% 14%, rgba(195, 90, 47, 0.22), transparent 24%),
+    radial-gradient(circle at 86% 18%, rgba(31, 47, 68, 0.16), transparent 22%),
+    linear-gradient(180deg, #faf5ee 0%, #f0e7da 42%, #e7ddcf 100%);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -25,7 +32,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--foreground);
-  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
+  font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
   overflow-x: hidden;
   position: relative;
   padding-bottom: env(safe-area-inset-bottom);
@@ -37,9 +44,22 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 12% 16%, rgba(191, 95, 54, 0.08), transparent 22%),
-    radial-gradient(circle at 86% 18%, rgba(48, 124, 164, 0.07), transparent 20%),
-    linear-gradient(rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+    linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at 14% 18%, rgba(195, 90, 47, 0.1), transparent 24%),
+    radial-gradient(circle at 84% 16%, rgba(31, 47, 68, 0.1), transparent 22%);
+  z-index: -1;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(17, 17, 17, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 17, 17, 0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.3), transparent 78%);
   z-index: -1;
 }
 
@@ -55,4 +75,44 @@ a {
 
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+.ly-shell {
+  width: min(100%, 84rem);
+  margin-inline: auto;
+}
+
+.ly-glass {
+  background: linear-gradient(180deg, rgba(255, 251, 246, 0.92), rgba(255, 255, 255, 0.76));
+  border: 1px solid rgba(34, 24, 18, 0.08);
+  box-shadow:
+    0 18px 48px rgba(23, 16, 12, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(18px);
+}
+
+.ly-dark-panel {
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 138, 0.18), transparent 30%),
+    linear-gradient(145deg, #1f2f44, #182434 62%, #121a26);
+  color: #f7efe5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px rgba(17, 18, 24, 0.22);
+}
+
+.ly-grid-lines {
+  position: relative;
+}
+
+.ly-grid-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.3), transparent 72%);
 }
