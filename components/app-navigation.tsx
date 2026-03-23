@@ -76,7 +76,7 @@ export function AppNavigation() {
   const isLoginPage = pathname === "/login";
 
   return (
-    <header className="sticky top-0 z-40 px-3 pb-2 pt-3 sm:px-6 sm:pb-4 sm:pt-6">
+    <header className="relative z-40 px-3 pb-2 pt-3 xl:sticky xl:top-0 sm:px-6 sm:pb-4 sm:pt-6">
       <div className="ly-shell">
         <div className="ly-glass overflow-hidden rounded-[1.6rem] px-4 py-3 sm:rounded-[2.5rem] sm:px-6 sm:py-4 transition-all duration-500 hover:shadow-[0_32px_80px_rgba(47,46,51,0.06)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -87,6 +87,16 @@ export function AppNavigation() {
                   <span className="shrink-0 rounded-full bg-[var(--accent)]/5 px-2.5 py-1 text-[9px] font-bold tracking-[0.12em] text-[var(--accent)] uppercase border border-[var(--accent)]/10 sm:px-3 sm:py-1.5 sm:text-[10px] sm:tracking-[0.15em]">
                     已登录
                   </span>
+                ) : null}
+                {session?.mode === "app" && session.authenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => startTransition(() => void logout())}
+                    disabled={loggingOut}
+                    className="rounded-full bg-red-500/10 px-3 py-1.5 text-[11px] font-bold text-red-500 transition-all duration-300 hover:bg-red-500/20 active:scale-95 disabled:opacity-40 xl:hidden"
+                  >
+                    {loggingOut ? "..." : "退出"}
+                  </button>
                 ) : null}
                 {isLoginPage && (
                   <div className="rounded-full bg-[var(--accent)]/10 px-4 py-2 text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] uppercase">
@@ -119,7 +129,7 @@ export function AppNavigation() {
                 </nav>
 
                 {(session?.mode === "app" && session.authenticated) || session?.mode === "basic" ? (
-                  <div className="flex items-center gap-3 xl:ml-6 xl:border-l xl:border-[var(--border)] xl:pl-6">
+                  <div className="hidden items-center gap-3 xl:ml-6 xl:flex xl:border-l xl:border-[var(--border)] xl:pl-6">
                     {session?.mode === "app" && session.authenticated && (
                       <>
                         <span className="hidden text-[12px] font-bold text-[var(--muted)] uppercase tracking-widest xl:inline">

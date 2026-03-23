@@ -648,7 +648,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
       <FeedbackPanel feedback={feedback} />
 
-      <section className="sticky top-[4.25rem] z-30 -mx-1 xl:hidden">
+      <section className="-mx-1 xl:hidden">
         <div className="bg-[#f0e7da]/80 p-1 backdrop-blur-md">
           <div className="ly-glass grid grid-cols-2 gap-1.5 rounded-2xl p-1.5 shadow-lg">
             <button type="button" onClick={() => setMobilePanel("chat")} className={`rounded-xl py-3 text-sm font-bold transition-all active:scale-95 ${mobilePanel === "chat" ? "bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/20" : "bg-white/50 text-[var(--muted)]"}`}>
@@ -675,7 +675,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             </div>
             <div className="mt-3 flex min-h-[67svh] flex-col rounded-[1.6rem] border border-[var(--border)] bg-white/50 sm:mt-4 sm:min-h-[620px] sm:rounded-[2rem]">
               <div ref={messageListRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:space-y-6 sm:px-8 sm:py-8">
-                <div className="sticky top-0 z-10 -mx-3 mb-4 rounded-[1.35rem] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,251,246,0.98),rgba(255,255,255,0.94))] px-4 py-3 shadow-[0_12px_32px_rgba(17,17,17,0.06)] backdrop-blur-xl sm:-mx-8 sm:mb-6 sm:rounded-[1.6rem] sm:px-6 sm:py-4">
+                <div className="-mx-3 mb-4 rounded-[1.35rem] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,251,246,0.98),rgba(255,255,255,0.94))] px-4 py-3 shadow-[0_12px_32px_rgba(17,17,17,0.06)] backdrop-blur-xl sm:sticky sm:top-0 sm:z-10 sm:-mx-8 sm:mb-6 sm:rounded-[1.6rem] sm:px-6 sm:py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

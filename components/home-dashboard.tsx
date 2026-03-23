@@ -67,7 +67,7 @@ export function HomeDashboard() {
             <div className="mt-7 grid grid-cols-2 gap-3">
               <Link
                 href="/rooms/new"
-                className="rounded-[1.15rem] bg-white/95 px-4 py-3.5 text-center text-[14px] font-bold text-[#2b2a30] transition-all duration-300 hover:bg-white active:scale-95 shadow-[0_8px_24px_rgba(255,255,255,0.15)]"
+                className="rounded-[1.15rem] bg-[linear-gradient(135deg,#f48498,#993c50)] px-4 py-3.5 text-center text-[14px] font-bold text-white transition-all duration-300 hover:shadow-[0_14px_28px_rgba(153,60,80,0.28)] active:scale-95"
               >
                 新建房间
               </Link>
