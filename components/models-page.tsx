@@ -125,6 +125,18 @@ export function ModelsPage() {
     });
   }, [models, providerFilter, searchQuery]);
 
+  const modelStats = useMemo(() => {
+    const enabledCount = models.filter((model) => model.enabled).length;
+    const testedSuccessCount = models.filter((model) => model.lastConnectionTest?.status === "success").length;
+    const providerCount = new Set(models.map((model) => model.provider)).size;
+
+    return {
+      enabledCount,
+      testedSuccessCount,
+      providerCount,
+    };
+  }, [models]);
+
   function updateModelForm(nextValue: Partial<ReturnType<typeof createDefaultModelForm>>) {
     if (nextValue.provider || nextValue.baseUrl !== undefined || nextValue.apiKey !== undefined) {
       setDiscoveredModels([]);
@@ -298,28 +310,126 @@ export function ModelsPage() {
     setFeedback(null);
   }
 
-  return (
-    <main className="ly-shell flex flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
-      {/* ─ Page header ─ */}
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-display font-bold tracking-tight sm:text-2xl">模型管理</h1>
-          <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)] sm:text-[13px]">
-            共 {models.length} 个模型 · 配置、测试并管理你的多模型入口
-          </p>
+  if (activeAction === "loading" && models.length === 0) {
+    return (
+      <main className="ly-page-wrap">
+        <div className="ly-shell flex flex-col gap-5">
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
+            <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+              <div className="ly-page-header">
+                <div className="space-y-3">
+                  <div className="h-8 w-36 animate-pulse rounded-xl bg-white/45" />
+                  <div className="h-4 w-80 max-w-full animate-pulse rounded-lg bg-white/35" />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="h-11 w-28 animate-pulse rounded-xl bg-white/40" />
+                  <div className="h-11 w-28 animate-pulse rounded-xl bg-white/35" />
+                  <div className="h-11 w-28 animate-pulse rounded-xl bg-white/35" />
+                </div>
+              </div>
+            </div>
+
+            <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="rounded-[1.4rem] bg-white/45 px-4 py-4">
+                  <div className="h-3 w-20 animate-pulse rounded bg-white/50" />
+                  <div className="mt-3 h-8 w-14 animate-pulse rounded bg-white/55" />
+                  <div className="mt-3 h-3 w-32 animate-pulse rounded bg-white/40" />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
+            <div className="ly-glass ly-panel-card space-y-4">
+              <div className="h-6 w-24 animate-pulse rounded-lg bg-white/45" />
+              {[1, 2, 3, 4, 5].map((item) => (
+                <div key={item} className="space-y-2">
+                  <div className="h-3 w-20 animate-pulse rounded bg-white/40" />
+                  <div className="h-11 w-full animate-pulse rounded-xl bg-white/35" />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="h-11 flex-1 animate-pulse rounded-xl bg-white/35" />
+                <div className="h-11 w-40 animate-pulse rounded-xl bg-white/35" />
+              </div>
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="ly-glass ly-panel-card overflow-hidden">
+                  <div className="space-y-4 pl-2">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 animate-pulse rounded-xl bg-white/45" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 w-40 animate-pulse rounded bg-white/50" />
+                        <div className="h-3 w-52 animate-pulse rounded bg-white/35" />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="h-16 animate-pulse rounded-2xl bg-white/35" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-white/35" />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      {[1, 2, 3, 4].map((button) => (
+                        <div key={button} className="h-8 w-14 animate-pulse rounded-xl bg-white/35" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/rooms/new" className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
-            新建房间
-          </Link>
-          <button type="button" onClick={fillLocalMockPreset} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition-all hover:bg-white/60 active:scale-95">
-            测试预设
-          </button>
-          {mockToolsEnabled && (
-            <button type="button" onClick={() => startTransition(() => void createLocalMocks())} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition-all hover:bg-white/60 active:scale-95">
-              Mock 模型
-            </button>
-          )}
+      </main>
+    );
+  }
+
+  return (
+    <main className="ly-page-wrap">
+      <div className="ly-shell flex flex-col gap-5">
+      {/* ─ Page header ─ */}
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
+        <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+          <div className="ly-page-header">
+            <div className="ly-page-heading">
+              <h1 className="ly-page-title">模型管理</h1>
+              <p className="ly-page-subtitle">
+                共 {models.length} 个模型 · 配置、测试并管理你的多模型入口
+              </p>
+            </div>
+            <div className="ly-page-actions">
+              <Link href="/rooms/new" className="ly-page-action rounded-xl border border-transparent bg-[var(--accent)] px-4 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95">
+                新建房间
+              </Link>
+              <button type="button" onClick={fillLocalMockPreset} className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold shadow-sm shadow-black/5 active:scale-95">
+                测试预设
+              </button>
+              {mockToolsEnabled && (
+                <button type="button" onClick={() => startTransition(() => void createLocalMocks())} className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold shadow-sm shadow-black/5 active:scale-95">
+                  Mock 模型
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
+          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">已启用</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.enabledCount}</p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">已可参与房间协作的模型数量。</p>
+          </div>
+          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">连接正常</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.testedSuccessCount}</p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">最近连接测试成功的模型数量。</p>
+          </div>
+          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">Provider</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.providerCount}</p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">当前已接入的不同模型厂商数量。</p>
+          </div>
         </div>
       </section>
 
@@ -332,22 +442,22 @@ export function ModelsPage() {
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
       {/* ─ Form + List layout ─ */}
-      <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
+      <section className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
         {/* ─ Model form ─ */}
         <div className="xl:sticky xl:top-20 xl:self-start">
-          <div className="ly-glass rounded-2xl p-5 sm:p-6 shadow-lg shadow-black/5">
+          <div className="ly-glass ly-panel-card">
             <h2 className="text-lg font-display font-bold tracking-tight">{modelForm.id ? "编辑模型" : "新增模型"}</h2>
 
             <div className="mt-5 space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">显示名称</label>
-                <input value={modelForm.name} onChange={(e) => updateModelForm({ name: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" placeholder="例如：GPT-4 工作模型" />
+                <input value={modelForm.name} onChange={(e) => updateModelForm({ name: e.target.value })} className="ly-control" placeholder="例如：GPT-4 工作模型" />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">提供商</label>
-                  <select value={modelForm.provider} onChange={(e) => updateProvider(e.target.value as ProviderType)} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none">
+                  <select value={modelForm.provider} onChange={(e) => updateProvider(e.target.value as ProviderType)} className="ly-control appearance-none">
                     {providerOptions.map((provider) => (
                       <option key={provider} value={provider}>{getProviderOptionLabel(provider)}</option>
                     ))}
@@ -366,27 +476,27 @@ export function ModelsPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">Base URL</label>
-                <input value={modelForm.baseUrl} onChange={(e) => updateModelForm({ baseUrl: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" />
+                <input value={modelForm.baseUrl} onChange={(e) => updateModelForm({ baseUrl: e.target.value })} className="ly-control font-mono text-[12px]" />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">API Key</label>
-                <input value={modelForm.apiKey} onChange={(e) => updateModelForm({ apiKey: e.target.value })} type="password" className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl tracking-widest placeholder:tracking-normal" placeholder={modelForm.id ? "••••••••••••••••" : "输入 API Key"} />
+                <input value={modelForm.apiKey} onChange={(e) => updateModelForm({ apiKey: e.target.value })} type="password" className="ly-control font-mono text-[12px] tracking-widest placeholder:tracking-normal" placeholder={modelForm.id ? "••••••••••••••••" : "输入 API Key"} />
               </div>
 
               {/* Model discovery */}
-              <div className="rounded-xl border border-white/40 bg-white/30 p-4 backdrop-blur-xl">
+              <div className="ly-inline-panel p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[13px] font-bold">自动获取模型 ID</p>
                     <p className="mt-0.5 text-[11px] text-[var(--muted)]">{discoverySupported ? "支持从接口获取" : "当前 Provider 暂不支持"}</p>
                   </div>
-                  <button type="button" onClick={() => startTransition(() => void handleDiscoverModels())} disabled={!discoverySupported || !modelForm.baseUrl.trim() || !modelForm.apiKey.trim() || Boolean(activeAction)} className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold border border-black/5 shadow-sm transition hover:shadow-md disabled:opacity-50">
+                  <button type="button" onClick={() => startTransition(() => void handleDiscoverModels())} disabled={!discoverySupported || !modelForm.baseUrl.trim() || !modelForm.apiKey.trim() || Boolean(activeAction)} className="ly-secondary-action shrink-0 rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold border-black/5 shadow-sm disabled:opacity-50">
                     {activeAction === "discovering" ? "获取中..." : "获取列表"}
                   </button>
                 </div>
                 {discoveredModels.length > 0 && (
-                  <select value={discoveredModels.some((i) => i.id === modelForm.modelName) ? modelForm.modelName : ""} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="mt-3 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2.5 text-[13px] font-medium outline-none transition focus:border-[var(--accent)] appearance-none">
+                  <select value={discoveredModels.some((i) => i.id === modelForm.modelName) ? modelForm.modelName : ""} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="ly-control ly-control-sm mt-3 appearance-none bg-white px-3">
                     <option value="">请选择一个模型</option>
                     {discoveredModels.map((item) => (
                       <option key={item.id} value={item.id}>{item.label}</option>
@@ -398,11 +508,11 @@ export function ModelsPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">模型 ID</label>
-                  <input value={modelForm.modelName} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" placeholder={selectedPreset.defaultModelName} />
+                  <input value={modelForm.modelName} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="ly-control font-mono text-[12px]" placeholder={selectedPreset.defaultModelName} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">回复字数上限</label>
-                  <input type="number" min={50} max={4000} step={10} value={modelForm.defaultReplyLength} onChange={(e) => updateModelForm({ defaultReplyLength: Number.parseInt(e.target.value, 10) || modelForm.defaultReplyLength })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" />
+                  <input type="number" min={50} max={4000} step={10} value={modelForm.defaultReplyLength} onChange={(e) => updateModelForm({ defaultReplyLength: Number.parseInt(e.target.value, 10) || modelForm.defaultReplyLength })} className="ly-control" />
                 </div>
               </div>
 
@@ -423,7 +533,7 @@ export function ModelsPage() {
                   {modelForm.id ? "保存修改" : "创建模型"}
                 </button>
                 {modelForm.id && (
-                  <button type="button" onClick={resetForm} className="rounded-xl border border-white/40 bg-white/30 px-5 py-3 text-[14px] font-bold text-[var(--muted)] transition hover:bg-white/60 active:scale-95">
+                  <button type="button" onClick={resetForm} className="ly-secondary-action px-5 py-3 text-[14px] font-bold active:scale-95">
                     取消
                   </button>
                 )}
@@ -433,7 +543,7 @@ export function ModelsPage() {
         </div>
 
         {/* ─ Model list ─ */}
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 flex flex-col gap-4">
           {/* Filters */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型名称、ID 或接入地址..." className="flex-1 rounded-xl border border-white/40 bg-white/20 px-4 py-2.5 text-[13px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-lg" />
@@ -450,30 +560,98 @@ export function ModelsPage() {
 
           {/* Cards */}
           {models.length === 0 ? (
-            <div className="ly-glass rounded-xl px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
-              {mockToolsEnabled ? "还没有模型。可以先录入真实模型，或先生成本地 mock 模型。" : "还没有模型。请在左侧创建第一条模型配置。"}
+            <div className="ly-empty-card grid gap-5 px-6 py-8 text-left lg:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.85fr)]">
+              <div className="space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">Model Hub</p>
+                <h3 className="text-2xl font-display font-bold tracking-tight text-[#2f2e33]">
+                  先把模型入口准备好，再开始搭建协作房间
+                </h3>
+                <p className="max-w-2xl text-[14px] leading-7 text-[var(--muted)]">
+                  这里建议先录入一到两个真实模型，确认 Base URL、API Key 和模型 ID 都能连通。准备好之后，再去房间页搭建单聊或多模型顺序协作流程。
+                </p>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button type="button" onClick={fillLocalMockPreset} className="ly-secondary-action rounded-xl px-4 py-2.5 text-[13px] font-bold">
+                    载入测试预设
+                  </button>
+                  {mockToolsEnabled && (
+                    <button type="button" onClick={() => startTransition(() => void createLocalMocks())} className="ly-primary-action rounded-xl px-4 py-2.5 text-[13px] font-bold">
+                      生成本地 Mock 模型
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-3">
+                {[
+                  "先填写显示名称、Provider 和 Base URL。",
+                  "再补上 API Key，并尝试自动获取模型 ID。",
+                  "保存后运行连接测试，再去新建房间。",
+                ].map((item, index) => (
+                  <div key={item} className="rounded-[1.35rem] bg-white/45 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">步骤 {index + 1}</p>
+                    <p className="mt-1 text-sm leading-6 text-stone-600">{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : filteredModels.length === 0 ? (
-            <div className="ly-glass rounded-xl px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
+            <div className="ly-empty-card px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
               没有匹配模型，试试清空关键词或切换 Provider。
             </div>
           ) : (
-            filteredModels.map((model) => (
-              <article key={model.id} className="ly-glass group rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 sm:rounded-2xl sm:p-5">
-                {/* Top row: icon + name + badges + actions */}
-                <div className="flex items-start gap-4">
+            filteredModels.map((model) => {
+              const testStatus = model.lastConnectionTest?.status;
+              const isSuccess = testStatus === "success";
+              const isFailed = testStatus === "error";
+              const isUntested = !model.lastConnectionTest;
+
+              // Card wrapper: overflow-hidden clips the left stripe
+              let cardClass = "ly-panel-card group relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 ";
+              let stripeClass = "";
+              let dotClass = "";
+
+              if (!model.enabled) {
+                // 已停用: 灰调 + 虚线 + 褪色
+                cardClass += "border border-dashed border-stone-300/80 bg-stone-100/60 opacity-60 grayscale hover:opacity-100 hover:grayscale-0";
+                stripeClass = "bg-stone-400";
+                dotClass = "bg-stone-400";
+              } else if (isFailed) {
+                // 连接失败: 红色警告
+                cardClass += "ly-glass border-red-300 bg-red-50/30";
+                stripeClass = "bg-red-500";
+                dotClass = "bg-red-500 animate-pulse";
+              } else if (isUntested) {
+                // 未测试: 琥珀提示
+                cardClass += "ly-glass";
+                stripeClass = "bg-amber-400";
+                dotClass = "bg-amber-400";
+              } else if (isSuccess) {
+                // 连接成功: 翡翠绿
+                cardClass += "ly-glass border-emerald-300/50";
+                stripeClass = "bg-emerald-500";
+                dotClass = "bg-emerald-500";
+              } else {
+                cardClass += "ly-glass";
+                stripeClass = "bg-stone-300";
+                dotClass = "bg-stone-400";
+              }
+
+              return (
+              <article key={model.id} className={`${cardClass} min-w-0`}>
+                {/* Status stripe */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-[inherit] ${stripeClass}`} />
+
+                {/* Top row */}
+                <div className="flex items-start gap-4 pl-2">
                   <div className="relative shrink-0">
                     <span className={`inline-flex h-12 w-12 items-center justify-center rounded-xl text-[11px] font-bold tracking-wide shadow-md transition-transform duration-300 group-hover:scale-105 ${getProviderIconClassName(model.provider)}`}>
                       {getProviderShortName(model.provider)}
                     </span>
-                    {model.enabled && (
-                      <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                    )}
+                    <span className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white ${dotClass}`} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-[17px] font-display font-bold tracking-tight">{model.name}</h3>
-                      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${model.enabled ? "border-emerald-200/50 bg-emerald-50/80 text-emerald-700" : "border-black/10 bg-black/5 text-[var(--muted)]"}`}>
+                      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${model.enabled ? "border-emerald-200/50 bg-emerald-50/80 text-emerald-700" : "border-stone-300 bg-stone-100 text-stone-500"}`}>
                         {model.enabled ? "已启用" : "已停用"}
                       </span>
                     </div>
@@ -486,7 +664,7 @@ export function ModelsPage() {
                 </div>
 
                 {/* Details row */}
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 rounded-lg border border-white/30 bg-white/20 px-3.5 py-3">
+                <div className="ly-inline-panel mt-3 ml-2 grid gap-3 px-3.5 py-3 sm:grid-cols-2">
                   <div>
                     <p className="text-[10px] font-bold text-[var(--muted)] opacity-60 uppercase tracking-wider">模型 ID</p>
                     <p className="mt-0.5 break-all font-mono text-[12px] font-bold">{model.modelName || "未填写"}</p>
@@ -498,24 +676,26 @@ export function ModelsPage() {
                 </div>
 
                 {/* Test result inline */}
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-[11px] text-[var(--muted)] opacity-60 truncate flex-1 mr-3">
+                <div className="mt-2 ml-2 flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <p className="min-w-0 flex-1 truncate text-[11px] text-[var(--muted)] opacity-60">
                     {model.lastConnectionTest
                       ? `测试于 ${formatDate(model.lastConnectionTest.testedAt)} — ${formatModelTestMessage(model.lastConnectionTest)}`
                       : `更新于 ${formatDate(model.updatedAt)}`}
                   </p>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button type="button" onClick={() => { setModelForm({ id: model.id, name: model.name, provider: model.provider, baseUrl: model.baseUrl, modelName: model.modelName, apiKey: "", defaultReplyLength: model.defaultReplyLength, enabled: model.enabled }); setDiscoveredModels([]); setNotice(`正在编辑模型「${model.name}」。`); }} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-[var(--accent)] active:scale-95">编辑</button>
-                    <button type="button" onClick={() => startTransition(() => void testModel(model))} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-sky-600 active:scale-95">{runningTestModelId === model.id ? "测试中" : "测试"}</button>
-                    <button type="button" onClick={() => startTransition(() => void toggleModel(model))} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-amber-600 active:scale-95">{model.enabled ? "停用" : "启用"}</button>
-                    <button type="button" onClick={() => startTransition(() => void removeModel(model))} className="rounded-md border border-red-200/50 bg-red-50/50 px-3 py-1.5 text-[11px] font-bold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95">删除</button>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5 md:justify-end">
+                    <button type="button" onClick={() => { setModelForm({ id: model.id, name: model.name, provider: model.provider, baseUrl: model.baseUrl, modelName: model.modelName, apiKey: "", defaultReplyLength: model.defaultReplyLength, enabled: model.enabled }); setDiscoveredModels([]); setNotice(`正在编辑模型「${model.name}」。`); }} className="ly-mini-action px-3 py-1.5 text-[11px] font-bold hover:text-[var(--accent)] active:scale-95">编辑</button>
+                    <button type="button" onClick={() => startTransition(() => void testModel(model))} className="ly-mini-action px-3 py-1.5 text-[11px] font-bold hover:text-sky-600 active:scale-95">{runningTestModelId === model.id ? "测试中" : "测试"}</button>
+                    <button type="button" onClick={() => startTransition(() => void toggleModel(model))} className="ly-mini-action px-3 py-1.5 text-[11px] font-bold hover:text-[var(--accent)] active:scale-95">{model.enabled ? "停用" : "启用"}</button>
+                    <button type="button" onClick={() => startTransition(() => void removeModel(model))} className="ly-mini-action border-red-200/50 bg-red-50/50 px-3 py-1.5 text-[11px] font-bold text-red-500 hover:bg-red-500 hover:text-white active:scale-95">删除</button>
                   </div>
                 </div>
               </article>
-            ))
+              );
+            })
           )}
         </div>
       </section>
+      </div>
     </main>
   );
 }

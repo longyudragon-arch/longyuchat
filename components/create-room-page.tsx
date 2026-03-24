@@ -159,21 +159,22 @@ export function CreateRoomPage() {
   }
 
   return (
-    <main className="ly-shell flex flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
+    <main className="ly-page-wrap">
+      <div className="ly-shell flex flex-col gap-5">
       {/* ─ Page header ─ */}
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-display font-bold tracking-tight sm:text-2xl">新建房间</h1>
-          <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)] sm:text-[13px]">
+      <section className="ly-page-header">
+        <div className="ly-page-heading">
+          <h1 className="ly-page-title">新建房间</h1>
+          <p className="ly-page-subtitle">
             挑选模型，定义回答顺序，创建多模型协作房间。
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95">
+        <div className="ly-page-actions">
+          <Link href="/rooms" className="ly-page-action ly-secondary-action px-4 py-2 text-[13px] font-bold active:scale-95">
             返回列表
           </Link>
           {mockToolsEnabled && (
-            <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} disabled={busy} className="rounded-xl border border-sky-200/50 bg-sky-50/50 px-4 py-2 text-[13px] font-bold text-sky-700 transition hover:bg-sky-50 active:scale-95 disabled:opacity-50">
+            <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} disabled={busy} className="ly-page-action rounded-xl border border-sky-200/50 bg-sky-50/50 px-4 py-2 text-[13px] font-bold text-sky-700 transition hover:bg-sky-50 active:scale-95 disabled:opacity-50">
               加载测试模型
             </button>
           )}
@@ -181,15 +182,15 @@ export function CreateRoomPage() {
       </section>
 
       {/* ─ Room config ─ */}
-      <section className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+      <section className="ly-glass ly-panel-card">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
-            <input value={roomForm.title} onChange={(e) => setRoomForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" placeholder="例如：产品评审小组" />
+            <input value={roomForm.title} onChange={(e) => setRoomForm((c) => ({ ...c, title: e.target.value }))} className="ly-control" placeholder="例如：产品评审小组" />
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
-            <select value={roomForm.type} onChange={(e) => { const t = e.target.value as RoomType; setRoomForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
+            <select value={roomForm.type} onChange={(e) => { const t = e.target.value as RoomType; setRoomForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="ly-control appearance-none cursor-pointer">
               <option value="GROUP">群聊 (多模型顺序协作)</option>
               <option value="SINGLE">单聊 (单模型快速对话)</option>
             </select>
@@ -209,7 +210,7 @@ export function CreateRoomPage() {
       {/* ─ Model selection + ordering ─ */}
       <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
         {/* Left: model library */}
-        <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+        <div className="ly-glass ly-panel-card">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-display font-bold tracking-tight">挑选参与成员</h2>
             {selectedModels.length > 0 && (
@@ -220,8 +221,8 @@ export function CreateRoomPage() {
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/30 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/30 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="ly-control ly-control-sm flex-1" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="ly-control ly-control-sm appearance-none cursor-pointer px-3 font-bold">
               <option value="ALL">全部厂商</option>
               {providerOptions.map((p) => (
                 <option key={p} value={p}>{getProviderOptionLabel(p)}</option>
@@ -231,7 +232,7 @@ export function CreateRoomPage() {
 
           <div className="mt-4 space-y-2">
             {filteredModels.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
+              <div className="ly-empty-card px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
                 没有找到匹配的模型
               </div>
             ) : (
@@ -242,10 +243,10 @@ export function CreateRoomPage() {
                     key={model.id}
                     type="button"
                     onClick={() => toggleModel(model.id)}
-                    className={`group flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5 ${
+                    className={`ly-list-item group flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left duration-300 hover:-translate-y-0.5 ${
                       selected
                         ? "border-[var(--accent)]/50 bg-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
-                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-xl"
+                        : "hover:shadow-md"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -257,7 +258,7 @@ export function CreateRoomPage() {
                         <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                       </div>
                     </div>
-                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
+                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "ly-mini-action border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
                       {selected ? "已选" : "加入"}
                     </span>
                   </button>
@@ -269,7 +270,7 @@ export function CreateRoomPage() {
 
         {/* Right: ordering + submit */}
         <div className="xl:sticky xl:top-20 xl:self-start">
-          <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+          <div className="ly-glass ly-panel-card">
             <h2 className="text-lg font-display font-bold tracking-tight">发言顺序</h2>
             <p className="mt-1 text-[12px] font-medium text-[var(--muted)]">
               {roomForm.type === "SINGLE" ? "单聊模式，只保留 1 个模型。" : "群聊模式，拖拽调整回答顺序。"}
@@ -277,7 +278,7 @@ export function CreateRoomPage() {
 
             <div className="mt-5 space-y-2">
               {selectedModels.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-10 text-center">
+                <div className="ly-empty-card px-5 py-10 text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--foreground)]/5 text-lg font-bold text-[var(--foreground)]/25">→</div>
                   <p className="mt-3 text-[13px] font-bold text-[var(--muted)] opacity-70">从左侧挑选模型</p>
                 </div>
@@ -304,12 +305,12 @@ export function CreateRoomPage() {
                         onDragOver={(e) => { e.preventDefault(); previewSelectedModelMove(model.id); }}
                         onDrop={(e) => { e.preventDefault(); clearDragState(); }}
                         onDragEnd={clearDragState}
-                        className={`relative z-10 rounded-xl border px-4 py-3.5 transition-all duration-300 ${
+                        className={`ly-list-item relative z-10 px-4 py-3.5 duration-300 ${
                           isDragging
                             ? "scale-[1.03] border-[var(--accent)] bg-white/95 shadow-lg z-20"
-                            : isDropTarget
+                          : isDropTarget
                               ? "border-[var(--accent)] bg-[var(--accent)]/5 translate-x-2"
-                              : "border-white/50 bg-white/20 hover:bg-white/60"
+                              : "hover:bg-white/60"
                         } ${roomForm.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -325,7 +326,7 @@ export function CreateRoomPage() {
                               <p className="text-[10px] font-bold tracking-wider text-[var(--muted)] opacity-60 uppercase">{getProviderChineseLabel(model.provider)}</p>
                             </div>
                           </div>
-                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-lg p-2 text-[var(--muted)] opacity-60 hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition">
+                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="ly-mini-action rounded-lg p-2 text-[var(--muted)] opacity-70 hover:border-red-200 hover:bg-red-50 hover:text-red-500">
                             <span className="text-[11px] font-bold">移除</span>
                           </button>
                         </div>
@@ -351,7 +352,7 @@ export function CreateRoomPage() {
                   返回房间列表
                 </Link>
                 <span className="h-1 w-1 rounded-full bg-[var(--border)]" />
-                <button type="button" onClick={clearSelection} className="text-[12px] font-bold text-[var(--muted)] hover:text-red-500 transition-colors">
+              <button type="button" onClick={clearSelection} className="text-[12px] font-bold text-[var(--muted)] hover:text-red-500 transition-colors">
                   重置所有挑选
                 </button>
               </div>
@@ -359,6 +360,7 @@ export function CreateRoomPage() {
           </div>
         </div>
       </section>
+      </div>
     </main>
   );
 }

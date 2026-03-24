@@ -41,6 +41,18 @@ interface TestModelConnectionDependencies {
   createAdapter: typeof createModelAdapter;
 }
 
+interface DeleteModelReferenceRoom {
+  id: string;
+  title: string;
+  type: "SINGLE" | "GROUP";
+}
+
+interface DeleteModelConfigDependencies {
+  getModelById: (id: string) => Promise<Pick<ModelConfig, "id" | "name"> | null>;
+  getReferencingRooms: (modelId: string) => Promise<DeleteModelReferenceRoom[]>;
+  deleteById: (id: string) => Promise<ModelConfig>;
+}
+
 const fallbackReplyLength = 300;
 const maxTestMessageLength = 1200;
 
@@ -48,6 +60,35 @@ const defaultTestDependencies: TestModelConnectionDependencies = {
   getModelById: getModelConfigById,
   persistTestResult: persistModelTestResult,
   createAdapter: createModelAdapter,
+};
+
+const defaultDeleteDependencies: DeleteModelConfigDependencies = {
+  getModelById: async (id) =>
+    prisma.modelConfig.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    }),
+  getReferencingRooms: async (modelId) => {
+    const roomModels = await prisma.chatRoomModel.findMany({
+      where: { modelId },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        room: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    return roomModels.map((entry) => entry.room);
+  },
+  deleteById: (id) =>
+    prisma.modelConfig.delete({
+      where: { id },
+    }),
 };
 
 function requireNonEmpty(value: string, label: string) {
@@ -183,10 +224,32 @@ export async function updateModelConfig(id: string, input: UpdateModelConfigInpu
   });
 }
 
-export async function deleteModelConfig(id: string) {
-  return prisma.modelConfig.delete({
-    where: { id },
-  });
+export async function deleteModelConfig(
+  id: string,
+  dependencies: DeleteModelConfigDependencies = defaultDeleteDependencies,
+) {
+  const model = await dependencies.getModelById(id);
+
+  if (!model) {
+    throw new ApiError(404, `Model ${id} was not found.`);
+  }
+
+  const referencingRooms = await dependencies.getReferencingRooms(id);
+
+  if (referencingRooms.length > 0) {
+    throw new ApiError(
+      409,
+      `Model ${model.name} is still used by ${referencingRooms.length} chat room(s).`,
+      {
+        modelId: id,
+        modelName: model.name,
+        roomCount: referencingRooms.length,
+        rooms: referencingRooms.slice(0, 5),
+      },
+    );
+  }
+
+  return dependencies.deleteById(id);
 }
 
 export function toModelRuntimeConfig(model: ModelConfig) {

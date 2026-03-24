@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelConfig } from "@/generated/prisma/client";
-import { testModelConnectionById, toModelRuntimeConfig } from "@/server/services/model-config-service";
+import {
+  deleteModelConfig,
+  testModelConnectionById,
+  toModelRuntimeConfig,
+} from "@/server/services/model-config-service";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
+import { ApiError } from "@/server/http/api-error";
 import { encryptModelSecret } from "@/server/security/model-secret-crypto";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
@@ -135,5 +140,42 @@ describe("testModelConnectionById", () => {
     });
 
     expect(runtimeConfig.apiKey).toBe("secret-key");
+  });
+});
+
+describe("deleteModelConfig", () => {
+  it("blocks deleting a model that is still used by chat rooms", async () => {
+    await expect(
+      deleteModelConfig("model-in-use", {
+        getModelById: async () => ({ id: "model-in-use", name: "Gemini 主模型" }),
+        getReferencingRooms: async () => [
+          { id: "room-1", title: "产品讨论群", type: "GROUP" },
+          { id: "room-2", title: "单聊测试", type: "SINGLE" },
+        ],
+        deleteById: vi.fn(),
+      }),
+    ).rejects.toMatchObject<ApiError>({
+      status: 409,
+      message: "Model Gemini 主模型 is still used by 2 chat room(s).",
+      details: {
+        modelId: "model-in-use",
+        modelName: "Gemini 主模型",
+        roomCount: 2,
+      },
+    });
+  });
+
+  it("deletes a model when no chat room references remain", async () => {
+    const deletedModel = buildModel("model-free");
+    const deleteById = vi.fn(async () => deletedModel);
+
+    const result = await deleteModelConfig("model-free", {
+      getModelById: async () => ({ id: "model-free", name: "可删除模型" }),
+      getReferencingRooms: async () => [],
+      deleteById,
+    });
+
+    expect(deleteById).toHaveBeenCalledWith("model-free");
+    expect(result).toEqual(deletedModel);
   });
 });

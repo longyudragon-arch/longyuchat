@@ -1,4 +1,5 @@
 import type { GenerateReplyInput, ModelAdapter, ModelReply } from "@/server/adapters/model-adapter";
+import { createProviderApiError } from "@/server/http/provider-error";
 import { requestProvider } from "@/server/http/provider-request";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
@@ -63,10 +64,6 @@ function buildEndpoint(config: ModelRuntimeConfig) {
   return `${normalizeBaseUrl(config.baseUrl)}/chat/completions`;
 }
 
-function formatProviderError(status: number, bodyText: string) {
-  return `Provider request failed with ${status}: ${bodyText.slice(0, 600)}`;
-}
-
 function estimateMaxTokens(defaultReplyLength: number) {
   return Math.min(Math.max(Math.ceil(defaultReplyLength * 1.2), 64), 4096);
 }
@@ -96,7 +93,12 @@ async function requestChatCompletion(
   });
 
   if (!response.ok) {
-    throw new Error(formatProviderError(response.status, response.bodyText));
+    throw createProviderApiError({
+      status: response.status,
+      bodyText: response.bodyText,
+      provider: config.provider,
+      endpoint,
+    });
   }
 
   const payload = JSON.parse(response.bodyText) as ChatCompletionResponse;

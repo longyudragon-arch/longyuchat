@@ -220,4 +220,44 @@ describe("OpenAiCompatibleAdapter", () => {
       expect(adapter).toBeInstanceOf(OpenAiCompatibleAdapter);
     }
   });
+
+  it("surfaces upstream Gemini API key failures as authentication errors", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify([
+          {
+            error: {
+              code: 400,
+              message: "API Key not found. Please pass a valid API key.",
+              status: "INVALID_ARGUMENT",
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                  reason: "API_KEY_INVALID",
+                  domain: "googleapis.com",
+                },
+              ],
+            },
+          },
+        ]),
+    }));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OpenAiCompatibleAdapter();
+
+    await expect(
+      adapter.generateReply({
+        config: {
+          ...runtimeConfig,
+          provider: "GEMINI",
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+          modelName: "gemini-2.5-flash",
+        },
+        messages: [{ role: "user", content: "Hello" }],
+      }),
+    ).rejects.toThrow(/Provider authentication failed with 400:/);
+  });
 });

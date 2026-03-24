@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { REQUEST_ID_HEADER } from "@/lib/request-id";
 import { handleRouteError } from "@/server/http/api-error";
 import { jsonWithRequestId } from "@/server/http/api-response";
+import { inferProviderErrorKindFromMessage } from "@/server/http/provider-error";
 import { assertMessagePostRateLimit } from "@/server/http/rate-limit";
 import { parseJsonBody } from "@/server/http/request";
+import { logServerEvent } from "@/server/observability/server-logger";
 import { presentMessages } from "@/server/presenters/api-presenters";
 import { getChatRoomById } from "@/server/services/chat-room-service";
 import { listMessagesByRoomId } from "@/server/services/message-service";
@@ -43,9 +46,26 @@ export async function POST(request: Request, context: RouteContext) {
       content: body.content,
     });
 
-    return jsonWithRequestId(request, result, {
+    const response = jsonWithRequestId(request, result, {
       status: result.status === "completed" ? 201 : 207,
     });
+
+    if (result.status === "partial" && result.failedModelId && result.error) {
+      const room = await getChatRoomById(id);
+      const failedRoomModel = room?.roomModels.find((roomModel) => roomModel.modelId === result.failedModelId);
+
+      logServerEvent("warn", "room_message_partial", {
+        requestId: response.headers.get(REQUEST_ID_HEADER),
+        roomId: id,
+        failedModelId: result.failedModelId,
+        failedModelName: failedRoomModel?.model.name,
+        provider: failedRoomModel?.model.provider,
+        providerErrorKind: inferProviderErrorKindFromMessage(result.error),
+        error: result.error,
+      });
+    }
+
+    return response;
   } catch (error) {
     return handleRouteError(error, request);
   }

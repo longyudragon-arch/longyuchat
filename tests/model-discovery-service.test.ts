@@ -97,4 +97,39 @@ describe("discoverProviderModels", () => {
       ),
     ).rejects.toThrow("Automatic model discovery for CLAUDE is not available yet.");
   });
+
+  it("surfaces provider authentication failures with actionable wording", async () => {
+    const requestProvider = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      bodyText: JSON.stringify([
+        {
+          error: {
+            code: 400,
+            message: "API Key not found. Please pass a valid API key.",
+            status: "INVALID_ARGUMENT",
+            details: [
+              {
+                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                reason: "API_KEY_INVALID",
+                domain: "googleapis.com",
+              },
+            ],
+          },
+        },
+      ]),
+      transport: "fetch" as const,
+    }));
+
+    await expect(
+      discoverProviderModels(
+        {
+          provider: "GEMINI",
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+          apiKey: "bad-key",
+        },
+        { requestProvider },
+      ),
+    ).rejects.toThrow(/Provider authentication failed with 400:/);
+  });
 });

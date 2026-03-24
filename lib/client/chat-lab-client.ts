@@ -36,6 +36,12 @@ interface ProviderPreset {
   softClassName: string;
 }
 
+interface ReferencingRoomSummary {
+  id: string;
+  title: string;
+  type: "SINGLE" | "GROUP";
+}
+
 export interface ClientErrorFeedback {
   title: string;
   description: string;
@@ -294,10 +300,24 @@ function getErrorMessage(error: unknown) {
   return "请求失败。";
 }
 
+function formatReferencingRooms(rooms: ReferencingRoomSummary[] | undefined) {
+  if (!rooms || rooms.length === 0) {
+    return "";
+  }
+
+  const labels = rooms.slice(0, 3).map((room) => `${room.type === "SINGLE" ? "单聊" : "群聊"}「${room.title}」`);
+  const suffix = rooms.length > 3 ? " 等房间" : "";
+  return `${labels.join("、")}${suffix}`;
+}
+
 export function describeClientError(error: unknown): ClientErrorFeedback {
   const message = getErrorMessage(error);
   const normalized = message.toLowerCase();
   const status = error instanceof ClientRequestError ? error.status : undefined;
+  const details =
+    error instanceof ClientRequestError && typeof error.details === "object" && error.details !== null
+      ? (error.details as { roomCount?: number; modelName?: string; rooms?: ReferencingRoomSummary[] })
+      : undefined;
 
   if (status === 401 && normalized.includes("login")) {
     return {
@@ -308,20 +328,39 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     };
   }
 
-  if (status === 404 || normalized.includes("not found")) {
-    return {
-      title: "目标内容不存在",
-      description: message,
-      suggestion: "它可能已经被删除。请返回上一层重新刷新，或重新创建对应的模型和房间。",
-      tone: "error",
-    };
-  }
-
   if (normalized.includes("disabled")) {
     return {
       title: "房间里存在已停用的模型",
       description: message,
       suggestion: "请先在模型管理里重新启用对应模型，或把它们从房间成员中移除后再继续发送。",
+      tone: "warning",
+    };
+  }
+
+  if (
+    (status === 409 && typeof details?.roomCount === "number") ||
+    normalized.includes("is still used by") ||
+    normalized.includes("still referenced by other data")
+  ) {
+    const roomCount = details?.roomCount;
+    const modelName = details?.modelName;
+    const roomPreview = formatReferencingRooms(details?.rooms);
+
+    return {
+      title: "模型仍在房间中使用",
+      description:
+        roomCount && modelName && roomPreview
+          ? `模型「${modelName}」仍被 ${roomCount} 个房间使用，例如：${roomPreview}，所以当前不能直接删除。`
+          : roomCount && modelName
+            ? `模型「${modelName}」仍被 ${roomCount} 个房间使用，所以当前不能直接删除。`
+            : roomCount && roomPreview
+              ? `这个模型仍被 ${roomCount} 个房间使用，例如：${roomPreview}，所以当前不能直接删除。`
+          : roomCount
+            ? `这个模型仍被 ${roomCount} 个房间使用，所以当前不能直接删除。`
+            : "这个模型仍被现有房间引用，所以当前不能直接删除。",
+      suggestion: roomPreview
+        ? `请先到这些房间里移除这个模型，或删除相关房间后，再回来删除模型。`
+        : "请先到相关房间里移除这个模型，或删除相关房间后，再回来删除模型。",
       tone: "warning",
     };
   }
@@ -360,14 +399,26 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
 
   if (
     normalized.includes("invalid_api_key") ||
+    normalized.includes("api_key_invalid") ||
+    normalized.includes("api key not found") ||
     normalized.includes("api key") ||
     normalized.includes("unauthorized") ||
+    normalized.includes("authentication failed") ||
     normalized.includes("401")
   ) {
     return {
       title: "API Key 无效或鉴权失败",
       description: message,
       suggestion: "请检查 API Key、Base URL、模型 ID 是否属于同一个 Provider，并确认账号已经开通对应的 API 能力。",
+      tone: "error",
+    };
+  }
+
+  if (status === 404 || normalized.includes("not found")) {
+    return {
+      title: "目标内容不存在",
+      description: message,
+      suggestion: "它可能已经被删除。请返回上一层重新刷新，或重新创建对应的模型和房间。",
       tone: "error",
     };
   }

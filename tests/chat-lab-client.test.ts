@@ -20,6 +20,16 @@ describe("describeClientError", () => {
     expect(feedback.tone).toBe("error");
   });
 
+  it("does not misclassify provider API key errors as deleted resources", () => {
+    const feedback = describeClientError(
+      new Error("Provider authentication failed with 400: API Key not found. Please pass a valid API key."),
+    );
+
+    expect(feedback.title).toBe("API Key 无效或鉴权失败");
+    expect(feedback.suggestion).toContain("API Key");
+    expect(feedback.suggestion).not.toContain("它可能已经被删除");
+  });
+
   it("returns login guidance for app-level access protection", () => {
     const feedback = describeClientError(new ClientRequestError("Login required.", 401));
 
@@ -38,6 +48,27 @@ describe("describeClientError", () => {
     const feedback = describeClientError(new Error("Model Alpha is disabled."));
 
     expect(feedback.title).toBe("房间里存在已停用的模型");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("returns room-reference guidance when deleting a model still used by chat rooms", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Model Gemini 主模型 is still used by 2 chat room(s).", 409, {
+        modelId: "model-in-use",
+        modelName: "Gemini 主模型",
+        roomCount: 2,
+        rooms: [
+          { id: "room-1", title: "新的群聊房间", type: "GROUP" },
+          { id: "room-2", title: "身上", type: "SINGLE" },
+        ],
+      }),
+    );
+
+    expect(feedback.title).toBe("模型仍在房间中使用");
+    expect(feedback.description).toContain("2 个房间");
+    expect(feedback.description).toContain("群聊「新的群聊房间」");
+    expect(feedback.description).toContain("单聊「身上」");
+    expect(feedback.suggestion).toContain("移除这个模型");
     expect(feedback.tone).toBe("warning");
   });
 });

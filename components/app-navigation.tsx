@@ -60,7 +60,7 @@ export function AppNavigation() {
   if (isChatPage || isLoginPage) return null;
 
   return (
-    <header className="sticky top-0 z-40 px-3 pt-2 pb-1.5 sm:px-5 sm:pt-3 sm:pb-2">
+    <header className="sticky top-0 z-40 px-0 pt-2 pb-1.5 sm:pt-3 sm:pb-2">
       <div className="ly-shell">
         <div className="ly-glass flex items-center justify-between gap-3 rounded-2xl px-3 py-2 sm:rounded-[1.25rem] sm:px-5 sm:py-2.5">
           {/* Brand */}
@@ -74,17 +74,17 @@ export function AppNavigation() {
           </Link>
 
           {/* Nav links */}
-          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+          <nav className="flex items-center gap-2.5 overflow-x-auto scrollbar-none">
             {navItems.map((item) => {
               const active = item.match(pathname);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-bold transition-all duration-200 active:scale-95 sm:px-3.5 sm:py-2 ${
+                  className={`ly-nav-item shrink-0 ${
                     active
-                      ? "bg-[var(--accent)] text-white shadow-sm shadow-[var(--accent)]/20"
-                      : "text-[var(--muted)] hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"
+                      ? "ly-nav-item-active"
+                      : "ly-nav-item-idle"
                   }`}
                 >
                   {item.label}
@@ -104,7 +104,7 @@ export function AppNavigation() {
                   type="button"
                   onClick={() => startTransition(() => void logout())}
                   disabled={loggingOut}
-                  className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-500 transition hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
+                  className="ly-secondary-action rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-500 hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
                 >
                   {loggingOut ? "..." : "退出"}
                 </button>

@@ -206,40 +206,41 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
   }
 
   return (
-    <main className="ly-shell flex flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
+    <main className="ly-page-wrap">
+      <div className="ly-shell flex flex-col gap-5">
       {/* ─ Page header ─ */}
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-display font-bold tracking-tight sm:text-2xl">
+      <section className="ly-page-header">
+        <div className="ly-page-heading">
+          <h1 className="ly-page-title">
             编辑房间{room ? ` — ${room.title}` : ""}
           </h1>
-          <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)] sm:text-[13px]">
+          <p className="ly-page-subtitle">
             增减成员或调整顺序，改动从下一轮回答生效，不影响历史记录。
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/rooms/${roomId}`} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
+        <div className="ly-page-actions">
+          <Link href={`/rooms/${roomId}`} className="ly-page-action rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
             返回聊天
           </Link>
-          <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95 disabled:opacity-40">
+          <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="ly-page-action ly-secondary-action px-4 py-2 text-[13px] font-bold active:scale-95 disabled:opacity-40">
             撤销修改
           </button>
-          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95">
+          <Link href="/rooms" className="ly-page-action ly-secondary-action px-4 py-2 text-[13px] font-bold active:scale-95">
             房间列表
           </Link>
         </div>
       </section>
 
       {/* ─ Room config ─ */}
-      <section className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+      <section className="ly-glass ly-panel-card">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
-            <input value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
+            <input value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="ly-control" />
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
-            <select value={form.type} onChange={(e) => { const t = e.target.value as RoomType; setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
+            <select value={form.type} onChange={(e) => { const t = e.target.value as RoomType; setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="ly-control appearance-none cursor-pointer">
               <option value="GROUP">群聊 (顺序协作)</option>
               <option value="SINGLE">单聊 (单模型对话)</option>
             </select>
@@ -263,15 +264,15 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
       {/* ─ Model selection + ordering ─ */}
       <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
         {/* Left: model library */}
-        <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+        <div className="ly-glass ly-panel-card">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-display font-bold tracking-tight">挑选成员</h2>
             <span className="rounded-md bg-white/30 border border-white/60 px-2.5 py-1 text-[11px] font-bold text-[var(--muted)]">已选 {selectedModels.length}</span>
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/30 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/30 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="ly-control ly-control-sm flex-1" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="ly-control ly-control-sm appearance-none cursor-pointer px-3 font-bold">
               <option value="ALL">全部厂商</option>
               {providerOptions.map((p) => (
                 <option key={p} value={p}>{getProviderOptionLabel(p)}</option>
@@ -281,7 +282,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
           <div className="mt-4 space-y-2 max-h-[500px] overflow-y-auto scrollbar-thin">
             {filteredModels.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
+              <div className="ly-empty-card px-5 py-8 text-center text-[13px] font-medium text-[var(--muted)]">
                 未找到可用模型
               </div>
             ) : (
@@ -292,10 +293,10 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                     key={model.id}
                     type="button"
                     onClick={() => toggleModel(model.id)}
-                    className={`group flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-all duration-300 hover:-translate-y-0.5 ${
+                    className={`ly-list-item group flex w-full items-center justify-between gap-4 px-4 py-3 text-left duration-300 hover:-translate-y-0.5 ${
                       selected
                         ? "border-[var(--accent)]/50 bg-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
-                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-xl"
+                        : "hover:shadow-md"
                     } ${!model.enabled && !selected ? "opacity-50 grayscale hover:grayscale-0 hover:opacity-80" : ""}`}
                   >
                     <div className="flex items-center gap-3">
@@ -310,7 +311,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                         <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                       </div>
                     </div>
-                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
+                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "ly-mini-action border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
                       {selected ? "已选" : "加入"}
                     </span>
                   </button>
@@ -322,7 +323,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
         {/* Right: ordering + submit */}
         <div className="xl:sticky xl:top-20 xl:self-start">
-          <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
+          <div className="ly-glass ly-panel-card">
             <h2 className="text-lg font-display font-bold tracking-tight">发言顺序</h2>
             <p className="mt-1 text-[12px] font-medium text-[var(--muted)]">
               {form.type === "SINGLE" ? "单聊模式，只保留 1 个模型。" : "群聊模式，拖拽调整回答顺序。"}
@@ -330,7 +331,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
 
             <div className="mt-5 space-y-2">
               {selectedModels.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/60 bg-white/20 px-5 py-10 text-center">
+                <div className="ly-empty-card px-5 py-10 text-center">
                   <p className="text-[13px] font-bold text-[var(--muted)] opacity-70">从左侧挑选模型</p>
                 </div>
               ) : (
@@ -356,12 +357,12 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                         onDragOver={(e) => { e.preventDefault(); previewSelectedModelMove(model.id); }}
                         onDrop={(e) => { e.preventDefault(); clearDragState(); }}
                         onDragEnd={clearDragState}
-                        className={`relative z-10 rounded-xl border px-4 py-3.5 transition-all duration-300 ${
+                        className={`ly-list-item relative z-10 px-4 py-3.5 duration-300 ${
                           isDragging
                             ? "scale-[1.03] border-[var(--accent)] bg-white/95 shadow-lg z-20"
-                            : isDropTarget
+                          : isDropTarget
                               ? "border-[var(--accent)] bg-[var(--accent)]/5 translate-x-2"
-                              : "border-white/50 bg-white/20 hover:bg-white/60"
+                              : "hover:bg-white/60"
                         } ${!model.enabled ? "border-red-200/50 bg-red-50/50" : ""} ${form.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -380,7 +381,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                               <p className={`text-[10px] font-bold tracking-wider uppercase opacity-60 ${!model.enabled ? "text-red-500" : "text-[var(--muted)]"}`}>{getProviderChineseLabel(model.provider)}</p>
                             </div>
                           </div>
-                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="rounded-lg p-2 text-[var(--muted)] opacity-60 hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition">
+                          <button type="button" onClick={() => removeSelectedModel(model.id)} className="ly-mini-action rounded-lg p-2 text-[var(--muted)] opacity-70 hover:border-red-200 hover:bg-red-50 hover:text-red-500">
                             <span className="text-[11px] font-bold">移除</span>
                           </button>
                         </div>
@@ -409,6 +410,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
           </div>
         </div>
       </section>
+      </div>
     </main>
   );
 }

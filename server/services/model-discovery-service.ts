@@ -1,4 +1,5 @@
 import { ApiError } from "@/server/http/api-error";
+import { createProviderApiError } from "@/server/http/provider-error";
 import { requestProvider } from "@/server/http/provider-request";
 import type { ProviderType } from "@/types/app";
 
@@ -61,10 +62,6 @@ function assertAutoDiscoverableProvider(provider: ProviderType) {
     400,
     `Automatic model discovery for ${provider} is not available yet. Please enter the model ID manually.`,
   );
-}
-
-function formatProviderError(status: number, bodyText: string) {
-  return `Provider request failed with ${status}: ${bodyText.slice(0, 600)}`;
 }
 
 function toModelRecords(payload: OpenAiCompatibleModelsPayload | OpenAiCompatibleModelRecord[]) {
@@ -132,7 +129,12 @@ export async function discoverProviderModels(
   });
 
   if (!response.ok) {
-    throw new Error(formatProviderError(response.status, response.bodyText));
+    throw createProviderApiError({
+      status: response.status,
+      bodyText: response.bodyText,
+      provider: input.provider,
+      endpoint: `${normalizeBaseUrl(input.baseUrl)}/models`,
+    });
   }
 
   const payload = JSON.parse(response.bodyText) as OpenAiCompatibleModelsPayload | OpenAiCompatibleModelRecord[];

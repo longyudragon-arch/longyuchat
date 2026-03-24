@@ -1,0 +1,57 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  createProviderApiError,
+  formatProviderError,
+  inferProviderErrorKind,
+  inferProviderErrorKindFromMessage,
+} from "@/server/http/provider-error";
+
+const geminiInvalidKeyBody = JSON.stringify([
+  {
+    error: {
+      code: 400,
+      message: "API Key not found. Please pass a valid API key.",
+      status: "INVALID_ARGUMENT",
+      details: [
+        {
+          "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+          reason: "API_KEY_INVALID",
+          domain: "googleapis.com",
+        },
+      ],
+    },
+  },
+]);
+
+describe("provider-error helpers", () => {
+  it("classifies Gemini invalid key responses as authentication failures", () => {
+    expect(inferProviderErrorKind(400, geminiInvalidKeyBody)).toBe("authentication");
+    expect(formatProviderError(400, geminiInvalidKeyBody)).toMatch(/Provider authentication failed with 400:/);
+  });
+
+  it("keeps provider metadata in ApiError details", () => {
+    const error = createProviderApiError({
+      status: 400,
+      bodyText: geminiInvalidKeyBody,
+      provider: "GEMINI",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    });
+
+    expect(error.status).toBe(400);
+    expect(error.message).toMatch(/Provider authentication failed with 400:/);
+    expect(error.details).toMatchObject({
+      provider: "GEMINI",
+      providerErrorKind: "authentication",
+      upstreamStatus: 400,
+    });
+  });
+
+  it("can infer the provider error kind back from a partial-send error message", () => {
+    expect(
+      inferProviderErrorKindFromMessage(
+        "Provider authentication failed with 400: API Key not found. Please pass a valid API key.",
+      ),
+    ).toBe("authentication");
+  });
+});
