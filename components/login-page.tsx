@@ -58,7 +58,7 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 autoComplete="username"
-                className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md"
+                className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl"
                 placeholder="请输入登录用户名"
               />
             </div>
@@ -70,7 +70,7 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
                 onChange={(event) => setPassword(event.target.value)}
                 type="password"
                 autoComplete="current-password"
-                className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md"
+                className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl"
                 placeholder="请输入登录密码"
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && username.trim() && password.trim() && !busy) {

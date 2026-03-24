@@ -59,9 +59,9 @@ body::before {
   height: 140%;
   pointer-events: none;
   background:
-    radial-gradient(circle at 20% 30%, rgba(244, 132, 152, 0.18), transparent 40%),
-    radial-gradient(circle at 80% 20%, rgba(133, 161, 237, 0.15), transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(199, 138, 240, 0.12), transparent 40%);
+    radial-gradient(circle at 20% 30%, rgba(244, 132, 152, 0.35), transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(133, 161, 237, 0.3), transparent 55%),
+    radial-gradient(circle at 50% 80%, rgba(199, 138, 240, 0.25), transparent 50%);
   background-size: 100% 100%;
   animation: slow-mesh 30s ease-in-out infinite alternate;
   z-index: -1;
@@ -135,12 +135,13 @@ a {
 
 .ly-dark-panel {
   background:
-    radial-gradient(circle at top left, rgba(244, 132, 152, 0.15), transparent 30%),
-    linear-gradient(145deg, #2b2a30, #1c1b1f 62%, #141316);
+    radial-gradient(circle at top left, rgba(244, 132, 152, 0.2), transparent 30%),
+    linear-gradient(145deg, rgba(43, 42, 48, 0.65), rgba(28, 27, 31, 0.5) 62%, rgba(20, 19, 22, 0.45));
   color: #f9f5fc;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 32px 80px rgba(20, 19, 22, 0.3);
-  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 32px 80px rgba(20, 19, 22, 0.2);
+  backdrop-filter: blur(48px);
+  -webkit-backdrop-filter: blur(48px);
 }
 
 .ly-grid-lines {

@@ -42,6 +42,29 @@ function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback }) {
   );
 }
 
+function DeleteConfirmModal({ roomTitle, onConfirm, onCancel }: { roomTitle: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onCancel}>
+      <div className="animate-chat-in mx-4 w-full max-w-sm rounded-2xl bg-white/70 p-5 shadow-[0_16px_40px_rgba(0,0,0,0.1)] backdrop-blur-2xl border border-white/50" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </span>
+          <h3 className="text-[15px] font-bold tracking-tight">删除房间</h3>
+        </div>
+        <p className="text-[13px] leading-relaxed text-[var(--muted)]">
+          确定要删除房间「<span className="font-bold text-[var(--foreground)]">{roomTitle}</span>」吗？
+        </p>
+        <p className="mt-1 text-[12px] font-medium text-red-500">删除后不可恢复，房间内的所有聊天记录也会一起删除。</p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-[13px] font-bold text-[var(--muted)] transition hover:bg-white active:scale-95">取消</button>
+          <button type="button" onClick={onConfirm} className="rounded-lg bg-red-500 px-4 py-2 text-[13px] font-bold text-white transition hover:bg-red-600 active:scale-95">确认删除</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RoomsPage() {
   const router = useRouter();
   const mockToolsEnabled = supportsLocalMockTools();
@@ -52,6 +75,8 @@ export function RoomsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<RoomFilterType>("ALL");
   const [providerFilter, setProviderFilter] = useState<ProviderType | "ALL">("ALL");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<RoomView | null>(null);
 
   const isBusy = activeAction !== null;
 
@@ -136,7 +161,9 @@ export function RoomsPage() {
   }
 
   async function deleteRoom(room: RoomView) {
-    if (!window.confirm(`确认删除房间「${room.title}」吗？聊天记录也会一起删除。`)) return;
+    if (!room) return;
+    setRoomToDelete(null);
+    setOpenMenuId(null);
 
     setActiveAction("deleting-room");
     setFeedback(null);
@@ -218,6 +245,15 @@ export function RoomsPage() {
 
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
+      {/* ─ Delete confirmation modal ─ */}
+      {roomToDelete && (
+        <DeleteConfirmModal
+          roomTitle={roomToDelete.title}
+          onConfirm={() => startTransition(() => void deleteRoom(roomToDelete))}
+          onCancel={() => setRoomToDelete(null)}
+        />
+      )}
+
       {/* ─ Room cards ─ */}
       <section className="grid gap-3 sm:gap-4 xl:grid-cols-2">
         {rooms.length === 0 ? (
@@ -257,69 +293,76 @@ export function RoomsPage() {
                       更新于 {formatDate(room.updatedAt)}
                     </p>
                   </div>
-                  <Link
-                    href={`/rooms/${room.id}`}
-                    className="shrink-0 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-[12px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95"
-                  >
-                    进入
-                  </Link>
-                </div>
-
-                {/* Model chain */}
-                <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto px-4 scrollbar-none sm:px-5">
-                  {orderedModels.map((roomModel, index) => (
-                    <div key={roomModel.id} className="flex shrink-0 items-center gap-1">
-                      <div className="flex items-center gap-1.5 rounded-md border border-white/40 bg-white/50 px-2 py-1 backdrop-blur-sm">
-                        <span
-                          className={`inline-flex h-5 w-5 items-center justify-center rounded text-[7px] font-bold tracking-wide ${getProviderIconClassName(roomModel.model.provider)}`}
-                        >
-                          {getProviderShortName(roomModel.model.provider)}
-                        </span>
-                        <span className="text-[11px] font-semibold text-[var(--foreground)] truncate max-w-[80px]">
-                          {roomModel.model.name}
-                        </span>
-                      </div>
-                      {index < orderedModels.length - 1 && (
-                        <svg className="h-3 w-3 shrink-0 text-[var(--accent)] opacity-35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
+                  <div className="flex items-center gap-1.5">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="shrink-0 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-[12px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+                    >
+                      进入
+                    </Link>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        title={`更多操作：${room.title}`}
+                        aria-label={`更多操作：${room.title}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setOpenMenuId(openMenuId === room.id ? null : room.id);
+                        }}
+                        className={`rounded-lg p-1.5 transition active:scale-95 ${openMenuId === room.id ? "bg-[var(--accent)] text-white" : "bg-black/5 text-[var(--muted)] hover:bg-black/10 text-[var(--foreground)]"}`}
+                      >
+                        <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></svg>
+                      </button>
+                      {openMenuId === room.id && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); }} />
+                          <div className="absolute right-0 top-full z-50 mt-1.5 w-36 animate-chat-in rounded-xl border border-white/40 bg-white/60 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-2xl">
+                            <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); startTransition(() => void renameRoom(room)); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-[var(--foreground)] transition hover:bg-black/5">
+                              重命名
+                            </button>
+                            <Link href={`/rooms/${room.id}/edit`} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-[var(--foreground)] transition hover:bg-black/5">
+                              编辑配置
+                            </Link>
+                            <div className="my-1 border-t border-black/5" />
+                            <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); setRoomToDelete(room); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-red-500 transition hover:bg-red-50">
+                              删除房间
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
-                  ))}
+                  </div>
                 </div>
 
-                {/* Last message preview + actions */}
-                <div className="mt-2.5 border-t border-white/15 px-4 py-3 sm:px-5">
+                {/* Model chain (simplified) */}
+                <div className="mt-2.5 flex items-center px-4 sm:px-5">
+                  {orderedModels.length > 0 && (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/50 px-2.5 py-1.5 backdrop-blur-sm">
+                      <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[7px] font-bold tracking-wide ${getProviderIconClassName(orderedModels[0].model.provider)}`}>
+                        {getProviderShortName(orderedModels[0].model.provider)}
+                      </span>
+                      <span className="text-[11px] font-medium text-[var(--foreground)] max-w-[120px] truncate">
+                        {orderedModels[0].model.name}
+                      </span>
+                      {orderedModels.length > 1 && (
+                        <span className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold bg-white/60 text-[var(--muted)]">
+                          +{orderedModels.length - 1} 模型
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Last message preview */}
+                <div className="mt-3 border-t border-white/15 px-4 py-3 sm:px-5">
                   {room.lastMessagePreview ? (
                     <p className="text-[12px] font-medium leading-relaxed text-[var(--foreground)]/80 line-clamp-2">
-                      <span className="font-bold text-[var(--muted)]">{toRoleLabel(room.lastMessagePreview.role)}：</span>
+                       <span className="font-bold text-[var(--muted)]">{toRoleLabel(room.lastMessagePreview.role)}：</span>
                       {compactPreviewContent(room.lastMessagePreview.content)}
                     </p>
                   ) : (
                     <p className="text-[12px] text-[var(--muted)]">暂无消息</p>
                   )}
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <Link
-                      href={`/rooms/${room.id}/edit`}
-                      className="rounded-md border border-white/40 bg-white/30 px-2.5 py-1 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white/60 hover:text-[var(--accent)] active:scale-95"
-                    >
-                      编辑
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => startTransition(() => void renameRoom(room))}
-                      className="rounded-md border border-white/40 bg-white/30 px-2.5 py-1 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white/60 hover:text-[var(--accent)] active:scale-95"
-                    >
-                      重命名
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startTransition(() => void deleteRoom(room))}
-                      className="rounded-md border border-red-200/30 bg-red-50/30 px-2.5 py-1 text-[11px] font-bold text-red-400 transition hover:bg-red-500 hover:text-white active:scale-95"
-                    >
-                      删除
-                    </button>
-                  </div>
                 </div>
               </article>
             );

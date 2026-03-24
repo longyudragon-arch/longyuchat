@@ -221,10 +221,10 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
           <Link href={`/rooms/${roomId}`} className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
             返回聊天
           </Link>
-          <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition hover:bg-white/60 active:scale-95 disabled:opacity-40">
+          <button type="button" onClick={resetForm} disabled={!dirty || activeAction !== null} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95 disabled:opacity-40">
             撤销修改
           </button>
-          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition hover:bg-white/60 active:scale-95">
+          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95">
             房间列表
           </Link>
         </div>
@@ -235,11 +235,11 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
-            <input value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" />
+            <input value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
-            <select value={form.type} onChange={(e) => { const t = e.target.value as RoomType; setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
+            <select value={form.type} onChange={(e) => { const t = e.target.value as RoomType; setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
               <option value="GROUP">群聊 (顺序协作)</option>
               <option value="SINGLE">单聊 (单模型对话)</option>
             </select>
@@ -266,12 +266,12 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         <div className="ly-glass rounded-xl p-4 sm:rounded-2xl sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-display font-bold tracking-tight">挑选成员</h2>
-            <span className="rounded-md bg-white/50 border border-white/60 px-2.5 py-1 text-[11px] font-bold text-[var(--muted)]">已选 {selectedModels.length}</span>
+            <span className="rounded-md bg-white/30 border border-white/60 px-2.5 py-1 text-[11px] font-bold text-[var(--muted)]">已选 {selectedModels.length}</span>
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/50 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" />
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/50 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/30 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/30 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
               <option value="ALL">全部厂商</option>
               {providerOptions.map((p) => (
                 <option key={p} value={p}>{getProviderOptionLabel(p)}</option>
@@ -295,7 +295,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                     className={`group flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-all duration-300 hover:-translate-y-0.5 ${
                       selected
                         ? "border-[var(--accent)]/50 bg-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
-                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-md"
+                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-xl"
                     } ${!model.enabled && !selected ? "opacity-50 grayscale hover:grayscale-0 hover:opacity-80" : ""}`}
                   >
                     <div className="flex items-center gap-3">
@@ -310,7 +310,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                         <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                       </div>
                     </div>
-                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/50 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
+                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
                       {selected ? "已选" : "加入"}
                     </span>
                   </button>
@@ -361,7 +361,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                             ? "scale-[1.03] border-[var(--accent)] bg-white/95 shadow-lg z-20"
                             : isDropTarget
                               ? "border-[var(--accent)] bg-[var(--accent)]/5 translate-x-2"
-                              : "border-white/50 bg-white/40 hover:bg-white/60"
+                              : "border-white/50 bg-white/20 hover:bg-white/60"
                         } ${!model.enabled ? "border-red-200/50 bg-red-50/50" : ""} ${form.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-3">

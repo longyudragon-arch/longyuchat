@@ -169,7 +169,7 @@ export function CreateRoomPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition hover:bg-white/60 active:scale-95">
+          <Link href="/rooms" className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition hover:bg-white/60 active:scale-95">
             返回列表
           </Link>
           {mockToolsEnabled && (
@@ -185,11 +185,11 @@ export function CreateRoomPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
-            <input value={roomForm.title} onChange={(e) => setRoomForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" placeholder="例如：产品评审小组" />
+            <input value={roomForm.title} onChange={(e) => setRoomForm((c) => ({ ...c, title: e.target.value }))} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" placeholder="例如：产品评审小组" />
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
-            <select value={roomForm.type} onChange={(e) => { const t = e.target.value as RoomType; setRoomForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
+            <select value={roomForm.type} onChange={(e) => { const t = e.target.value as RoomType; setRoomForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
               <option value="GROUP">群聊 (多模型顺序协作)</option>
               <option value="SINGLE">单聊 (单模型快速对话)</option>
             </select>
@@ -213,15 +213,15 @@ export function CreateRoomPage() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-display font-bold tracking-tight">挑选参与成员</h2>
             {selectedModels.length > 0 && (
-              <button type="button" onClick={clearSelection} className="rounded-lg border border-white/60 bg-white/50 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:border-red-200 hover:text-red-500">
+              <button type="button" onClick={clearSelection} className="rounded-lg border border-white/60 bg-white/30 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:border-red-200 hover:text-red-500">
                 清空已选
               </button>
             )}
           </div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/50 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" />
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/50 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none cursor-pointer">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型..." className="flex-1 rounded-xl border border-white/40 bg-white/30 px-4 py-2.5 text-[13px] outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/30 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none cursor-pointer">
               <option value="ALL">全部厂商</option>
               {providerOptions.map((p) => (
                 <option key={p} value={p}>{getProviderOptionLabel(p)}</option>
@@ -245,7 +245,7 @@ export function CreateRoomPage() {
                     className={`group flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5 ${
                       selected
                         ? "border-[var(--accent)]/50 bg-[var(--accent)] shadow-md shadow-[var(--accent)]/20"
-                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-md"
+                        : "border-white/40 bg-white/30 hover:bg-white/60 hover:shadow-md backdrop-blur-xl"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -257,7 +257,7 @@ export function CreateRoomPage() {
                         <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
                       </div>
                     </div>
-                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/50 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
+                    <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold transition ${selected ? "bg-white/20 text-white" : "border border-white/60 bg-white/30 text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]"}`}>
                       {selected ? "已选" : "加入"}
                     </span>
                   </button>
@@ -309,7 +309,7 @@ export function CreateRoomPage() {
                             ? "scale-[1.03] border-[var(--accent)] bg-white/95 shadow-lg z-20"
                             : isDropTarget
                               ? "border-[var(--accent)] bg-[var(--accent)]/5 translate-x-2"
-                              : "border-white/50 bg-white/40 hover:bg-white/60"
+                              : "border-white/50 bg-white/20 hover:bg-white/60"
                         } ${roomForm.type === "GROUP" ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-3">

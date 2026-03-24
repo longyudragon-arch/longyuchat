@@ -83,15 +83,39 @@ function TypingIndicator({ modelName }: { modelName: string | null }) {
   );
 }
 
+function DeleteConfirmModal({ roomTitle, onConfirm, onCancel }: { roomTitle: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onCancel}>
+      <div className="animate-chat-in mx-4 w-full max-w-sm rounded-2xl bg-white/70 p-5 shadow-[0_16px_40px_rgba(0,0,0,0.1)] backdrop-blur-2xl border border-white/50" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </span>
+          <h3 className="text-[15px] font-bold tracking-tight">删除房间</h3>
+        </div>
+        <p className="text-[13px] leading-relaxed text-[var(--muted)]">
+          确定要删除房间「<span className="font-bold text-[var(--foreground)]">{roomTitle}</span>」吗？
+        </p>
+        <p className="mt-1 text-[12px] font-medium text-red-500">删除后不可恢复，房间内的所有聊天记录也会一起删除。</p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-[13px] font-bold text-[var(--muted)] transition hover:bg-white active:scale-95">取消</button>
+          <button type="button" onClick={onConfirm} className="rounded-lg bg-red-500 px-4 py-2 text-[13px] font-bold text-white transition hover:bg-red-600 active:scale-95">确认删除</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─── */
 
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const router = useRouter();
-  const messageListRef = useRef<HTMLDivElement | null>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef<boolean>(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
   const [messages, setMessages] = useState<MessageView[]>([]);
-  const [messageInput, setMessageInput] = useState("");
+  const [input, setInput] = useState("");
   const [pendingUserContent, setPendingUserContent] = useState("");
   const [feedback, setFeedback] = useState<ClientErrorFeedback | null>(null);
   const [activeAction, setActiveAction] = useState<RoomAction>("loading");
@@ -100,6 +124,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
   const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isBusy = activeAction !== null;
   const isSending = activeAction === "sending";
@@ -180,10 +206,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     });
   }, [roomId]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    const container = messageListRef.current;
-    if (!container) return;
-    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    if (messageListRef.current && isNearBottomRef.current) {
+      messageListRef.current.scrollTo({
+        top: messageListRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages.length, pendingUserContent, isSending]);
 
   /* ─── Derived state ─── */
@@ -262,7 +292,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   }
 
   async function deleteRoom() {
-    if (!room || !window.confirm(`确认删除房间「${room.title}」吗？`)) return;
+    if (!room) return;
+    setShowDeleteConfirm(false);
+    setShowMoreMenu(false);
     setActiveAction("deleting-room");
 
     try {
@@ -274,8 +306,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     }
   }
 
-  async function sendMessage() {
-    if (!room || !messageInput.trim()) return;
+  async function sendMessage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim() || isSending || !room) return;
 
     if (orderDirty) {
       setFeedback({
@@ -287,18 +320,19 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       return;
     }
 
-    const normalizedContent = messageInput.trim();
+    const content = input.trim();
+    setInput("");
+    setPendingUserContent(content);
+    isNearBottomRef.current = true;
     const baselineSequence = messages.at(-1)?.sequence ?? 0;
     const expectedAssistantCount = room.roomModels.length;
 
     setActiveAction("sending");
-    setMessageInput("");
-    setPendingUserContent(normalizedContent);
     setFeedback(null);
     setPendingRound({ baselineSequence, userSequence: null, completedAssistantCount: 0, expectedAssistantCount });
 
     try {
-      const requestPromise = sendRoomMessageRequest(room.id, normalizedContent);
+      const requestPromise = sendRoomMessageRequest(room.id, content);
       await watchSequentialReplies(baselineSequence, expectedAssistantCount, requestPromise);
       const result = await requestPromise;
       await Promise.all([loadMessages(), loadRoom()]);
@@ -310,7 +344,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         setFeedback(describePartialSendResult(result, failedModel));
       }
     } catch (error: unknown) {
-      setMessageInput(normalizedContent);
+      setInput(content);
       setPendingUserContent("");
       setPendingRound(null);
       setFeedback(describeClientError(error));
@@ -323,7 +357,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       if (!isBusy) {
-        startTransition(() => void sendMessage());
+        startTransition(() => void sendMessage({ preventDefault: () => {} } as React.FormEvent));
       }
     }
   }
@@ -387,29 +421,55 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setShowSidePanel(!showSidePanel)}
-            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition active:scale-95 ${showSidePanel ? "bg-[var(--accent)] text-white" : "bg-black/5 text-[var(--muted)] hover:bg-black/10"}`}
-            title="模型顺序"
-          >
-            <span className="hidden sm:inline">{room?.roomModels.length ?? 0} 模型</span>
-            <svg className="h-4 w-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
-          <button type="button" onClick={() => startTransition(() => void renameRoom())} disabled={!room || isBusy} className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5 hover:text-[var(--foreground)] active:scale-95 disabled:opacity-30" title="重命名">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          </button>
-          <Link href={`/rooms/${roomId}/edit`} className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5 hover:text-[var(--foreground)] active:scale-95" title="设置">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-          </Link>
-          <button type="button" onClick={() => startTransition(() => void deleteRoom())} disabled={!room || isBusy} className="rounded-lg p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95 disabled:opacity-30" title="删除">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          </button>
+          {/* ─ More menu ─ */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className={`rounded-lg p-1.5 transition active:scale-95 ${showMoreMenu ? "bg-[var(--accent)] text-white" : "text-[var(--muted)] hover:bg-black/5 hover:text-[var(--foreground)]"}`}
+              title="更多操作"
+            >
+              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></svg>
+            </button>
+            {showMoreMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-44 animate-chat-in rounded-xl border border-white/40 bg-white/60 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-2xl">
+                  <button type="button" onClick={() => { setShowMoreMenu(false); setShowSidePanel(!showSidePanel); }} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-[var(--foreground)] transition hover:bg-black/5">
+                    <svg className="h-4 w-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    模型顺序
+                  </button>
+                  <button type="button" onClick={() => { setShowMoreMenu(false); startTransition(() => void renameRoom()); }} disabled={!room || isBusy} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-[var(--foreground)] transition hover:bg-black/5 disabled:opacity-30">
+                    <svg className="h-4 w-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    重命名
+                  </button>
+                  <Link href={`/rooms/${roomId}/edit`} onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-[var(--foreground)] transition hover:bg-black/5">
+                    <svg className="h-4 w-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    编辑房间
+                  </Link>
+                  <div className="my-1 border-t border-black/5" />
+                  <button type="button" onClick={() => { setShowMoreMenu(false); setShowDeleteConfirm(true); }} disabled={!room || isBusy} className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-red-500 transition hover:bg-red-50 disabled:opacity-30">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    删除房间
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* ─ Delete confirmation modal ─ */}
+      {showDeleteConfirm && room && (
+        <DeleteConfirmModal
+          roomTitle={room.title}
+          onConfirm={() => startTransition(() => void deleteRoom())}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+
       {/* ─ Main content area ─ */}
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {/* ─ Chat column ─ */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Feedback */}
@@ -435,8 +495,15 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
           )}
 
           {/* ─ Message list ─ */}
-          <div ref={messageListRef} className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
-            <div className="mx-auto max-w-3xl space-y-4">
+          <div
+            ref={messageListRef}
+            className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5"
+            onScroll={(e) => {
+              const target = e.target as HTMLDivElement;
+              isNearBottomRef.current = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+            }}
+          >
+            <div className="mx-auto max-w-3xl space-y-2.5">
               {/* Empty state */}
               {messages.length === 0 && !pendingUserContent && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -465,7 +532,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   return (
                     <article key={message.id} className="animate-chat-in flex justify-end">
                       <div className="max-w-[85%] sm:max-w-[75%]">
-                        <div className="rounded-2xl rounded-tr-md bg-[linear-gradient(135deg,#993c50,#c7576f)] px-4 py-3 text-white shadow-md sm:px-5 sm:py-3.5">
+                        <div className="rounded-2xl rounded-tr-md bg-[linear-gradient(135deg,rgba(153,60,80,0.85),rgba(199,87,111,0.65))] px-3.5 py-2 text-white shadow-md backdrop-blur-md border border-white/20 sm:px-4 sm:py-2.5">
                           <p className="whitespace-pre-wrap text-[14px] leading-[1.75] sm:text-[15px]">{message.content}</p>
                         </div>
                         <p className="mt-1 text-right text-[10px] text-[var(--muted)] opacity-60">{formatDate(message.createdAt)}</p>
@@ -481,15 +548,15 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 return (
                   <article key={message.id} className="animate-chat-in flex justify-start">
                     <div className="max-w-[85%] sm:max-w-[75%]">
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
                         {provider && (
-                          <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[7px] font-bold tracking-wide ${getProviderIconClassName(provider)}`}>
+                          <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[6px] font-bold tracking-wide ${getProviderIconClassName(provider)}`}>
                             {getProviderShortName(provider)}
                           </span>
                         )}
-                        <span className="text-[12px] font-semibold tracking-tight">{messageModel?.name ?? "AI 助手"}</span>
+                        <span className="text-[11px] font-semibold tracking-tight text-[var(--muted)]">{messageModel?.name ?? "AI 助手"}</span>
                       </div>
-                      <div className={`rounded-2xl rounded-tl-md border px-4 py-3 shadow-sm sm:px-5 sm:py-3.5 ${provider ? `${getProviderSoftClassName(provider)} border-white/40` : "border-white/30 bg-white/60"}`}>
+                      <div className={`rounded-2xl rounded-tl-md border px-3.5 py-2 shadow-sm backdrop-blur-md bg-opacity-60 sm:px-4 sm:py-2.5 ${provider ? `${getProviderSoftClassName(provider)} border-white/40` : "border-white/30 bg-white/50"}`}>
                         <p className="whitespace-pre-wrap text-[14px] leading-[1.8] text-[var(--foreground)] sm:text-[15px]">{message.content}</p>
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--muted)] opacity-60">{formatDate(message.createdAt)}</p>
@@ -502,7 +569,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               {pendingUserContent && (
                 <article className="animate-chat-in flex justify-end">
                   <div className="max-w-[85%] sm:max-w-[75%]">
-                    <div className="rounded-2xl rounded-tr-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-3 sm:px-5 sm:py-3.5">
+                    <div className="rounded-2xl rounded-tr-md border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-3.5 py-2 sm:px-4 sm:py-2.5">
                       <p className="whitespace-pre-wrap text-[14px] leading-[1.75] opacity-60 sm:text-[15px]">{pendingUserContent}</p>
                     </div>
                     <p className="mt-1 text-right text-[10px] text-[var(--muted)] opacity-40">发送中...</p>
@@ -520,9 +587,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             <div className="ly-chat-input mx-auto max-w-3xl rounded-xl px-3.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
               <textarea
                 ref={textareaRef}
-                value={messageInput}
+                value={input}
                 onChange={(event) => {
-                  setMessageInput(event.target.value);
+                  setInput(event.target.value);
                   autoResizeTextarea();
                 }}
                 onKeyDown={handleComposerKeyDown}
@@ -542,8 +609,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => startTransition(() => void sendMessage())}
-                  disabled={!messageInput.trim() || isBusy}
+                  onClick={() => startTransition(() => void sendMessage({ preventDefault: () => {} } as React.FormEvent))}
+                  disabled={!input.trim() || isBusy}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-[12px] font-bold text-white transition-all hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-300"
                 >
                   {isSending ? (
@@ -569,8 +636,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
         {/* ─ Side panel (collapsible) ─ */}
         {showSidePanel && (
-          <aside className="animate-slide-in w-64 shrink-0 border-l border-white/15 overflow-y-auto bg-white/20 backdrop-blur-xl p-3 xl:w-72">
-            <div className="flex items-center justify-between mb-3">
+          <>
+            {/* Mobile backdrop */}
+            <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm sm:hidden" onClick={() => setShowSidePanel(false)} />
+            <aside className="animate-slide-in absolute inset-y-0 right-0 z-50 w-72 shrink-0 border-l border-white/15 overflow-y-auto bg-white/70 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-4 sm:static sm:bg-white/30 sm:backdrop-blur-2xl sm:shadow-[-8px_0_32px_rgba(0,0,0,0.02)] sm:p-3 xl:w-72">
+              <div className="flex items-center justify-between mb-3">
               <h3 className="text-[13px] font-bold tracking-tight">模型顺序</h3>
               <button type="button" onClick={() => setShowSidePanel(false)} className="rounded-md p-1 text-[var(--muted)] transition hover:bg-black/5 active:scale-95">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -635,6 +705,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               {activeAction === "saving-order" ? "保存中..." : "保存排序"}
             </button>
           </aside>
+          </>
         )}
       </div>
     </main>

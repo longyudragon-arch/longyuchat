@@ -312,11 +312,11 @@ export function ModelsPage() {
           <Link href="/rooms/new" className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
             新建房间
           </Link>
-          <button type="button" onClick={fillLocalMockPreset} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition-all hover:bg-white/60 active:scale-95">
+          <button type="button" onClick={fillLocalMockPreset} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition-all hover:bg-white/60 active:scale-95">
             测试预设
           </button>
           {mockToolsEnabled && (
-            <button type="button" onClick={() => startTransition(() => void createLocalMocks())} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-sm transition-all hover:bg-white/60 active:scale-95">
+            <button type="button" onClick={() => startTransition(() => void createLocalMocks())} className="rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-[13px] font-bold text-[var(--muted)] backdrop-blur-lg transition-all hover:bg-white/60 active:scale-95">
               Mock 模型
             </button>
           )}
@@ -341,13 +341,13 @@ export function ModelsPage() {
             <div className="mt-5 space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">显示名称</label>
-                <input value={modelForm.name} onChange={(e) => updateModelForm({ name: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-md" placeholder="例如：GPT-4 工作模型" />
+                <input value={modelForm.name} onChange={(e) => updateModelForm({ name: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-xl" placeholder="例如：GPT-4 工作模型" />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">提供商</label>
-                  <select value={modelForm.provider} onChange={(e) => updateProvider(e.target.value as ProviderType)} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md appearance-none">
+                  <select value={modelForm.provider} onChange={(e) => updateProvider(e.target.value as ProviderType)} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl appearance-none">
                     {providerOptions.map((provider) => (
                       <option key={provider} value={provider}>{getProviderOptionLabel(provider)}</option>
                     ))}
@@ -366,16 +366,16 @@ export function ModelsPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">Base URL</label>
-                <input value={modelForm.baseUrl} onChange={(e) => updateModelForm({ baseUrl: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md" />
+                <input value={modelForm.baseUrl} onChange={(e) => updateModelForm({ baseUrl: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">API Key</label>
-                <input value={modelForm.apiKey} onChange={(e) => updateModelForm({ apiKey: e.target.value })} type="password" className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md tracking-widest placeholder:tracking-normal" placeholder={modelForm.id ? "••••••••••••••••" : "输入 API Key"} />
+                <input value={modelForm.apiKey} onChange={(e) => updateModelForm({ apiKey: e.target.value })} type="password" className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl tracking-widest placeholder:tracking-normal" placeholder={modelForm.id ? "••••••••••••••••" : "输入 API Key"} />
               </div>
 
               {/* Model discovery */}
-              <div className="rounded-xl border border-white/40 bg-white/30 p-4 backdrop-blur-md">
+              <div className="rounded-xl border border-white/40 bg-white/30 p-4 backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[13px] font-bold">自动获取模型 ID</p>
@@ -398,18 +398,18 @@ export function ModelsPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">模型 ID</label>
-                  <input value={modelForm.modelName} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md" placeholder={selectedPreset.defaultModelName} />
+                  <input value={modelForm.modelName} onChange={(e) => updateModelForm({ modelName: e.target.value })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 font-mono text-[12px] outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" placeholder={selectedPreset.defaultModelName} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">回复字数上限</label>
-                  <input type="number" min={50} max={4000} step={10} value={modelForm.defaultReplyLength} onChange={(e) => updateModelForm({ defaultReplyLength: Number.parseInt(e.target.value, 10) || modelForm.defaultReplyLength })} className="w-full rounded-xl border border-white/40 bg-white/50 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-md" />
+                  <input type="number" min={50} max={4000} step={10} value={modelForm.defaultReplyLength} onChange={(e) => updateModelForm({ defaultReplyLength: Number.parseInt(e.target.value, 10) || modelForm.defaultReplyLength })} className="w-full rounded-xl border border-white/40 bg-white/30 px-4 py-3 text-[14px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-xl" />
                 </div>
               </div>
 
-              <label className="flex items-center gap-3 rounded-xl border border-white/30 bg-white/20 px-4 py-3 transition hover:bg-white/40 cursor-pointer backdrop-blur-sm">
+              <label className="flex items-center gap-3 rounded-xl border border-white/30 bg-white/20 px-4 py-3 transition hover:bg-white/20 cursor-pointer backdrop-blur-lg">
                 <div className="relative flex items-center justify-center">
                   <input type="checkbox" className="peer sr-opacity h-5 w-5 opacity-0 absolute" checked={modelForm.enabled} onChange={(e) => updateModelForm({ enabled: e.target.checked })} />
-                  <div className="h-5 w-5 rounded-md border-2 border-[var(--muted)]/30 bg-white/50 transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)] flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-md border-2 border-[var(--muted)]/30 bg-white/30 transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)] flex items-center justify-center">
                     <svg className={`w-3 h-3 text-white transition-transform duration-300 ${modelForm.enabled ? 'scale-100' : 'scale-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
@@ -436,8 +436,8 @@ export function ModelsPage() {
         <div className="flex flex-col gap-4">
           {/* Filters */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型名称、ID 或接入地址..." className="flex-1 rounded-xl border border-white/40 bg-white/40 px-4 py-2.5 text-[13px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-sm" />
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/40 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-sm appearance-none cursor-pointer">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索模型名称、ID 或接入地址..." className="flex-1 rounded-xl border border-white/40 bg-white/20 px-4 py-2.5 text-[13px] font-medium outline-none transition focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 backdrop-blur-lg" />
+            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value as ProviderType | "ALL")} className="rounded-xl border border-white/40 bg-white/20 px-3 py-2.5 text-[13px] font-bold outline-none transition focus:bg-white focus:border-[var(--accent)] backdrop-blur-lg appearance-none cursor-pointer">
               <option value="ALL">全部提供商</option>
               {providerOptions.map((provider) => (
                 <option key={provider} value={provider}>{getProviderOptionLabel(provider)}</option>
@@ -479,7 +479,7 @@ export function ModelsPage() {
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${getProviderBadgeClassName(model.provider)}`}>{getProviderChineseLabel(model.provider)}</span>
-                      <span className="rounded-md border border-white/60 bg-white/40 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)} 上限</span>
+                      <span className="rounded-md border border-white/60 bg-white/20 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase text-[var(--muted)]">{formatReplyLength(model.defaultReplyLength)} 上限</span>
                       <TestState state={model.lastConnectionTest} running={runningTestModelId === model.id} />
                     </div>
                   </div>
@@ -505,9 +505,9 @@ export function ModelsPage() {
                       : `更新于 ${formatDate(model.updatedAt)}`}
                   </p>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <button type="button" onClick={() => { setModelForm({ id: model.id, name: model.name, provider: model.provider, baseUrl: model.baseUrl, modelName: model.modelName, apiKey: "", defaultReplyLength: model.defaultReplyLength, enabled: model.enabled }); setDiscoveredModels([]); setNotice(`正在编辑模型「${model.name}」。`); }} className="rounded-md border border-white/60 bg-white/40 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-[var(--accent)] active:scale-95">编辑</button>
-                    <button type="button" onClick={() => startTransition(() => void testModel(model))} className="rounded-md border border-white/60 bg-white/40 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-sky-600 active:scale-95">{runningTestModelId === model.id ? "测试中" : "测试"}</button>
-                    <button type="button" onClick={() => startTransition(() => void toggleModel(model))} className="rounded-md border border-white/60 bg-white/40 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-amber-600 active:scale-95">{model.enabled ? "停用" : "启用"}</button>
+                    <button type="button" onClick={() => { setModelForm({ id: model.id, name: model.name, provider: model.provider, baseUrl: model.baseUrl, modelName: model.modelName, apiKey: "", defaultReplyLength: model.defaultReplyLength, enabled: model.enabled }); setDiscoveredModels([]); setNotice(`正在编辑模型「${model.name}」。`); }} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-[var(--accent)] active:scale-95">编辑</button>
+                    <button type="button" onClick={() => startTransition(() => void testModel(model))} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-sky-600 active:scale-95">{runningTestModelId === model.id ? "测试中" : "测试"}</button>
+                    <button type="button" onClick={() => startTransition(() => void toggleModel(model))} className="rounded-md border border-white/60 bg-white/20 px-3 py-1.5 text-[11px] font-bold text-[var(--muted)] transition hover:bg-white hover:text-amber-600 active:scale-95">{model.enabled ? "停用" : "启用"}</button>
                     <button type="button" onClick={() => startTransition(() => void removeModel(model))} className="rounded-md border border-red-200/50 bg-red-50/50 px-3 py-1.5 text-[11px] font-bold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95">删除</button>
                   </div>
                 </div>
