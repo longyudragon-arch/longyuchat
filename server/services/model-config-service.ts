@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 
 import { ApiError } from "@/server/http/api-error";
+import { discoverProviderModels, type DiscoveredModel } from "@/server/services/model-discovery-service";
 import {
   decryptModelSecretOrPlaintext,
   encryptModelSecret,
@@ -136,6 +137,11 @@ interface DeleteModelConfigDependencies {
   deleteById: (id: string) => Promise<ModelConfig>;
 }
 
+interface DiscoverSavedModelDependencies {
+  getModelById: (id: string) => Promise<ModelConfig | null>;
+  discoverProviderModels: typeof discoverProviderModels;
+}
+
 const fallbackReplyLength = 300;
 const maxTestMessageLength = 1200;
 
@@ -199,6 +205,11 @@ const defaultDeleteDependencies: DeleteModelConfigDependencies = {
     prisma.modelConfig.delete({
       where: { id },
     }),
+};
+
+const defaultDiscoverSavedModelDependencies: DiscoverSavedModelDependencies = {
+  getModelById: getModelConfigById,
+  discoverProviderModels,
 };
 
 function requireNonEmpty(value: string, label: string) {
@@ -520,6 +531,25 @@ export async function deleteModelConfig(
   }
 
   return dependencies.deleteById(id);
+}
+
+export async function discoverModelsForSavedModel(
+  id: string,
+  dependencies: DiscoverSavedModelDependencies = defaultDiscoverSavedModelDependencies,
+): Promise<DiscoveredModel[]> {
+  const model = await dependencies.getModelById(id);
+
+  if (!model) {
+    throw new ApiError(404, `Model ${id} was not found.`);
+  }
+
+  const runtimeConfig = toModelRuntimeConfig(model);
+
+  return dependencies.discoverProviderModels({
+    provider: runtimeConfig.provider,
+    baseUrl: runtimeConfig.baseUrl,
+    apiKey: runtimeConfig.apiKey,
+  });
 }
 
 export function toModelRuntimeConfig(model: ModelConfig) {

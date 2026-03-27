@@ -575,7 +575,9 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     normalized.includes("invalid_api_key") ||
     normalized.includes("api_key_invalid") ||
     normalized.includes("api key not found") ||
-    normalized.includes("api key") ||
+    normalized.includes("key not found") ||
+    normalized.includes("invalid api key") ||
+    normalized.includes("incorrect api key") ||
     normalized.includes("unauthorized") ||
     normalized.includes("authentication failed") ||
     normalized.includes("401")
@@ -903,6 +905,12 @@ export async function testProviderConnectionRequest(
 
 export async function discoverProviderModelsByConnectionRequest(connectionId: string) {
   return fetchJson<{ models: DiscoveredModelView[] }>(`/api/provider-connections/${connectionId}/discover-models`, {
+    method: "POST",
+  });
+}
+
+export async function discoverProviderModelsBySavedModelRequest(modelId: string) {
+  return fetchJson<{ models: DiscoveredModelView[] }>(`/api/models/${modelId}/discover-models`, {
     method: "POST",
   });
 }

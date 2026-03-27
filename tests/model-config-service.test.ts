@@ -4,6 +4,7 @@ import type { ModelConfig } from "@/generated/prisma/client";
 import {
   createModelConfigWithDependencies,
   deleteModelConfig,
+  discoverModelsForSavedModel,
   testModelConnectionById,
   toPrismaModelConfigCreateData,
   toPrismaModelConfigUpdateData,
@@ -193,6 +194,40 @@ describe("createModelConfigWithDependencies", () => {
     );
 
     expect(result.connectionId).toBe("conn-1");
+  });
+});
+
+describe("discoverModelsForSavedModel", () => {
+  it("reuses the saved model credentials to discover models", async () => {
+    const discoverMock = vi.fn(async () => [
+      { id: "qwen-plus", label: "qwen-plus", description: null },
+    ]);
+
+    const result = await discoverModelsForSavedModel("model-1", {
+      getModelById: async () => ({
+        ...buildModel("model-1"),
+        provider: "QWEN",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        apiKey: "stored-secret",
+      }),
+      discoverProviderModels: discoverMock,
+    });
+
+    expect(discoverMock).toHaveBeenCalledWith({
+      provider: "QWEN",
+      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      apiKey: "stored-secret",
+    });
+    expect(result[0]?.id).toBe("qwen-plus");
+  });
+
+  it("fails when the model does not exist", async () => {
+    await expect(
+      discoverModelsForSavedModel("missing-model", {
+        getModelById: async () => null,
+        discoverProviderModels: vi.fn(),
+      }),
+    ).rejects.toThrow("Model missing-model was not found.");
   });
 });
 

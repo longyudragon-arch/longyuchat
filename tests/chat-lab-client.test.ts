@@ -8,6 +8,7 @@ import {
   describeClientError,
   describePartialSendResult,
   discoverProviderModelsByConnectionRequest,
+  discoverProviderModelsBySavedModelRequest,
   findMatchingProviderTemplate,
     fetchProviderCatalogRequest,
     fetchProviderConnectionByIdRequest,
@@ -66,6 +67,15 @@ describe("describeClientError", () => {
     expect(feedback.title).toBe("API Key 无效或鉴权失败");
     expect(feedback.suggestion).toContain("API Key");
     expect(feedback.suggestion).not.toContain("它可能已经被删除");
+  });
+
+  it("does not treat generic api key wording as an auth failure without a specific signal", () => {
+    const feedback = describeClientError(
+      new Error("Please review the API key format requirements in the provider documentation."),
+    );
+
+    expect(feedback.title).not.toBe("API Key 无效或鉴权失败");
+    expect(feedback.title).toBe("操作没有完成");
   });
 
   it("returns login guidance for app-level access protection", () => {
@@ -484,5 +494,24 @@ describe("provider connection client requests", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/provider-connections/connection-1/test");
     expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/provider-connections/connection-1/discover-models");
     expect(fetchMock.mock.calls[3]?.[0]).toBe("/api/provider-connections/connection-1");
+  });
+
+  it("discovers models for an existing saved model", async () => {
+    const fetchMock = vi.fn(async () =>
+      createJsonResponse({
+        models: [{ id: "qwen-plus", label: "qwen-plus", description: null }],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await discoverProviderModelsBySavedModelRequest("model-1");
+
+    expect(result.models[0]?.id).toBe("qwen-plus");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/models/model-1/discover-models",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
   });
 });

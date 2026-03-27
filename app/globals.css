@@ -295,6 +295,56 @@ a {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23716B77' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
+.ly-select-shell {
+  position: relative;
+  width: 100%;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.2)),
+    rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 12px 32px rgba(31, 41, 55, 0.06);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.ly-select-shell:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 76%, white 24%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.56)),
+    rgba(255, 255, 255, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent 88%),
+    0 12px 32px rgba(31, 41, 55, 0.08);
+}
+
+.ly-select-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.625rem 2.75rem 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.ly-select-input option {
+  background: #fff;
+  color: #2f2e33;
+}
+
 .ly-secondary-action {
   border-radius: 0.95rem;
   border: 1px solid rgba(255, 255, 255, 0.42);

@@ -9,6 +9,7 @@ import {
   describeClientError,
   discoverProviderModels,
   discoverProviderModelsByConnectionRequest,
+  discoverProviderModelsBySavedModelRequest,
   ensureLocalMockModels,
   fetchJson,
   fetchProviderCatalogRequest,
@@ -51,6 +52,8 @@ import type {
 } from "@/types/app";
 
 const defaultProvider = "OPENAI_COMPATIBLE" as ProviderType;
+type ModelFormFieldKey = "baseUrl" | "apiKey" | "modelName";
+type ConnectionFormFieldKey = "baseUrl" | "apiKey" | "probeModelName";
 
 function getAvatarPreviewStyle(provider: ProviderType, avatarColor: string) {
   const palette = getModelAvatarPalette(provider, avatarColor);
@@ -166,6 +169,172 @@ function ModelInsightNotice({ insight }: { insight: ModelOperationalInsight }) {
   );
 }
 
+function FieldErrorHint({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+
+  return <p className="ml-1 text-[11px] leading-5 text-red-600">{message}</p>;
+}
+
+function getInputErrorClass(message?: string) {
+  return message
+    ? "border-red-300/70 bg-red-50/70 text-red-950 placeholder:text-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-200/70"
+    : "";
+}
+
+function getGlassMenuOptionClassName(isActive: boolean) {
+  return `group flex w-full items-start gap-3 rounded-[1rem] border px-3 py-2.5 text-left transition-all duration-200 ${
+    isActive
+      ? "border-[color:color-mix(in_srgb,var(--accent)_24%,white_76%)] bg-[color:color-mix(in_srgb,var(--accent)_12%,white_88%)] shadow-[0_12px_30px_rgba(220,117,165,0.12)]"
+      : "border-transparent bg-white/35 hover:-translate-y-[1px] hover:border-white/70 hover:bg-white/78 hover:shadow-[0_12px_28px_rgba(31,41,55,0.08)]"
+  }`;
+}
+
+function MenuCheck({ visible }: { visible: boolean }) {
+  return (
+    <span
+      className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
+        visible
+          ? "border-[var(--accent)]/30 bg-[var(--accent)]/14 text-[var(--accent)] opacity-100"
+          : "border-transparent bg-transparent text-transparent opacity-0 group-hover:opacity-100"
+      }`}
+      aria-hidden="true"
+    >
+      <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+        <path d="M5 10.5L8.5 14L15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+function createSavedVerificationFeedback(
+  target: "模型" | "连接",
+  name: string,
+  error: unknown,
+): ClientErrorFeedback {
+  const base = describeClientError(error);
+
+  if (base.title === "API Key 无效或鉴权失败") {
+    return {
+      title: `${target}已保存，但 API Key 验证未通过`,
+      description: `${target}「${name}」已保存，但当前 API Key 没有通过验证。${base.description}`,
+      suggestion: `请优先检查 API Key 是否正确、是否填到了对应厂商的平台账号下，并确认 Base URL、模型 ID 与厂商匹配。`,
+      tone: "warning",
+    };
+  }
+
+  if (base.title === "模型请求超时或网络连接失败") {
+    return {
+      title: `${target}已保存，但 Base URL 或网络验证未通过`,
+      description: `${target}「${name}」已保存，但连接验证没有通过。${base.description}`,
+      suggestion: "请优先检查 Base URL、当前网络、服务器到上游接口的连通性，再重新验证。",
+      tone: "warning",
+    };
+  }
+
+  if (base.title === "目标内容不存在") {
+    return {
+      title: `${target}已保存，但模型 ID 或接口地址不可用`,
+      description: `${target}「${name}」已保存，但当前模型 ID、接口地址或对应资源不可用。${base.description}`,
+      suggestion: "请确认模型 ID 是否真实存在，并检查 Base URL 与厂商模板是否匹配后再重试。",
+      tone: "warning",
+    };
+  }
+
+  if (base.title === "平台未返回模型列表") {
+    return {
+      title: `${target}已保存，但平台没有返回模型列表`,
+      description: `${target}「${name}」已保存，但当前平台没有返回可用模型列表。${base.description}`,
+      suggestion: "如果该平台支持手动填写模型 ID，请直接填写并继续；如果本应支持自动获取，请先检查 Key 权限和平台状态。",
+      tone: "warning",
+    };
+  }
+
+  return {
+    title: `${target}已保存，但验证未通过`,
+    description: `${target}「${name}」已保存。${base.description}`,
+    suggestion: `配置已经保存，但当前 Key 或连接参数可能仍有问题。${base.suggestion}`,
+    tone: "warning",
+  };
+}
+
+function createSavedNotice(
+  target: "模型" | "连接",
+  action: "创建" | "更新",
+  name: string,
+  verified: boolean,
+) {
+  return verified
+    ? `已${action}${target}「${name}」，并已通过连接验证。`
+    : `已${action}${target}「${name}」，但连接验证未通过。`;
+}
+
+function createPlainSavedNotice(target: "模型" | "连接", action: "创建" | "更新", name: string) {
+  return `已${action}${target}「${name}」。`;
+}
+
+function resolveModelFieldErrors(
+  feedback: ClientErrorFeedback,
+  scope: "submit" | "discover",
+): Partial<Record<ModelFormFieldKey, string>> {
+  if (feedback.title.includes("API Key")) {
+    return { apiKey: "请检查 API Key 是否正确，并确认它属于当前厂商或平台。" };
+  }
+
+  if (feedback.title.includes("Base URL") || feedback.title.includes("网络")) {
+    return { baseUrl: "请确认接口地址是否正确，并检查当前网络或上游平台连通性。" };
+  }
+
+  if (feedback.title.includes("模型 ID") || feedback.title.includes("目标内容不存在")) {
+    return { modelName: "请核对模型 ID 是否存在，或确认当前接口地址与模型匹配。" };
+  }
+
+  if (feedback.title.includes("平台未返回模型列表")) {
+    return {
+      modelName:
+        scope === "discover"
+          ? "当前平台没有返回可选模型列表，请直接在这里手动填写模型 ID。"
+          : "当前平台没有返回模型列表，请确认模型 ID 是否需要手动填写。",
+    };
+  }
+
+  if (feedback.title.includes("请先填入连接信息")) {
+    return {
+      baseUrl: "请先补全 Base URL。",
+      apiKey: "请先填写 API Key，再尝试获取模型列表。",
+    };
+  }
+
+  return {};
+}
+
+function resolveConnectionFieldErrors(
+  feedback: ClientErrorFeedback,
+): Partial<Record<ConnectionFormFieldKey, string>> {
+  if (feedback.title.includes("API Key")) {
+    return { apiKey: "请检查 API Key 是否正确，并确认它属于当前厂商或平台。" };
+  }
+
+  if (feedback.title.includes("Base URL") || feedback.title.includes("网络")) {
+    return { baseUrl: "请确认接口地址是否正确，并检查当前网络或上游平台连通性。" };
+  }
+
+  if (feedback.title.includes("目标内容不存在")) {
+    return { probeModelName: "测试用模型 ID 不可用，请换一个已开通的模型再验证。" };
+  }
+
+  return {};
+}
+
+function createVerificationPassedNotice(target: "模型" | "连接", name: string) {
+  return `${target}「${name}」连接验证通过。`;
+}
+
+function createDiscoveryNotice(source: "连接" | "模型配置" | "当前填写参数", count: number) {
+  return `已通过${source}获取到 ${count} 个模型，请从下方选择。`;
+}
+
 
 export function ModelsPage() {
   const mockToolsEnabled = supportsLocalMockTools();
@@ -177,6 +346,13 @@ export function ModelsPage() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [feedback, setFeedback] = useState<ClientErrorFeedback | null>(null);
+  const [modelSubmitFeedback, setModelSubmitFeedback] = useState<ClientErrorFeedback | null>(null);
+  const [modelDiscoveryFeedback, setModelDiscoveryFeedback] = useState<ClientErrorFeedback | null>(null);
+  const [connectionFormFeedback, setConnectionFormFeedback] = useState<ClientErrorFeedback | null>(null);
+  const [modelFieldErrors, setModelFieldErrors] = useState<Partial<Record<ModelFormFieldKey, string>>>({});
+  const [connectionFieldErrors, setConnectionFieldErrors] = useState<
+    Partial<Record<ConnectionFormFieldKey, string>>
+  >({});
   // "model" = 直接建模型主流程（默认）；"connection" = 管理已保存连接的可选面板
   const [builderMode, setBuilderMode] = useState<"connection" | "model">("model");
   const [modelForm, setModelForm] = useState(createDefaultModelForm);
@@ -194,6 +370,10 @@ export function ModelsPage() {
   const [selectedModelTemplateId, setSelectedModelTemplateId] = useState("");
   const [showModelProviderMenu, setShowModelProviderMenu] = useState(false);
   const modelProviderMenuRef = useRef<HTMLDivElement | null>(null);
+  const [showDiscoveredModelMenu, setShowDiscoveredModelMenu] = useState(false);
+  const discoveredModelMenuRef = useRef<HTMLDivElement | null>(null);
+  const modelFormPanelRef = useRef<HTMLDivElement | null>(null);
+  const connectionFormPanelRef = useRef<HTMLDivElement | null>(null);
 
   const selectedConnection = useMemo(
 
@@ -273,6 +453,10 @@ export function ModelsPage() {
   const selectedSavedConnectionAvatar = selectedConnection
     ? getTemplateAvatarDefaults(selectedSavedConnectionTemplate, selectedConnection.provider)
     : null;
+  const selectedDiscoveredModel = useMemo(
+    () => discoveredModels.find((item) => item.id === modelForm.modelName) ?? null,
+    [discoveredModels, modelForm.modelName],
+  );
 
   const connectionDiscoverySupported = selectedConnectionTemplate
 
@@ -283,7 +467,7 @@ export function ModelsPage() {
   const connectionFormAvatar = getTemplateAvatarDefaults(selectedConnectionTemplate, connectionForm.provider);
 
   useEffect(() => {
-    if (!showModelProviderMenu) {
+    if (!showModelProviderMenu && !showDiscoveredModelMenu) {
       return;
     }
 
@@ -291,11 +475,15 @@ export function ModelsPage() {
       if (modelProviderMenuRef.current && !modelProviderMenuRef.current.contains(event.target as Node)) {
         setShowModelProviderMenu(false);
       }
+      if (discoveredModelMenuRef.current && !discoveredModelMenuRef.current.contains(event.target as Node)) {
+        setShowDiscoveredModelMenu(false);
+      }
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setShowModelProviderMenu(false);
+        setShowDiscoveredModelMenu(false);
       }
     }
 
@@ -305,7 +493,17 @@ export function ModelsPage() {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [showModelProviderMenu]);
+  }, [showDiscoveredModelMenu, showModelProviderMenu]);
+
+  useEffect(() => {
+    if (builderMode === "model" && (modelSubmitFeedback || modelDiscoveryFeedback)) {
+      modelFormPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    if (builderMode === "connection" && connectionFormFeedback) {
+      connectionFormPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [builderMode, connectionFormFeedback, modelDiscoveryFeedback, modelSubmitFeedback]);
 
   function findTemplateById(templateId: string) {
     return connectionTemplates.find((template) => template.id === templateId) ?? null;
@@ -374,6 +572,17 @@ export function ModelsPage() {
     });
   }, [models, providerFilter, searchQuery]);
 
+  function clearModelInlineFeedback() {
+    setModelSubmitFeedback(null);
+    setModelDiscoveryFeedback(null);
+    setModelFieldErrors({});
+  }
+
+  function clearConnectionInlineFeedback() {
+    setConnectionFormFeedback(null);
+    setConnectionFieldErrors({});
+  }
+
   const modelStats = useMemo(() => {
     const enabledCount = models.filter((model) => model.enabled).length;
     const testedSuccessCount = models.filter((model) => model.lastConnectionTest?.status === "success").length;
@@ -387,6 +596,7 @@ export function ModelsPage() {
   }, [models]);
 
   function updateModelForm(nextValue: Partial<ReturnType<typeof createDefaultModelForm>>) {
+    clearModelInlineFeedback();
     if (
       nextValue.provider ||
       nextValue.baseUrl !== undefined ||
@@ -403,15 +613,18 @@ export function ModelsPage() {
     setSelectedModelTemplateId("");
     setDiscoveredModels([]);
     setShowSavedConnections(false);
+    clearModelInlineFeedback();
   }
 
 
   function updateConnectionForm(nextValue: Partial<ReturnType<typeof createDefaultConnectionForm>>) {
+    clearConnectionInlineFeedback();
     setConnectionForm((current) => ({ ...current, ...nextValue }));
   }
 
   function resetConnectionForm() {
     setConnectionForm(createDefaultConnectionForm());
+    clearConnectionInlineFeedback();
   }
 
   function updateProvider(nextProvider: ProviderType) {
@@ -466,6 +679,11 @@ export function ModelsPage() {
   function switchBuilderMode(nextMode: "connection" | "model") {
     setBuilderMode(nextMode);
     setFeedback(null);
+    if (nextMode === "model") {
+      clearConnectionInlineFeedback();
+    } else {
+      clearModelInlineFeedback();
+    }
   }
 
   function applyConnectionTemplate(templateId: string) {
@@ -526,6 +744,7 @@ export function ModelsPage() {
   async function submitModelForm() {
     setActiveAction(modelForm.id ? "updating" : "creating");
     setFeedback(null);
+    clearModelInlineFeedback();
     try {
       const derivedModelName = modelForm.modelName.trim();
       const derivedDisplayName =
@@ -549,18 +768,39 @@ export function ModelsPage() {
               ...(modelForm.apiKey ? { apiKey: modelForm.apiKey } : {}),
             }),
       };
-      if (modelForm.id) {
-        await fetchJson(`/api/models/${modelForm.id}`, { method: "PUT", body: JSON.stringify(payload) });
-        setNotice(`已更新模型「${derivedDisplayName}」。`);
-      } else {
-        await fetchJson("/api/models", { method: "POST", body: JSON.stringify(payload) });
-        setNotice(`已创建模型「${derivedDisplayName}」。`);
-      }
+      const result = modelForm.id
+        ? await fetchJson<{ model: ModelView }>(`/api/models/${modelForm.id}`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          })
+        : await fetchJson<{ model: ModelView }>("/api/models", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+
       resetForm();
       await Promise.all([loadModels(), loadConnections()]);
       setBuilderMode("model");
+
+      if (!modelForm.connectionId && modelForm.apiKey.trim()) {
+        try {
+          await fetchJson(`/api/models/${result.model.id}/test`, { method: "POST", body: JSON.stringify({}) });
+          await loadModels();
+          setNotice(createSavedNotice("模型", modelForm.id ? "更新" : "创建", derivedDisplayName, true));
+        } catch (error: unknown) {
+          await loadModels();
+          setNotice(createSavedNotice("模型", modelForm.id ? "更新" : "创建", derivedDisplayName, false));
+          const nextFeedback = createSavedVerificationFeedback("模型", derivedDisplayName, error);
+          setModelSubmitFeedback(nextFeedback);
+          setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "submit"));
+        }
+      } else {
+        setNotice(createPlainSavedNotice("模型", modelForm.id ? "更新" : "创建", derivedDisplayName));
+      }
     } catch (error: unknown) {
-      setFeedback(describeClientError(error));
+      const nextFeedback = describeClientError(error);
+      setModelSubmitFeedback(nextFeedback);
+      setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "submit"));
     } finally {
       setActiveAction(null);
     }
@@ -569,7 +809,7 @@ export function ModelsPage() {
   async function handleDiscoverModels() {
     if (modelForm.connectionId) {
       setActiveAction("discovering");
-      setFeedback(null);
+      clearModelInlineFeedback();
       try {
         const data = await discoverProviderModelsByConnectionRequest(modelForm.connectionId);
         setDiscoveredModels(data.models);
@@ -580,10 +820,35 @@ export function ModelsPage() {
         if (data.models[0] && !data.models.some((item) => item.id === modelForm.modelName)) {
           updateModelForm({ modelName: data.models[0].id });
         }
-        setNotice(`已通过连接发现 ${data.models.length} 个模型。`);
+        setNotice(createDiscoveryNotice("连接", data.models.length));
       } catch (error: unknown) {
         setDiscoveredModels([]);
-        setFeedback(describeClientError(error));
+        const nextFeedback = describeClientError(error);
+        setModelDiscoveryFeedback(nextFeedback);
+        setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "discover"));
+      } finally {
+        setActiveAction(null);
+      }
+      return;
+    }
+
+    if (modelForm.id && !modelForm.apiKey.trim()) {
+      setActiveAction("discovering");
+      clearModelInlineFeedback();
+      try {
+        const data = await discoverProviderModelsBySavedModelRequest(modelForm.id);
+        setDiscoveredModels(data.models);
+        if (data.models[0] && !data.models.some((item) => item.id === modelForm.modelName)) {
+          updateModelForm({ modelName: data.models[0].id });
+        }
+        setNotice(
+          `${createDiscoveryNotice("模型配置", data.models.length)} 若你刚修改了 Base URL 或厂商，请先重新填写 API Key 再获取。`,
+        );
+      } catch (error: unknown) {
+        setDiscoveredModels([]);
+        const nextFeedback = describeClientError(error);
+        setModelDiscoveryFeedback(nextFeedback);
+        setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "discover"));
       } finally {
         setActiveAction(null);
       }
@@ -591,18 +856,20 @@ export function ModelsPage() {
     }
 
     if (!modelForm.baseUrl.trim() || !modelForm.apiKey.trim()) {
-      setFeedback({
+      const nextFeedback = {
         title: "请先填入连接信息",
         description: "自动获取模型列表需要 Base URL 和 API Key。",
         suggestion: "先确认 Base URL 已自动填入或手动调整，再填写 API Key 并点击获取模型列表。",
         tone: "warning",
-      });
+      } satisfies ClientErrorFeedback;
+      setModelDiscoveryFeedback(nextFeedback);
+      setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "discover"));
       return;
     }
 
 
     setActiveAction("discovering");
-    setFeedback(null);
+    clearModelInlineFeedback();
     try {
       const data = await discoverProviderModels({
         provider: modelForm.provider,
@@ -615,10 +882,12 @@ export function ModelsPage() {
       if (data.models[0] && !data.models.some((item) => item.id === modelForm.modelName)) {
         updateModelForm({ modelName: data.models[0].id });
       }
-      setNotice(`已发现 ${data.models.length} 个模型，请从下方选择一个。`);
+      setNotice(createDiscoveryNotice("当前填写参数", data.models.length));
     } catch (error: unknown) {
       setDiscoveredModels([]);
-      setFeedback(describeClientError(error));
+      const nextFeedback = describeClientError(error);
+      setModelDiscoveryFeedback(nextFeedback);
+      setModelFieldErrors(resolveModelFieldErrors(nextFeedback, "discover"));
     } finally {
       setActiveAction(null);
     }
@@ -631,7 +900,7 @@ export function ModelsPage() {
     try {
       await fetchJson(`/api/models/${model.id}/test`, { method: "POST", body: JSON.stringify({}) });
       await loadModels();
-      setNotice(`${model.name} 连接测试成功。`);
+      setNotice(createVerificationPassedNotice("模型", model.name));
     } catch (error: unknown) {
       await loadModels();
       setFeedback(describeClientError(error));
@@ -718,6 +987,7 @@ export function ModelsPage() {
   async function submitConnectionForm() {
     setActiveAction(connectionForm.id ? "connection-updating" : "connection-creating");
     setFeedback(null);
+    clearConnectionInlineFeedback();
     try {
       const payload: CreateProviderConnectionPayload = {
         name: connectionForm.name,
@@ -728,11 +998,14 @@ export function ModelsPage() {
         enabled: connectionForm.enabled,
       };
 
-      if (connectionForm.id) {
-        const result = await updateProviderConnectionRequest(connectionForm.id, {
+      const result = connectionForm.id
+        ? await updateProviderConnectionRequest(connectionForm.id, {
           ...payload,
           apiKey: connectionForm.apiKey.trim() ? connectionForm.apiKey : undefined,
-        });
+        })
+        : await createProviderConnectionRequest(payload);
+
+      if (connectionForm.id) {
         if (modelForm.connectionId === result.connection.id) {
           updateModelForm({
             connectionId: result.connection.id,
@@ -740,17 +1013,38 @@ export function ModelsPage() {
             baseUrl: result.connection.baseUrl,
           });
         }
-        setNotice(`已更新连接「${connectionForm.name}」。`);
       } else {
-        await createProviderConnectionRequest(payload);
-        setNotice(`已创建连接「${connectionForm.name}」，可在"使用已保存连接"中选择复用。`);
         setBuilderMode("model");
       }
 
       resetConnectionForm();
       await loadConnections();
+
+      if (connectionForm.apiKey.trim()) {
+        try {
+          await testProviderConnectionRequest(result.connection.id, {
+            modelName: result.connection.supportsAutomaticModelDiscovery
+              ? undefined
+              : connectionForm.probeModelName.trim() || selectedConnectionTemplate?.defaultModelName || undefined,
+          });
+          await loadConnections();
+          setNotice(createSavedNotice("连接", connectionForm.id ? "更新" : "创建", connectionForm.name, true));
+        } catch (error: unknown) {
+          await loadConnections();
+          setNotice(createSavedNotice("连接", connectionForm.id ? "更新" : "创建", connectionForm.name, false));
+          const nextFeedback = createSavedVerificationFeedback("连接", connectionForm.name, error);
+          setConnectionFormFeedback(nextFeedback);
+          setConnectionFieldErrors(resolveConnectionFieldErrors(nextFeedback));
+        }
+      } else if (connectionForm.id) {
+        setNotice(createPlainSavedNotice("连接", "更新", connectionForm.name));
+      } else {
+        setNotice(`已创建连接「${connectionForm.name}」，可在“使用已保存连接”中选择复用。`);
+      }
     } catch (error: unknown) {
-      setFeedback(describeClientError(error));
+      const nextFeedback = describeClientError(error);
+      setConnectionFormFeedback(nextFeedback);
+      setConnectionFieldErrors(resolveConnectionFieldErrors(nextFeedback));
     } finally {
       setActiveAction(null);
     }
@@ -769,7 +1063,7 @@ export function ModelsPage() {
             : undefined,
       });
       await loadConnections();
-      setNotice(`连接「${connection.name}」测试成功。`);
+      setNotice(createVerificationPassedNotice("连接", connection.name));
     } catch (error: unknown) {
       await loadConnections();
       setFeedback(describeClientError(error));
@@ -791,7 +1085,7 @@ export function ModelsPage() {
       if (modelForm.connectionId === connection.id) {
         setDiscoveredModels(data.models);
       }
-      setNotice(`连接「${connection.name}」发现了 ${data.models.length} 个模型。`);
+      setNotice(`连接「${connection.name}」已获取到 ${data.models.length} 个模型。`);
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -1027,7 +1321,7 @@ export function ModelsPage() {
 
             {/* ══ 直接建模型（主流程）══ */}
             {builderMode === "model" && (
-              <div className="ly-glass ly-panel-card">
+              <div ref={modelFormPanelRef} className="ly-glass ly-panel-card">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-display font-bold tracking-tight">
@@ -1068,7 +1362,11 @@ export function ModelsPage() {
                       <button
                         type="button"
                         onClick={() => setShowModelProviderMenu((current) => !current)}
-                        className="ly-control flex items-center justify-between gap-3 px-4 text-left"
+                        className={`ly-control flex items-center justify-between gap-3 px-4 text-left transition-all duration-200 ${
+                          showModelProviderMenu
+                            ? "border-[color:color-mix(in_srgb,var(--accent)_28%,white_72%)] bg-white/75 shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_10%,transparent_90%),0_16px_34px_rgba(220,117,165,0.12)]"
+                            : "hover:bg-white/55 hover:shadow-[0_12px_28px_rgba(31,41,55,0.08)]"
+                        }`}
                         aria-haspopup="listbox"
                         aria-expanded={showModelProviderMenu}
                       >
@@ -1103,9 +1401,7 @@ export function ModelsPage() {
                                     key={template.id}
                                     type="button"
                                     onClick={() => handleModelProviderChoice(`template:${template.id}`)}
-                                    className={`flex w-full items-start gap-3 rounded-[1rem] px-3 py-2.5 text-left transition ${
-                                      isActive ? "bg-white/85 shadow-[0_10px_24px_rgba(31,41,55,0.08)]" : "hover:bg-white/70"
-                                    }`}
+                                    className={getGlassMenuOptionClassName(isActive)}
                                   >
                                     <span
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm"
@@ -1113,10 +1409,11 @@ export function ModelsPage() {
                                     >
                                       {templateAvatar.avatarLabel}
                                     </span>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                       <p className="truncate text-[12px] font-bold text-[#2f2e33]">{template.name}</p>
                                       <p className="truncate text-[10px] leading-5 text-[var(--muted)]">{template.subtitle}</p>
                                     </div>
+                                    <MenuCheck visible={isActive} />
                                   </button>
                                 );
                               })}
@@ -1131,9 +1428,7 @@ export function ModelsPage() {
                                     key={template.id}
                                     type="button"
                                     onClick={() => handleModelProviderChoice(`template:${template.id}`)}
-                                    className={`flex w-full items-start gap-3 rounded-[1rem] px-3 py-2.5 text-left transition ${
-                                      isActive ? "bg-white/85 shadow-[0_10px_24px_rgba(31,41,55,0.08)]" : "hover:bg-white/70"
-                                    }`}
+                                    className={getGlassMenuOptionClassName(isActive)}
                                   >
                                     <span
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm"
@@ -1141,10 +1436,11 @@ export function ModelsPage() {
                                     >
                                       {templateAvatar.avatarLabel}
                                     </span>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                       <p className="truncate text-[12px] font-bold text-[#2f2e33]">{template.name}</p>
                                       <p className="truncate text-[10px] leading-5 text-[var(--muted)]">{template.subtitle}</p>
                                     </div>
+                                    <MenuCheck visible={isActive} />
                                   </button>
                                 );
                               })}
@@ -1158,9 +1454,7 @@ export function ModelsPage() {
                                     key={provider}
                                     type="button"
                                     onClick={() => handleModelProviderChoice(`provider:${provider}`)}
-                                    className={`flex w-full items-start gap-3 rounded-[1rem] px-3 py-2.5 text-left transition ${
-                                      isActive ? "bg-white/85 shadow-[0_10px_24px_rgba(31,41,55,0.08)]" : "hover:bg-white/70"
-                                    }`}
+                                    className={getGlassMenuOptionClassName(isActive)}
                                   >
                                     <span
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm"
@@ -1168,10 +1462,11 @@ export function ModelsPage() {
                                     >
                                       {getProviderDefaultAvatarLabel(provider)}
                                     </span>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                       <p className="truncate text-[12px] font-bold text-[#2f2e33]">{getProviderOptionLabel(provider)}</p>
                                       <p className="truncate text-[10px] leading-5 text-[var(--muted)]">{getProviderChineseLabel(provider)}</p>
                                     </div>
+                                    <MenuCheck visible={isActive} />
                                   </button>
                                 );
                               })}
@@ -1265,13 +1560,20 @@ export function ModelsPage() {
                         <div className="space-y-1.5">
                           <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">头像颜色</p>
                           <div className="flex items-center gap-2.5">
-                            <input
-                              type="color"
-                              value={modelForm.avatarColor}
-                              onChange={(e) => updateModelForm({ avatarColor: e.target.value })}
-                              className="h-10 w-14 cursor-pointer rounded-xl border border-white/60 bg-white/80 p-1 shadow-sm"
-                              aria-label="选择模型头像颜色"
-                            />
+                            <label className="relative block h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-white/60 bg-white/75 shadow-sm shadow-black/5 transition hover:border-white/80 hover:bg-white/85">
+                              <span
+                                className="absolute inset-[5px] rounded-[0.7rem] border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                                style={{ backgroundColor: modelForm.avatarColor }}
+                                aria-hidden="true"
+                              />
+                              <input
+                                type="color"
+                                value={modelForm.avatarColor}
+                                onChange={(e) => updateModelForm({ avatarColor: e.target.value })}
+                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                aria-label="选择模型头像颜色"
+                              />
+                            </label>
                             <span className="rounded-full border border-white/60 bg-white/65 px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-[var(--muted)]">
                               {modelForm.avatarColor}
                             </span>
@@ -1376,8 +1678,10 @@ export function ModelsPage() {
                       <input
                         value={modelForm.baseUrl}
                         onChange={(e) => updateModelForm({ baseUrl: e.target.value })}
-                        className="ly-control font-mono text-[12px]"
+                        aria-invalid={Boolean(modelFieldErrors.baseUrl)}
+                        className={`ly-control font-mono text-[12px] ${getInputErrorClass(modelFieldErrors.baseUrl)}`}
                       />
+                      <FieldErrorHint message={modelFieldErrors.baseUrl} />
                     </div>
                   )}
 
@@ -1391,9 +1695,11 @@ export function ModelsPage() {
                         value={modelForm.apiKey}
                         onChange={(e) => updateModelForm({ apiKey: e.target.value })}
                         type="password"
-                        className="ly-control font-mono text-[12px] tracking-widest placeholder:tracking-normal"
+                        aria-invalid={Boolean(modelFieldErrors.apiKey)}
+                        className={`ly-control font-mono text-[12px] tracking-widest placeholder:tracking-normal ${getInputErrorClass(modelFieldErrors.apiKey)}`}
                         placeholder={modelForm.id ? "••••••••••••••••" : "输入 API Key"}
                       />
+                      <FieldErrorHint message={modelFieldErrors.apiKey} />
                     </div>
                   )}
 
@@ -1411,7 +1717,7 @@ export function ModelsPage() {
                         onClick={() => startTransition(() => void handleDiscoverModels())}
                         disabled={
                           !discoverySupported ||
-                          (!modelForm.connectionId && (!modelForm.baseUrl.trim() || !modelForm.apiKey.trim())) ||
+                          (!modelForm.connectionId && (!modelForm.baseUrl.trim() || (!modelForm.apiKey.trim() && !modelForm.id))) ||
                           Boolean(activeAction)
                         }
 
@@ -1423,18 +1729,76 @@ export function ModelsPage() {
                     </div>
 
                     {discoveredModels.length > 0 ? (
-                      <select
-                        value={discoveredModels.some((item) => item.id === modelForm.modelName) ? modelForm.modelName : ""}
-                        onChange={(e) => updateModelForm({ modelName: e.target.value })}
-                        className="ly-control ly-control-sm ly-glass-select appearance-none px-3"
-                      >
-                        <option value="">请从列表中选择一个模型</option>
-                        {discoveredModels.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div ref={discoveredModelMenuRef} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowDiscoveredModelMenu((current) => !current)}
+                          className={`ly-select-shell flex min-h-[2.625rem] items-center justify-between gap-3 px-3.5 text-left transition-all duration-200 ${
+                            showDiscoveredModelMenu
+                              ? "border-[color:color-mix(in_srgb,var(--accent)_28%,white_72%)] bg-white/75 shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_10%,transparent_90%),0_16px_34px_rgba(220,117,165,0.12)]"
+                              : "hover:bg-white/55 hover:shadow-[0_12px_28px_rgba(31,41,55,0.08)]"
+                          }`}
+                          aria-haspopup="listbox"
+                          aria-expanded={showDiscoveredModelMenu}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-semibold text-[#2f2e33]">
+                              {selectedDiscoveredModel?.label ?? "请从列表中选择一个模型"}
+                            </p>
+                            <p className="truncate font-mono text-[10px] leading-5 text-[var(--muted)]">
+                              {selectedDiscoveredModel?.id ?? `已获取 ${discoveredModels.length} 个可用模型`}
+                            </p>
+                          </div>
+                          <span
+                            className="shrink-0 text-[var(--muted)]/75 transition-transform duration-200"
+                            style={{ transform: showDiscoveredModelMenu ? "rotate(180deg)" : "rotate(0deg)" }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                              <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        </button>
+                        {showDiscoveredModelMenu && (
+                          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-[1.2rem] border border-white/60 bg-[rgba(255,255,255,0.78)] shadow-[0_24px_60px_rgba(31,41,55,0.14)] backdrop-blur-[26px]">
+                            <div className="max-h-72 overflow-y-auto p-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowDiscoveredModelMenu(false);
+                                  updateModelForm({ modelName: "" });
+                                }}
+                                className={getGlassMenuOptionClassName(!selectedDiscoveredModel)}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[12px] font-bold text-[#2f2e33]">请从列表中选择一个模型</p>
+                                  <p className="truncate text-[10px] leading-5 text-[var(--muted)]">也可以继续手动填写模型 ID</p>
+                                </div>
+                                <MenuCheck visible={!selectedDiscoveredModel} />
+                              </button>
+                              {discoveredModels.map((item) => {
+                                const isActive = item.id === modelForm.modelName;
+                                return (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => {
+                                      updateModelForm({ modelName: item.id });
+                                      setShowDiscoveredModelMenu(false);
+                                    }}
+                                    className={getGlassMenuOptionClassName(isActive)}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[12px] font-bold text-[#2f2e33]">{item.label}</p>
+                                      <p className="truncate font-mono text-[10px] leading-5 text-[var(--muted)]">{item.id}</p>
+                                    </div>
+                                    <MenuCheck visible={isActive} />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       !discoverySupported && (
                         <p className="ml-1 text-[11px] leading-5 text-[var(--muted)]">
@@ -1446,13 +1810,16 @@ export function ModelsPage() {
                     <input
                       value={modelForm.modelName}
                       onChange={(e) => updateModelForm({ modelName: e.target.value })}
-                      className="ly-control font-mono text-[12px]"
+                      aria-invalid={Boolean(modelFieldErrors.modelName)}
+                      className={`ly-control font-mono text-[12px] ${getInputErrorClass(modelFieldErrors.modelName)}`}
                       placeholder={
                         selectedConnection
                           ? "填写或从列表选择模型 ID"
                           : selectedPreset.defaultModelName || "填写模型 ID（如 gpt-4o）"
                       }
                     />
+                    <FieldErrorHint message={modelFieldErrors.modelName} />
+                    {modelDiscoveryFeedback ? <FeedbackPanel feedback={modelDiscoveryFeedback} /> : null}
                   </div>
 
                   {/* 回复字数 */}
@@ -1498,6 +1865,7 @@ export function ModelsPage() {
                   </label>
 
                   {/* 提交 */}
+                  {modelSubmitFeedback ? <FeedbackPanel feedback={modelSubmitFeedback} /> : null}
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
@@ -1525,7 +1893,7 @@ export function ModelsPage() {
 
             {/* ══ 管理已保存连接（可选面板）══ */}
             {builderMode === "connection" && (
-              <div className="ly-glass ly-panel-card">
+              <div ref={connectionFormPanelRef} className="ly-glass ly-panel-card">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-display font-bold tracking-tight">
@@ -1624,8 +1992,10 @@ export function ModelsPage() {
                     <input
                       value={connectionForm.baseUrl}
                       onChange={(e) => updateConnectionForm({ baseUrl: e.target.value })}
-                      className="ly-control font-mono text-[12px]"
+                      aria-invalid={Boolean(connectionFieldErrors.baseUrl)}
+                      className={`ly-control font-mono text-[12px] ${getInputErrorClass(connectionFieldErrors.baseUrl)}`}
                     />
+                    <FieldErrorHint message={connectionFieldErrors.baseUrl} />
                   </div>
 
                   <div className="space-y-1.5">
@@ -1634,9 +2004,11 @@ export function ModelsPage() {
                       value={connectionForm.apiKey}
                       onChange={(e) => updateConnectionForm({ apiKey: e.target.value })}
                       type="password"
-                      className="ly-control font-mono text-[12px] tracking-widest placeholder:tracking-normal"
+                      aria-invalid={Boolean(connectionFieldErrors.apiKey)}
+                      className={`ly-control font-mono text-[12px] tracking-widest placeholder:tracking-normal ${getInputErrorClass(connectionFieldErrors.apiKey)}`}
                       placeholder={connectionForm.id ? "留空代表保留当前 Key" : "输入 API Key"}
                     />
+                    <FieldErrorHint message={connectionFieldErrors.apiKey} />
                   </div>
 
                   {!connectionDiscoverySupported && (
@@ -1645,12 +2017,15 @@ export function ModelsPage() {
                       <input
                         value={connectionForm.probeModelName}
                         onChange={(e) => updateConnectionForm({ probeModelName: e.target.value })}
-                        className="ly-control font-mono text-[12px]"
+                        aria-invalid={Boolean(connectionFieldErrors.probeModelName)}
+                        className={`ly-control font-mono text-[12px] ${getInputErrorClass(connectionFieldErrors.probeModelName)}`}
                         placeholder={getProviderPreset(connectionForm.provider).defaultModelName || "填写一个可用模型 ID 用于测试连接"}
                       />
+                      <FieldErrorHint message={connectionFieldErrors.probeModelName} />
                     </div>
                   )}
 
+                  {connectionFormFeedback ? <FeedbackPanel feedback={connectionFormFeedback} /> : null}
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
