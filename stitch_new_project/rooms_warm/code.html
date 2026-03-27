@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Luminous AI - Room List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&amp;family=Public+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-surface-variant": "#5c5b60", secondary: "#953b69", "surface-bright": "#f9f5fc", "on-secondary": "#ffeff3", "primary-container": "#f48498", "on-error-container": "#570008", "on-tertiary-container": "#3a2771", "outline-variant": "#afacb2", "tertiary-dim": "#55438e", outline: "#78767c", "on-primary-fixed-variant": "#611027", "surface-tint": "#993c50", "secondary-fixed": "#ffc0da", "primary-fixed": "#f48498", "on-surface": "#2f2e33", "primary-fixed-dim": "#e4778b", "surface-variant": "#dfdbe4", "surface-dim": "#d7d3dc", "on-primary-container": "#54051e", "inverse-surface": "#0e0e12", "on-secondary-fixed": "#631141", "surface-container-lowest": "#ffffff", "error-dim": "#9f0519", tertiary: "#614f9b", "error-container": "#fb5151", "secondary-container": "#ffc0da", "secondary-fixed-dim": "#ffabcf", "surface-container-highest": "#dfdbe4", "tertiary-container": "#beaafd", "on-tertiary": "#f7f0ff", "on-tertiary-fixed": "#220a59", primary: "#993c50", surface: "#f9f5fc", "secondary-dim": "#862f5d", "surface-container-low": "#f3eff7", "inverse-on-surface": "#9f9ca2", "tertiary-fixed": "#beaafd", error: "#b31b25", "on-background": "#2f2e33", "surface-container": "#ebe7ef", "on-primary-fixed": "#160004", "on-error": "#ffefee", "surface-container-high": "#e5e1e9", "on-secondary-fixed-variant": "#88305e", "tertiary-fixed-dim": "#b09cee", "on-tertiary-fixed-variant": "#43307a", "inverse-primary": "#f48498", "primary-dim": "#893044", "on-secondary-container": "#7c2654", "on-primary": "#ffeff0", background: "#f9f5fc"}, fontFamily: {headline: ["Epilogue"], body: ["Public Sans"], label: ["Public Sans"], display: "Epilogue"}, borderRadius: {DEFAULT: "1rem", lg: "2rem", xl: "3rem", full: "9999px"}}}};</script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #fefcf4; color: #383833; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.75); }
+        .amber-gradient { background: linear-gradient(135deg, #8d5900 0%, #f8a010 100%); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#fefcf4]/80 backdrop-blur-xl shadow-none">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold text-amber-900 tracking-tighter font-headline">Luminous AI</span>
+<div class="hidden md:flex gap-6 items-center font-headline font-semibold tracking-tight">
+<a class="text-stone-500 hover:text-amber-700 transition-colors duration-200" href="#">Dashboard</a>
+<a class="text-stone-500 hover:text-amber-700 transition-colors duration-200" href="#">Models</a>
+<a class="text-amber-900 border-b-2 border-amber-600 pb-1" href="#">Rooms</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container-low px-4 py-1.5 rounded-full outline-variant/20 border border-transparent focus-within:border-primary transition-all">
+<span class="material-symbols-outlined text-stone-400 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 font-body" placeholder="Search workbench..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-stone-500 hover:bg-amber-50/50 p-2 rounded-full transition-colors active:scale-95">notifications</button>
+<button class="material-symbols-outlined text-stone-500 hover:bg-amber-50/50 p-2 rounded-full transition-colors active:scale-95">settings</button>
+<div class="w-8 h-8 rounded-full bg-secondary-container overflow-hidden ring-2 ring-white">
+<img alt="User Profile Avatar" data-alt="close-up portrait of a professional woman with a friendly smile, soft natural studio lighting, warm background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt-_FwlxCOeuf7FsgbbLVE_CNM8TKatW5iXtEoNIwuAtoLVvpy1mngUgYUj5Ldy4NGIAYNwyhAI_EFBpfgpscRDBWNJtPd7cy4VVtXNZEhUQoZe_4Q1wrei8UTta50poOTRD0jQrAq36QsoXF3DT3BfxNwC6WMFUAPY7x-Ug1Y-ENYLpX2Z1OPVrZ6nCrdgwACYhhcSvTx0SiuYnnUcaUzNaL42gzCmQ2zJGRVrTRqDABfLlxLXc5qg5HH8IojOxEJ211-ZEfurJI"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-20 bg-[#fbf9f1] flex flex-col p-4 space-y-2 shadow-[20px_0_40px_rgba(141,89,0,0.04)] hidden lg:flex z-40">
+<div class="mb-6 px-4 py-2 bg-surface-container-lowest rounded-2xl shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div>
+<p class="font-headline font-bold text-amber-900 text-sm">Workbench</p>
+<p class="text-[10px] text-stone-500 font-medium">v2.4.0-amber</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 font-body text-sm leading-relaxed">
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">history</span>
+<span>Recent</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">auto_awesome_motion</span>
+<span>Templates</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#fcd34d]/30 text-amber-900 font-bold rounded-lg transition-all duration-300 hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-amber-800">database</span>
+<span>Datasets</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">vpn_key</span>
+<span>API Keys</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">payments</span>
+<span>Billing</span>
+</a>
+</nav>
+<div class="pt-4 mt-4 border-t border-stone-200/30 font-body text-sm">
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">help</span>
+<span>Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined text-stone-400 group-hover:text-amber-600 transition-colors">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-24 lg:pl-72 pr-8 pb-12 min-h-screen">
+<div class="max-w-6xl mx-auto">
+<!-- Header & Search -->
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<h1 class="text-4xl font-extrabold font-headline tracking-tighter text-amber-900 mb-2">房间列表</h1>
+<p class="text-on-surface-variant font-body">Manage your collaborative AI workspaces and session history.</p>
+</div>
+<div class="flex flex-col sm:flex-row items-center gap-3">
+<div class="relative w-full sm:w-80">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-xl">search</span>
+<input class="w-full bg-surface-container-lowest border-outline-variant/20 focus:border-primary focus:ring-primary-fixed/20 rounded-2xl pl-12 pr-4 py-3 font-body text-sm transition-all shadow-sm" placeholder="Filter by room name..." type="text"/>
+</div>
+<button class="amber-gradient text-on-primary px-6 py-3 rounded-2xl font-headline font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                        New Room
+                    </button>
+</div>
+</header>
+<!-- Filters Section -->
+<div class="flex flex-wrap items-center gap-3 mb-8">
+<span class="text-xs font-bold uppercase tracking-widest text-stone-400 mr-2">Filter by</span>
+<div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full text-sm font-medium text-stone-600 group hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-lg">category</span>
+                    Type: All
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full text-sm font-medium text-stone-600 group hover:bg-surface-container-high transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-lg">hub</span>
+                    Provider: OpenAI, Anthropic
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+</div>
+<div class="flex items-center gap-2 bg-tertiary-container/30 text-on-tertiary-container px-4 py-2 rounded-full text-sm font-bold cursor-pointer">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
+                    Favorites
+                </div>
+<button class="ml-auto text-primary text-sm font-bold hover:underline">Clear all</button>
+</div>
+<!-- Bento Grid of Room Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Room Card 1 -->
+<div class="group relative bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)] overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex -space-x-2">
+<div class="w-10 h-10 rounded-full border-2 border-white bg-amber-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-600 text-lg" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-stone-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-stone-500 text-lg">electric_bolt</span>
+</div>
+</div>
+<span class="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-secondary-container/30 text-on-secondary-container rounded-md">8 Models Active</span>
+</div>
+<h3 class="text-xl font-bold font-headline text-amber-900 mb-2">Neural Logic Sandbox</h3>
+<p class="text-sm text-on-surface-variant font-body leading-relaxed mb-6 line-clamp-2">Exploring multi-step reasoning chains for complex mathematical proofs and logical fallacies.</p>
+<div class="flex items-center justify-between pt-6 border-t border-surface-container">
+<div class="flex items-center gap-4 text-xs font-medium text-stone-500">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">forum</span> 1,242</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> 2h ago</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Room Card 2 -->
+<div class="group relative bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)] overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary-container/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex -space-x-2">
+<div class="w-10 h-10 rounded-full border-2 border-white bg-amber-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-600 text-lg">auto_awesome</span>
+</div>
+</div>
+<span class="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-stone-100 text-stone-500 rounded-md">2 Models Active</span>
+</div>
+<h3 class="text-xl font-bold font-headline text-amber-900 mb-2">Quantum Creative Suite</h3>
+<p class="text-sm text-on-surface-variant font-body leading-relaxed mb-6 line-clamp-2">Creative brainstorming for the next generation of spatial computing interfaces.</p>
+<div class="flex items-center justify-between pt-6 border-t border-surface-container">
+<div class="flex items-center gap-4 text-xs font-medium text-stone-500">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">forum</span> 84</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> 1d ago</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Room Card 3 (Hero Layout) -->
+<div class="group relative md:col-span-2 xl:col-span-1 bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)] overflow-hidden border border-primary-container/20">
+<div class="absolute inset-0 bg-gradient-to-br from-amber-50/50 to-transparent pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-2xl amber-gradient flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined text-2xl">star</span>
+</div>
+<div>
+<h3 class="text-xl font-extrabold font-headline text-amber-900">Project Phoenix</h3>
+<p class="text-[10px] font-bold text-amber-700 tracking-widest uppercase">Pinned Session</p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low/50 rounded-2xl p-4 mb-6 border border-white/50">
+<p class="text-xs font-bold text-stone-400 uppercase tracking-tighter mb-2">Last Message</p>
+<p class="text-sm italic text-stone-600 font-body">"I've updated the architecture diagrams based on the latest GPT-4o analysis of the cloud infrastructure..."</p>
+</div>
+<div class="flex items-center justify-between pt-4">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-3">
+<img alt="Anna" class="w-8 h-8 rounded-full border-2 border-white" data-alt="portrait of a woman with glasses and brown hair, soft warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2yKNMRCQ7UMF0XeRP6yCRceIKnF4Ekz8Nn8RV7kF2i5b9suKd3SEfbKfSd7-7ZhULz1ATS_s0vHPGYqdQipzgiVFbL2gYyUOF_qO19GESk5UFLion5Hl9BQ3wA1VqLSwFU_aMnlhX949mG2CXpbi_DY5y-VP_jaMOjWvvw98NP8oSTAZoRhORqMsR_aEEdVwkPSKvhaGm2YKV9tNa93MO4LivGZL0avArCC6fK4QOGy-XR3XlV8jgWYA_23p9k7cs7AGKTawuovg"/>
+<img alt="Bob" class="w-8 h-8 rounded-full border-2 border-white" data-alt="portrait of a man with a beard, natural sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCUyVmULhAX_M9ttVSZ6kk4dpTmvZIIRNaqiUomshWk29NVGa8pYb6Q8FAuo0EhZChlBYUkPjvcnp8m2NGfmgTOcZoS4D1DXdIm-OXN0eB9PVSFd592pCRjQ-SqtYm8T2SzAE-Fcfp84oWoGjGPur90_VXhG8_Y46rVmNuhIle780ZJyHBMIOqdjNdOEPYERxJxuYN2zyIlwfrvbAWUcQRYttt-5QTZZvPOLx5QLY49y4NRh0WywlVX4iYHlTB0glKaXWQ9KQMvhY"/>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-surface-container-highest flex items-center justify-center text-[10px] font-bold">+4</div>
+</div>
+</div>
+<button class="amber-gradient text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md active:scale-95 transition-all">Resume</button>
+</div>
+</div>
+<!-- Room Card 4 -->
+<div class="group relative bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)]">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-stone-400">code</span>
+</div>
+<span class="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-stone-100 text-stone-500 rounded-md">1 Model Active</span>
+</div>
+<h3 class="text-xl font-bold font-headline text-amber-900 mb-2">Debug Console Beta</h3>
+<p class="text-sm text-on-surface-variant font-body leading-relaxed mb-6 line-clamp-2">Internal testing for the new Luminous-7B fine-tuned model weights.</p>
+<div class="flex items-center justify-between pt-6 border-t border-surface-container">
+<div class="flex items-center gap-4 text-xs font-medium text-stone-500">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">forum</span> 5,200</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> 3d ago</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Room Card 5 -->
+<div class="group relative bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)]">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-600">translate</span>
+</div>
+<span class="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-stone-100 text-stone-500 rounded-md">4 Models Active</span>
+</div>
+<h3 class="text-xl font-bold font-headline text-amber-900 mb-2">Localization Hub</h3>
+<p class="text-sm text-on-surface-variant font-body leading-relaxed mb-6 line-clamp-2">Translating core UI components into 14 languages with cultural nuance checking.</p>
+<div class="flex items-center justify-between pt-6 border-t border-surface-container">
+<div class="flex items-center gap-4 text-xs font-medium text-stone-500">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">forum</span> 312</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> 1w ago</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Room Card 6 -->
+<div class="group relative bg-surface-container-lowest rounded-3xl p-6 transition-all duration-300 hover:translate-y-[-4px] shadow-[0_10px_30px_rgba(141,89,0,0.04)]">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-stone-400">history_edu</span>
+</div>
+<span class="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-stone-100 text-stone-500 rounded-md">Archived</span>
+</div>
+<h3 class="text-xl font-bold font-headline text-stone-400 mb-2">2023 Strategy Drafting</h3>
+<p class="text-sm text-stone-400 font-body leading-relaxed mb-6 line-clamp-2">Old planning session for previous fiscal year. Preserved for auditing.</p>
+<div class="flex items-center justify-between pt-6 border-t border-surface-container">
+<div class="flex items-center gap-4 text-xs font-medium text-stone-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">forum</span> 1,029</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> Oct 23</span>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-300 transition-all">
+<span class="material-symbols-outlined">archive</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State / Footer Callout -->
+<div class="mt-16 bg-surface-container-low rounded-3xl p-12 text-center border-2 border-dashed border-outline-variant/20">
+<div class="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-3xl text-primary">add_circle</span>
+</div>
+<h2 class="text-2xl font-extrabold font-headline text-amber-900 mb-3">Ready to start a new journey?</h2>
+<p class="text-on-surface-variant font-body mb-8 max-w-md mx-auto">Create a dedicated space for your next big idea. Rooms can be private, shared, or model-exclusive.</p>
+<button class="amber-gradient text-on-primary px-10 py-4 rounded-2xl font-headline font-bold shadow-xl hover:shadow-2xl transition-all active:scale-95">
+                    Launch New Sandbox
+                </button>
+</div>
+</div>
+</main>
+<!-- FAB (Suppressed on List page as per mandate, but included for complete ecosystem look if desired - suppressed here to follow "Suppress FAB on Settings, Profile, Details, and Transactional" rule as Room List is a management hub, but I will keep it as a 'New' trigger only if it fits. Actually, suppressed to prioritize content canvas.) -->
+<!-- Mobile Bottom NavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest shadow-[0_-10px_20px_rgba(0,0,0,0.05)] px-6 py-4 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-stone-400">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Dash</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-stone-400">
+<span class="material-symbols-outlined">extension</span>
+<span class="text-[10px] font-bold">Models</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-amber-600">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">meeting_room</span>
+<span class="text-[10px] font-bold">Rooms</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-stone-400">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold">Profile</span>
+</button>
+</nav>
+</body></html>

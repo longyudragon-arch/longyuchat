@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stitch 导出预览</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f2ee;
+      --panel: rgba(255, 255, 255, 0.82);
+      --text: #1f1b17;
+      --muted: #756a5e;
+      --accent: #b85d39;
+      --accent-soft: rgba(184, 93, 57, 0.12);
+      --border: rgba(31, 27, 23, 0.08);
+      --ok: #13795b;
+      --warn: #9a6700;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 218, 185, 0.55), transparent 36%),
+        radial-gradient(circle at top right, rgba(255, 207, 230, 0.45), transparent 30%),
+        linear-gradient(180deg, #fbf7f4 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+
+    .hero,
+    .summary,
+    .card {
+      backdrop-filter: blur(20px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(17, 17, 17, 0.08);
+    }
+
+    .hero {
+      border-radius: 32px;
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.08;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      max-width: 860px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .summary {
+      margin-top: 18px;
+      border-radius: 28px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .metric {
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.72);
+      padding: 14px 16px;
+      border: 1px solid rgba(31, 27, 23, 0.06);
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 6px;
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .section-title {
+      margin: 28px 0 16px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      border-radius: 28px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .preview {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(180deg, rgba(184, 93, 57, 0.08), rgba(255,255,255,0.95));
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .placeholder {
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .content {
+      padding: 18px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .name {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      border: 1px solid rgba(31, 27, 23, 0.08);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--muted);
+    }
+
+    .chip.ok {
+      color: var(--ok);
+      border-color: rgba(19, 121, 91, 0.18);
+      background: rgba(19, 121, 91, 0.10);
+    }
+
+    .chip.warn {
+      color: var(--warn);
+      border-color: rgba(154, 103, 0, 0.18);
+      background: rgba(154, 103, 0, 0.10);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: rgba(255,255,255,0.84);
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, #cb734f 0%, #df9272 100%);
+      color: white;
+      border-color: transparent;
+    }
+
+    .notes {
+      margin-top: 28px;
+      border-radius: 24px;
+      padding: 18px 20px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: #8e4626;
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <h1>Stitch 导出预览</h1>
+      <p>
+        这批导出文件不是一个完整可运行的 React 项目，而是一组独立的高保真页面原型。
+        我们先用这个独立预览页统一查看，再决定哪些页面适合接回现有的
+        <code>Next.js + API</code> 项目。
+      </p>
+    </section>
+
+    <section class="summary">
+      <div class="metric">
+        <div class="metric-label">原型数量</div>
+        <div class="metric-value">19</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">含 code.html</div>
+        <div class="metric-value">18</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">含 screen.png</div>
+        <div class="metric-value">16</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">设计说明</div>
+        <div class="metric-value">1</div>
+      </div>
+    </section>
+
+    <h2 class="section-title">页面原型</h2>
+    <section class="grid" id="cards"></section>
+
+    <section class="notes">
+      目前完整性判断：
+      <br />
+      1. <code>lumina_glass</code> 只有设计规范，没有页面代码。
+      <br />
+      2. <code>luminous_ai_intelligent_creative_workspace</code> 和
+      <code>luminous_workspace_dynamic_model_colors_2</code> 缺少截图，但页面代码在。
+      <br />
+      3. 其余大多数目录都具备 <code>code.html</code>，可以直接作为静态原型查看。
+    </section>
+  </main>
+
+  <script>
+    const items = [
+      { name: "login_luminous_warm", title: "登录页", code: true, screen: true, design: false },
+      { name: "lumina_glass", title: "设计系统规范", code: false, screen: false, design: true },
+      { name: "luminous_ai_intelligent_creative_workspace", title: "桌面聊天工作区 A", code: true, screen: false, design: false },
+      { name: "luminous_model_config_premium_gradients", title: "桌面模型配置页 A", code: true, screen: true, design: false },
+      { name: "luminous_new_room_drag_drop", title: "桌面新建房间页", code: true, screen: true, design: false },
+      { name: "luminous_prompt_library_refined", title: "Prompt Library 原型", code: true, screen: true, design: false },
+      { name: "luminous_room_list_refined", title: "桌面房间列表页", code: true, screen: true, design: false },
+      { name: "luminous_workspace_dynamic_model_colors_1", title: "桌面聊天工作区 B", code: true, screen: true, design: false },
+      { name: "luminous_workspace_dynamic_model_colors_2", title: "桌面聊天工作区 C", code: true, screen: false, design: false },
+      { name: "luminous_workspace_with_model_colors", title: "桌面聊天工作区 D", code: true, screen: true, design: false },
+      { name: "mobile_gradient_config_luminous_warm", title: "移动端配置页 A", code: true, screen: true, design: false },
+      { name: "mobile_luminous_workspace_dynamic_colors", title: "移动端聊天工作区", code: true, screen: true, design: false },
+      { name: "mobile_model_pipeline_builder", title: "移动端模型流程页", code: true, screen: true, design: false },
+      { name: "mobile_model_settings_luminous_warm", title: "移动端模型设置页", code: true, screen: true, design: false },
+      { name: "mobile_profile_settings_luminous_warm", title: "移动端个人设置页", code: true, screen: true, design: false },
+      { name: "mobile_prompt_library_luminous_warm", title: "移动端 Prompt Library", code: true, screen: true, design: false },
+      { name: "mobile_room_list_luminous_warm", title: "移动端房间列表页", code: true, screen: true, design: false },
+      { name: "model_config_with_color_picker", title: "模型配置页 B", code: true, screen: true, design: false },
+      { name: "workspace_with_personalized_model_colors", title: "桌面聊天工作区 E", code: true, screen: true, design: false },
+    ];
+
+    const cards = document.getElementById("cards");
+
+    for (const item of items) {
+      const preview = item.screen
+        ? `<img src="${item.name}/screen.png" alt="${item.title} 预览图" />`
+        : `<div class="placeholder">${item.code ? "这个原型包含页面代码，但导出里没有截图。" : "这个目录主要是设计说明，不是页面原型。"}</div>`;
+
+      const actions = [
+        item.code ? `<a class="button primary" href="${item.name}/code.html" target="_blank" rel="noreferrer">打开页面原型</a>` : "",
+        item.screen ? `<a class="button" href="${item.name}/screen.png" target="_blank" rel="noreferrer">查看截图</a>` : "",
+        item.design ? `<a class="button" href="${item.name}/DESIGN.md" target="_blank" rel="noreferrer">查看设计说明</a>` : "",
+      ].filter(Boolean).join("");
+
+      const chips = [
+        item.code ? `<span class="chip ok">含 code.html</span>` : `<span class="chip warn">缺 code.html</span>`,
+        item.screen ? `<span class="chip ok">含 screen.png</span>` : `<span class="chip warn">缺 screen.png</span>`,
+        item.design ? `<span class="chip ok">含 DESIGN.md</span>` : "",
+      ].filter(Boolean).join("");
+
+      const article = document.createElement("article");
+      article.className = "card";
+      article.innerHTML = `
+        <div class="preview">${preview}</div>
+        <div class="content">
+          <div class="name">${item.title}</div>
+          <div class="chips">${chips}</div>
+          <div class="actions">${actions}</div>
+        </div>
+      `;
+      cards.appendChild(article);
+    }
+  </script>
+</body>
+</html>

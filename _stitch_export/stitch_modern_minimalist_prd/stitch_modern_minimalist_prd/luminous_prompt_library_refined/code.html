@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Luminous AI - Prompt Library</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed-dim": "#ab92ff",
+              "inverse-on-surface": "#9f9ca2",
+              "surface-tint": "#993c50",
+              "on-background": "#2f2e33",
+              "inverse-primary": "#f48498",
+              "tertiary-container": "#b8a3ff",
+              "tertiary": "#6249b2",
+              "surface-container-high": "#e5e1e9",
+              "on-tertiary-fixed-variant": "#3f228d",
+              "surface-dim": "#d7d3dc",
+              "primary-fixed-dim": "#e4778b",
+              "on-tertiary-container": "#361584",
+              "surface-container-low": "#f3eff7",
+              "tertiary-dim": "#563ca5",
+              "on-surface-variant": "#5c5b60",
+              "secondary-dim": "#8c2a5b",
+              "on-error-container": "#570008",
+              "primary-dim": "#893044",
+              "surface-container-highest": "#dfdbe4",
+              "secondary": "#9b3667",
+              "on-secondary-container": "#812153",
+              "on-tertiary": "#f7f0ff",
+              "error-dim": "#9f0519",
+              "tertiary-fixed": "#b8a3ff",
+              "error": "#b31b25",
+              "surface": "#f9f5fc",
+              "on-secondary-fixed-variant": "#8d2b5c",
+              "on-primary-fixed-variant": "#611027",
+              "primary": "#993c50",
+              "surface-container": "#ebe7ef",
+              "outline": "#78767c",
+              "primary-container": "#f48498",
+              "primary-fixed": "#f48498",
+              "error-container": "#fb5151",
+              "surface-bright": "#f9f5fc",
+              "on-secondary-fixed": "#68083f",
+              "background": "#f9f5fc",
+              "on-surface": "#2f2e33",
+              "secondary-fixed-dim": "#ffabcc",
+              "surface-variant": "#dfdbe4",
+              "outline-variant": "#afacb2",
+              "on-error": "#ffefee",
+              "on-primary-container": "#54051e",
+              "on-secondary": "#ffeff2",
+              "secondary-container": "#ffc0d7",
+              "on-primary-fixed": "#160004",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed": "#ffc0d7",
+              "inverse-surface": "#0e0e12",
+              "on-tertiary-fixed": "#1c0055",
+              "on-primary": "#ffeff0"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .mesh-gradient {
+            background-color: #f9f5fc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(244, 132, 152, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(184, 163, 255, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(255, 192, 215, 0.2) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(153, 60, 80, 0.05) 0px, transparent 50%);
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface mesh-gradient min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col gap-2 p-6 h-screen sticky top-0 w-64 border-r border-rose-100/20 dark:border-rose-900/20 bg-white/40 backdrop-blur-3xl">
+<div class="mb-10 px-4">
+<span class="text-xl font-extrabold text-rose-500 font-headline">Luminous AI</span>
+<p class="text-xs text-slate-500 font-medium">Creative Workspace</p>
+</div>
+<button class="mb-8 w-full bg-gradient-to-r from-rose-400 to-fuchsia-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-rose-200/50 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                New Prompt
+            </button>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 text-slate-600 px-4 py-3 hover:bg-rose-50/30 rounded-full transition-colors font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+                    Workspace
+                </a>
+<!-- Active Navigation: Prompt Library -->
+<a class="flex items-center gap-3 bg-white/80 text-rose-600 rounded-full px-4 py-3 shadow-sm font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="library_books" style="font-variation-settings: 'FILL' 1;">library_books</span>
+                    Prompt Library
+                </a>
+<a class="flex items-center gap-3 text-slate-600 px-4 py-3 hover:bg-rose-50/30 rounded-full transition-colors font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+                    Categories
+                </a>
+<a class="flex items-center gap-3 text-slate-600 px-4 py-3 hover:bg-rose-50/30 rounded-full transition-colors font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                    History
+                </a>
+</nav>
+<div class="mt-auto p-4 flex items-center gap-3 bg-white/20 rounded-3xl border border-white/40">
+<img alt="User Profile" class="w-10 h-10 rounded-full bg-rose-100" data-alt="User profile avatar icon in pink" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqN5d2xZ7q7JBM6c_EXCC8VrC1b-hpx7VHfQc0jfrIk0wYHX_KGuycoffSjF5VTlNdd_EyQAfRnrBhqULsTiGBKU0YYcfTVQ9bbbTwgB_eYjZOUBdZxku8Jw5wcQfbIyQbiEwqHGPLcIUJxGxpP5O6of2bHPDydmVJdheSosfghYGtOjY4PFKCSV7QH8l3rSoofimpz22I30WsIR9INDKUWqbUXEB1sgfh0NOjPpmnzapw7dhm47Rk3aglAFw0jHlGkTa4U0C1OvlU"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold truncate">Alex Rivera</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-wider">Pro Plan</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-white/60 backdrop-blur-3xl border-b border-rose-100/20 shadow-[0_8px_32px_0_rgba(255,141,161,0.05)]">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-4 flex-1 max-w-2xl">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-400 transition-colors" data-icon="search">search</span>
+<input class="w-full bg-white/50 border-none rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-rose-200 text-sm placeholder:text-slate-400 font-medium" placeholder="Search prompts, tags, or styles..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4 ml-6">
+<button class="p-2 rounded-full hover:bg-rose-50/50 transition-all text-slate-600 active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-rose-50/50 transition-all text-rose-400 active:scale-95">
+<span class="material-symbols-outlined" data-icon="account_circle" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Content Body -->
+<div class="p-6 md:p-10 max-w-screen-2xl mx-auto w-full">
+<!-- Page Header & Filters -->
+<div class="mb-10">
+<h1 class="text-4xl md:text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-6">Prompt Library</h1>
+<div class="flex flex-wrap items-center gap-3">
+<button class="px-6 py-2.5 rounded-full bg-gradient-to-r from-rose-400 to-fuchsia-500 text-white font-bold text-sm shadow-md shadow-rose-200/50 active:scale-95 transition-transform">All</button>
+<button class="px-6 py-2.5 rounded-full bg-white/60 hover:bg-white text-slate-600 font-semibold text-sm transition-all active:scale-95">Creative</button>
+<button class="px-6 py-2.5 rounded-full bg-white/60 hover:bg-white text-slate-600 font-semibold text-sm transition-all active:scale-95">Coding</button>
+<button class="px-6 py-2.5 rounded-full bg-white/60 hover:bg-white text-slate-600 font-semibold text-sm transition-all active:scale-95">Academic</button>
+<button class="px-6 py-2.5 rounded-full bg-white/60 hover:bg-white text-slate-600 font-semibold text-sm transition-all active:scale-95">Roleplay</button>
+<div class="h-6 w-px bg-rose-200/40 mx-2"></div>
+<button class="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-rose-500 font-semibold text-sm transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="filter_list">filter_list</span>
+                            More Filters
+                        </button>
+</div>
+</div>
+<!-- Bento Grid / Masonry Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<div class="group glass-card p-8 rounded-xl relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-100">
+<div class="flex justify-between items-start mb-6">
+<span class="bg-primary-container/20 text-on-primary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Creative</span>
+<button class="opacity-0 group-hover:opacity-100 p-2 bg-white/80 rounded-full text-rose-500 transition-all hover:bg-rose-500 hover:text-white shadow-sm active:scale-90">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-on-surface">Ethereal Concept Art Generator</h3>
+<p class="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-8">
+                            Create intricate digital paintings of celestial landscapes using soft pastel palettes, cinematic lighting, and detailed textures...
+                        </p>
+<div class="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="w-7 h-7 rounded-full border-2 border-white bg-rose-100 flex items-center justify-center text-[10px] font-bold">JD</div>
+<div class="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-bold">MT</div>
+</div>
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Updated 2h ago</span>
+</div>
+</div>
+<!-- Card 2 (Highlight/Large) -->
+<div class="group glass-card p-8 rounded-xl relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-100 xl:row-span-2">
+<div class="flex justify-between items-start mb-6">
+<span class="bg-tertiary-container/20 text-tertiary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Academic</span>
+<button class="opacity-0 group-hover:opacity-100 p-2 bg-white/80 rounded-full text-rose-500 transition-all hover:bg-rose-500 hover:text-white shadow-sm active:scale-90">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-4 text-on-surface leading-tight">Advanced Research Synthesizer</h3>
+<p class="text-slate-600 text-sm leading-relaxed mb-6">
+                            A complex multi-step prompt designed to take 5 different research abstracts and synthesize them into a coherent literature review outline. 
+                            <br/><br/>
+                            Includes methodology comparison, key finding cross-referencing, and identification of research gaps for academic papers.
+                        </p>
+<div class="bg-rose-50/50 p-4 rounded-2xl mb-8 border border-rose-100/50">
+<code class="text-xs text-rose-600 font-mono">/synthesize papers:[{{abstracts}}] focus:[methodology]</code>
+</div>
+<div class="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-rose-400 text-sm" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-xs font-bold text-rose-500">Premium Tool</span>
+</div>
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Updated 1d ago</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group glass-card p-8 rounded-xl relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-100">
+<div class="flex justify-between items-start mb-6">
+<span class="bg-secondary-container/20 text-secondary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Coding</span>
+<button class="opacity-0 group-hover:opacity-100 p-2 bg-white/80 rounded-full text-rose-500 transition-all hover:bg-rose-500 hover:text-white shadow-sm active:scale-90">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-on-surface">React Component refactor</h3>
+<p class="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-8">
+                            Refactor legacy class components into modern functional components using hooks, with a focus on performance optimization...
+                        </p>
+<div class="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between">
+<div class="flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-sm" data-icon="star">star</span>
+<span class="text-xs font-bold">4.9</span>
+</div>
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Updated 4h ago</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="group glass-card p-8 rounded-xl relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-100">
+<div class="flex justify-between items-start mb-6">
+<span class="bg-primary-container/20 text-on-primary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Creative</span>
+<button class="opacity-0 group-hover:opacity-100 p-2 bg-white/80 rounded-full text-rose-500 transition-all hover:bg-rose-500 hover:text-white shadow-sm active:scale-90">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-on-surface">Narrative Story Weaver</h3>
+<p class="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-8">
+                            Build immersive world-building documents focusing on political systems, magic rules, and historical timelines...
+                        </p>
+<div class="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between">
+<div class="flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-sm" data-icon="favorite">favorite</span>
+<span class="text-xs font-bold">128</span>
+</div>
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Updated 12h ago</span>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="group glass-card p-8 rounded-xl relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-100">
+<div class="flex justify-between items-start mb-6">
+<span class="bg-rose-500/10 text-rose-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Roleplay</span>
+<button class="opacity-0 group-hover:opacity-100 p-2 bg-white/80 rounded-full text-rose-500 transition-all hover:bg-rose-500 hover:text-white shadow-sm active:scale-90">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-on-surface">Cyberpunk Game Master</h3>
+<p class="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-8">
+                            A persona-driven prompt that transforms the AI into a gritty narrator for table-top RPG sessions set in 2077...
+                        </p>
+<div class="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between">
+<div class="flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+<span class="text-xs font-bold">2.4k</span>
+</div>
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Updated 2d ago</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/70 backdrop-blur-2xl rounded-t-[3rem] border-t border-rose-100/30 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-headline text-[10px] font-bold uppercase tracking-widest mt-1">Home</span>
+</a>
+<!-- Active Tab: Library -->
+<a class="flex flex-col items-center justify-center bg-rose-100/50 text-rose-600 rounded-2xl px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="bookmarks" style="font-variation-settings: 'FILL' 1;">bookmarks</span>
+<span class="font-headline text-[10px] font-bold uppercase tracking-widest mt-1">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-headline text-[10px] font-bold uppercase tracking-widest mt-1">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-headline text-[10px] font-bold uppercase tracking-widest mt-1">Settings</span>
+</a>
+</nav>
+<!-- Floating Action Button (FAB) - Suppression Logic: Keep for Library Main -->
+<button class="lg:hidden fixed bottom-28 right-6 w-14 h-14 bg-gradient-to-br from-rose-400 to-fuchsia-500 text-white rounded-full shadow-lg shadow-rose-200 flex items-center justify-center active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</body></html>

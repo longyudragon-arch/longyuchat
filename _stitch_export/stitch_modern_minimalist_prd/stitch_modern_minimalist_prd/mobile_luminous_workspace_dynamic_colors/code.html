@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Workspace - Luminous Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;family=Quicksand:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary": "#9b3667",
+              "primary": "#993c50",
+              "on-primary-container": "#54051e",
+              "on-primary-fixed": "#160004",
+              "on-primary": "#ffeff0",
+              "tertiary-fixed-dim": "#ab92ff",
+              "primary-container": "#f48498",
+              "surface-container-highest": "#dfdbe4",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#2f2e33",
+              "surface-container-low": "#f3eff7",
+              "outline-variant": "#afacb2",
+              "outline": "#78767c",
+              "surface": "#f9f5fc",
+              "primary-fixed": "#f48498",
+              "on-secondary-fixed-variant": "#8d2b5c",
+              "on-tertiary-container": "#361584",
+              "on-error": "#ffefee",
+              "error-container": "#fb5151",
+              "inverse-surface": "#0e0e12",
+              "secondary-fixed-dim": "#ffabcc",
+              "surface-tint": "#993c50",
+              "on-error-container": "#570008",
+              "on-secondary-container": "#812153",
+              "inverse-primary": "#f48498",
+              "surface-variant": "#dfdbe4",
+              "on-tertiary-fixed": "#1c0055",
+              "tertiary-container": "#b8a3ff",
+              "surface-container": "#ebe7ef",
+              "on-secondary-fixed": "#68083f",
+              "on-tertiary": "#f7f0ff",
+              "tertiary": "#6249b2",
+              "primary-dim": "#893044",
+              "background": "#f9f5fc",
+              "on-surface-variant": "#5c5b60",
+              "secondary-fixed": "#ffc0d7",
+              "tertiary-fixed": "#b8a3ff",
+              "surface-bright": "#f9f5fc",
+              "secondary-container": "#ffc0d7",
+              "primary-fixed-dim": "#e4778b",
+              "on-tertiary-fixed-variant": "#3f228d",
+              "on-background": "#2f2e33",
+              "inverse-on-surface": "#9f9ca2",
+              "secondary-dim": "#8c2a5b",
+              "error": "#b31b25",
+              "on-secondary": "#ffeff2",
+              "surface-dim": "#d7d3dc",
+              "surface-container-high": "#e5e1e9",
+              "on-primary-fixed-variant": "#611027",
+              "tertiary-dim": "#563ca5",
+              "error-dim": "#9f0519"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"],
+              "display": ["Quicksand"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .mesh-gradient-bg {
+            background-color: #f9f5fc;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(343, 85%, 90%, 1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(261, 85%, 90%, 1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(38, 100%, 93%, 1) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, hsla(320, 80%, 92%, 1) 0px, transparent 50%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background-color: currentColor;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 1px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body bg-background text-on-surface min-h-screen mesh-gradient-bg">
+<!-- TopAppBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-b border-white/20 dark:border-slate-800/20 shadow-sm backdrop-saturate-150 flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-pink-500" data-icon="menu">menu</span>
+<span class="font-plus-jakarta text-lg font-bold tracking-tight text-pink-600 dark:text-pink-300 font-extrabold tracking-tighter">AI Workspace</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-primary-container border-2 border-white/50 overflow-hidden shadow-sm active:scale-95 duration-200">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Soft photographic profile avatar of a person" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjLCJ_vepcUWWvIQC4Q0wf0rruAhBAhZ8E-WXvdVGYNVmH9-KEIBjfD28r4yhm-xYodm5rIzRusAl3uKJv7b_J9Bb1ttxJ1NTEC007MOBVjlKZS_X-J3ZQ0a7EuPt4Azj2Lc5W3OuLBfJpxu7XRTuT4rRCWYI_29KB7kjnqnCdDtzkFs_5TD1chWrUoy7nXe1ezI29KyBMGTLvpiv2hCEVlvby8dSfV8CNQd173cQO2sJ6p6nHHbtSjilF22-ekMlYgn6e0l9LKow_"/>
+</div>
+</nav>
+<main class="pt-20 pb-32 px-4 max-w-2xl mx-auto space-y-8">
+<!-- Execution Pipeline Chain -->
+<section class="w-full overflow-x-auto py-2 no-scrollbar">
+<div class="flex items-center space-x-4 min-w-max px-2">
+<!-- GPT-4 (Success State) -->
+<div class="flex items-center gap-2 px-4 py-2 glass-panel rounded-full border-green-200 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+<span class="material-symbols-outlined text-green-500 text-sm" data-icon="check_circle">check_circle</span>
+<span class="text-xs font-bold font-headline text-green-700">GPT-4</span>
+</div>
+<div class="h-px w-6 bg-outline-variant/30"></div>
+<!-- Claude-3 (Active State) -->
+<div class="flex items-center gap-2 px-4 py-2 glass-panel rounded-full border-tertiary-container shadow-[0_0_20px_rgba(184,163,255,0.3)] animate-pulse">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="potted_plant">potted_plant</span>
+<span class="text-xs font-bold font-headline text-tertiary">Claude-3</span>
+</div>
+<div class="h-px w-6 bg-outline-variant/30"></div>
+<!-- Gemini (Pending State) -->
+<div class="flex items-center gap-2 px-4 py-2 glass-panel rounded-full border-transparent opacity-50">
+<span class="material-symbols-outlined text-slate-400 text-sm" data-icon="motion_photos_on">motion_photos_on</span>
+<span class="text-xs font-bold font-headline text-slate-500">Gemini</span>
+</div>
+</div>
+</section>
+<!-- Chat Area -->
+<div class="space-y-6">
+<!-- User Message -->
+<div class="flex flex-col items-end space-y-1">
+<div class="max-w-[85%] px-5 py-4 rounded-t-xl rounded-bl-xl bg-gradient-to-br from-primary to-secondary text-on-primary shadow-lg shadow-primary/20">
+<p class="text-sm leading-relaxed font-medium">Explain quantum entanglement as if I'm a chef in a busy kitchen.</p>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium px-2">12:45 PM</span>
+</div>
+<!-- AI Chain Response Container -->
+<div class="space-y-4">
+<!-- GPT-4 Response -->
+<div class="flex flex-col items-start space-y-2">
+<div class="flex items-center gap-2 px-1">
+<div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="smart_toy">smart_toy</span>
+</div>
+<span class="text-[11px] font-bold text-green-600 font-headline">GPT-4 (Analytic)</span>
+</div>
+<div class="max-w-[90%] px-5 py-4 glass-panel rounded-t-xl rounded-br-xl border-green-500/20 shadow-[0_4px_20px_rgba(34,197,94,0.05)]">
+<p class="text-sm leading-relaxed text-on-surface">Imagine you have two perfect soufflés. If they're "entangled," whatever happens to one instantly affects the other, no matter how far apart they are in the kitchen. It's like having magic spice twins.</p>
+</div>
+</div>
+<!-- Claude-3 Streaming Response -->
+<div class="flex flex-col items-start space-y-2">
+<div class="flex items-center gap-2 px-1">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<span class="text-[11px] font-bold text-tertiary font-headline">Claude-3 (Creative)</span>
+</div>
+<div class="max-w-[90%] px-5 py-4 glass-panel rounded-t-xl rounded-br-xl border-tertiary-container shadow-[0_10px_30px_rgba(184,163,255,0.15)] ring-1 ring-tertiary/20">
+<p class="text-sm leading-relaxed text-on-surface mb-2">Expanding on that: think of it as a synchronized service. You have two orders of Carbonara. One in the dining room and one in the private suite...</p>
+<div class="flex items-center gap-1 text-tertiary">
+<span class="typing-dot animate-bounce" style="animation-delay: 0ms"></span>
+<span class="typing-dot animate-bounce" style="animation-delay: 200ms"></span>
+<span class="typing-dot animate-bounce" style="animation-delay: 400ms"></span>
+</div>
+</div>
+</div>
+<!-- Gemini Pending -->
+<div class="flex flex-col items-start space-y-2 opacity-40">
+<div class="flex items-center gap-2 px-1">
+<div class="w-5 h-5 rounded-full bg-slate-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="model_training">model_training</span>
+</div>
+<span class="text-[11px] font-bold text-on-surface-variant font-headline">Gemini (Awaiting Pipeline)</span>
+</div>
+<div class="w-[40%] h-12 glass-panel rounded-t-xl rounded-br-xl border-dashed border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400 animate-spin" data-icon="progress_activity">progress_activity</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Input Area -->
+<div class="fixed bottom-0 left-0 right-0 p-6 z-40 bg-gradient-to-t from-background via-background/90 to-transparent">
+<div class="max-w-2xl mx-auto glass-panel p-2 rounded-full shadow-2xl border-white/40 flex items-center gap-2">
+<button class="w-12 h-12 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<div class="flex-1 px-2">
+<input class="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder-on-surface-variant/60 text-sm" placeholder="Ask your AI team..." type="text"/>
+</div>
+<button class="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-secondary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar (Hidden on desktop, logic defined in components) -->
+<div class="md:hidden fixed bottom-6 left-0 right-0 z-50 flex justify-around items-center px-4 py-3 mx-auto w-[90%] max-w-md rounded-full bg-white/60 dark:bg-slate-900/60 backdrop-blur-3xl border border-white/30 dark:border-slate-700/30 shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+<div class="flex items-center justify-center bg-pink-500/20 dark:bg-pink-400/20 text-pink-600 dark:text-pink-300 rounded-full w-12 h-12 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</div>
+<div class="flex items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-white/40 dark:hover:bg-slate-800/40 rounded-full transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="flex items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-white/40 dark:hover:bg-slate-800/40 rounded-full transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</div>
+<div class="flex items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-white/40 dark:hover:bg-slate-800/40 rounded-full transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</div>
+</div>
+</body></html>

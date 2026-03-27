@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Luminous AI - Intelligent Creative Workspace</title>
+    
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet"/>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#FF8DA1",
+              "primary-container": "#f48498",
+              "on-primary": "#ffeff0",
+              "on-primary-container": "#54051e",
+              "secondary": "#9b3667",
+              "secondary-container": "#ffc0d7",
+              "on-secondary": "#ffeff2",
+              "tertiary": "#6249b2",
+              "tertiary-container": "#b8a3ff",
+              "surface": "#f9f5fc",
+              "on-surface": "#2f2e33",
+              "on-surface-variant": "#5c5b60",
+              "outline": "#78767c",
+              "outline-variant": "#afacb2",
+              "background": "#f9f5fc",
+              // Model Specific Colors
+              "gpt4": "#10B981",
+              "claude": "#8B5CF6",
+              "gemini": "#F59E0B"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"],
+              "display": ["Quicksand"]
+            },
+            borderRadius: {
+              "DEFAULT": "1rem", 
+              "lg": "2rem", 
+              "xl": "3rem", 
+              "full": "9999px",
+              "panel": "1.5rem"
+            },
+          },
+        },
+      }
+    </script>
+
+    <style>
+        .mesh-gradient {
+            background-color: #f9f5fc;
+            background-image: 
+                radial-gradient(at 0% 0%, #f48498 0px, transparent 50%),
+                radial-gradient(at 50% 0%, #ffc0d7 0px, transparent 50%),
+                radial-gradient(at 100% 0%, #b8a3ff 0px, transparent 50%),
+                radial-gradient(at 0% 100%, #f48498 0px, transparent 50%),
+                radial-gradient(at 50% 100%, #ffc0d7 0px, transparent 50%),
+                radial-gradient(at 100% 100%, #b8a3ff 0px, transparent 50%);
+            background-size: 200% 200%;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .user-bubble {
+            background: linear-gradient(135deg, rgba(244, 132, 152, 0.15) 0%, rgba(255, 192, 215, 0.1) 100%);
+            backdrop-filter: blur(24px);
+        }
+        .streaming-cursor {
+            animation: blink 1s infinite;
+            background-color: currentColor;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .timeline-connector {
+            background: linear-gradient(180deg, #10b981 0%, #8b5cf6 50%, #f59e0b 100%);
+            width: 2px;
+            position: absolute;
+            left: -20px;
+            top: 24px;
+            bottom: -24px;
+            opacity: 0.3;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .active-icon { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="font-body text-on-surface selection:bg-primary-container/30 overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Common Components ---
+
+        const TopAppBar = () => {
+            const navigate = useNavigate();
+            return (
+                <nav className="fixed top-0 w-full z-50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-3xl border-b border-white/20 dark:border-slate-800/20 shadow-sm flex justify-between items-center px-8 h-16">
+                    <div className="flex items-center gap-8">
+                        <Link to="/dashboard" className="text-2xl font-black bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent font-headline tracking-tighter">Luminous AI</Link>
+                        <div className="hidden md:flex gap-6 items-center">
+                            <Link to="/dashboard" className="text-slate-500 hover:text-primary font-semibold transition-colors">Dashboard</Link>
+                            <Link to="/library" className="text-slate-500 hover:text-primary font-semibold transition-colors">Explore</Link>
+                            <Link to="/history" className="text-slate-500 hover:text-primary font-semibold transition-colors">History</Link>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button className="p-2 text-slate-500 hover:bg-white/40 rounded-full"><span className="material-symbols-outlined">notifications</span></button>
+                        <button className="p-2 text-slate-500 hover:bg-white/40 rounded-full" onClick={() => navigate('/settings')}><span className="material-symbols-outlined">settings</span></button>
+                        <div className="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden cursor-pointer" onClick={() => navigate('/profile')}>
+                            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAM-epQ7poIbgso9anDvu8Y-B__sVjwr6ReNjuhMtsE9g4_djZwsVhIdw1ObywAtAuZRxXN57oVL7wa6UbPGhKfHUXS1CWWee8A9f0xh0mAX_du2Qi6DS1eWgVwmfrB_WYW8YSRGCEgExYGSlixh1RDfg4H0KD4JqhtUPn3slf1s-8Mw3pnISWzilDfxd2RwfPq1ZxCXFj54x7rRFOlZQ2t8kxP-fM8IDSDsjfofJlt-v-wWp_RXlESrJo_PQ2o45f-JApDJxYRa0SK" alt="Avatar" className="w-full h-full object-cover" />
+                        </div>
+                    </div>
+                </nav>
+            );
+        };
+
+        const Sidebar = () => {
+            const location = useLocation();
+            const navigate = useNavigate();
+            const isActive = (path) => location.pathname === path;
+
+            return (
+                <aside className="hidden md:flex flex-col h-screen w-64 p-6 pt-24 bg-white/40 border-r border-white/20 fixed left-0 top-0">
+                    <div className="mb-8 p-3 glass-panel rounded-2xl flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg">
+                            <span className="material-symbols-outlined active-icon">hub</span>
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold leading-none">Main Workspace</div>
+                            <div className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">Amber Tier</div>
+                        </div>
+                    </div>
+                    <nav className="flex-1 space-y-1">
+                        <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive('/dashboard') ? 'bg-white/80 text-primary shadow-sm font-bold' : 'text-slate-500 hover:text-primary hover:bg-white/40 font-medium'}`}>
+                            <span className="material-symbols-outlined">dashboard</span> Dashboard
+                        </Link>
+                        <Link to="/library" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive('/library') ? 'bg-white/80 text-primary shadow-sm font-bold' : 'text-slate-500 hover:text-primary hover:bg-white/40 font-medium'}`}>
+                            <span className="material-symbols-outlined">local_library</span> Library
+                        </Link>
+                        <Link to="/models" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive('/models') ? 'bg-white/80 text-primary shadow-sm font-bold' : 'text-slate-500 hover:text-primary hover:bg-white/40 font-medium'}`}>
+                            <span className="material-symbols-outlined">psychology</span> Models
+                        </Link>
+                        <Link to="/team" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive('/team') ? 'bg-white/80 text-primary shadow-sm font-bold' : 'text-slate-500 hover:text-primary hover:bg-white/40 font-medium'}`}>
+                            <span className="material-symbols-outlined">group</span> Team
+                        </Link>
+                    </nav>
+                    <div className="mt-auto space-y-4 pt-4 border-t border-primary/10">
+                        <button onClick={() => navigate('/create-room')} className="w-full py-3 bg-primary text-white rounded-full font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all">New Room</button>
+                        <Link to="/help" className="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-primary text-sm font-medium transition-colors">
+                            <span className="material-symbols-outlined text-xl">help</span> Help Center
+                        </Link>
+                        <Link to="/" className="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-primary text-sm font-medium transition-colors">
+                            <span className="material-symbols-outlined text-xl">logout</span> Logout
+                        </Link>
+                    </div>
+                </aside>
+            );
+        };
+
+        const MobileNav = () => {
+            const location = useLocation();
+            const isActive = (path) => location.pathname === path;
+            return (
+                <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-outline-variant/10 flex justify-around items-center py-4 z-50">
+                    <Link to="/dashboard" className={`flex flex-col items-center gap-1 ${isActive('/dashboard') ? 'text-primary' : 'text-slate-400'}`}>
+                        <span className={`material-symbols-outlined ${isActive('/dashboard') ? 'active-icon' : ''}`}>dashboard</span>
+                        <span className="text-[10px] font-bold">Dashboard</span>
+                    </Link>
+                    <Link to="/chat" className={`flex flex-col items-center gap-1 ${isActive('/chat') ? 'text-primary' : 'text-slate-400'}`}>
+                        <span className={`material-symbols-outlined ${isActive('/chat') ? 'active-icon' : ''}`}>chat_bubble</span>
+                        <span className="text-[10px] font-medium">Chat</span>
+                    </Link>
+                    <Link to="/library" className={`flex flex-col items-center gap-1 ${isActive('/library') ? 'text-primary' : 'text-slate-400'}`}>
+                        <span className={`material-symbols-outlined ${isActive('/library') ? 'active-icon' : ''}`}>local_library</span>
+                        <span className="text-[10px] font-medium">Library</span>
+                    </Link>
+                    <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive('/profile') ? 'text-primary' : 'text-slate-400'}`}>
+                        <span className={`material-symbols-outlined ${isActive('/profile') ? 'active-icon' : ''}`}>person</span>
+                        <span className="text-[10px] font-medium">Profile</span>
+                    </Link>
+                </nav>
+            );
+        };
+
+        // --- Pages ---
+
+        const LoginPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="mesh-gradient min-h-screen flex items-center justify-center p-6 font-body">
+                    <main className="relative w-full max-w-[1200px] grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                        <div className="hidden lg:flex flex-col col-span-5 space-y-8 pr-12">
+                            <div className="space-y-4">
+                                <span className="inline-flex items-center px-4 py-2 rounded-full glass-card text-on-primary-container font-semibold text-xs uppercase">Now Live: v4.0</span>
+                                <h1 className="font-headline font-extrabold text-6xl text-on-surface leading-tight tracking-tighter">Crafting <span className="text-primary">Intelligence</span> with Care.</h1>
+                                <p className="text-on-surface-variant text-xl leading-relaxed max-w-md">Access your personalized AI studio and experience a workspace designed for high-end digital curators.</p>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex -space-x-3">
+                                    {[1, 2, 3].map(i => <img key={i} className="w-12 h-12 rounded-full border-2 border-surface shadow-sm" src={`https://i.pravatar.cc/150?u=${i}`} alt="user" />)}
+                                </div>
+                                <p className="text-sm font-medium text-on-surface-variant">Joined by <span className="text-on-surface font-bold">12k+</span> curators today</p>
+                            </div>
+                        </div>
+                        <div className="col-span-1 lg:col-span-7 flex justify-center lg:justify-end">
+                            <div className="glass-card rounded-xl p-10 lg:p-14 w-full max-w-[540px] shadow-2xl relative overflow-hidden">
+                                <div className="flex flex-col items-center text-center mb-12">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary-container rounded-2xl flex items-center justify-center mb-6 shadow-lg rotate-3">
+                                        <span className="material-symbols-outlined text-white text-3xl active-icon">token</span>
+                                    </div>
+                                    <h2 className="font-headline font-black text-4xl tracking-tight text-on-surface mb-2">Luminous AI</h2>
+                                    <p className="text-on-surface-variant font-medium text-lg">Welcome to your AI Studio</p>
+                                </div>
+                                <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-semibold text-on-surface-variant ml-1">Email Address</label>
+                                        <input className="w-full h-14 px-6 bg-white/40 border border-white/20 rounded-lg focus:ring-4 focus:ring-primary/10 outline-none transition-all" placeholder="curator@luminous.ai" type="email" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center ml-1">
+                                            <label className="text-sm font-semibold text-on-surface-variant">Password</label>
+                                            <a className="text-xs font-bold text-primary" href="#">Forgot Access?</a>
+                                        </div>
+                                        <input className="w-full h-14 px-6 bg-white/40 border border-white/20 rounded-lg focus:ring-4 focus:ring-primary/10 outline-none transition-all" placeholder="••••••••" type="password" required />
+                                    </div>
+                                    <button className="w-full h-16 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-lg shadow-xl hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center space-x-3 mt-8">
+                                        <span className="font-mono text-xs tracking-widest opacity-80 uppercase">ENTER SYSTEM</span>
+                                        <span className="material-symbols-outlined">arrow_forward</span>
+                                    </button>
+                                </form>
+                                <div className="mt-12 text-center">
+                                    <p className="text-sm font-medium text-on-surface-variant">New to the studio? <a className="text-primary font-extrabold underline decoration-primary/20" href="#">Create an account</a></p>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const DashboardPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-surface mesh-gradient min-h-screen flex">
+                    <Sidebar />
+                    <div className="flex-1 lg:ml-64 flex flex-col">
+                        <TopAppBar />
+                        <main className="p-8 md:p-12 pb-24">
+                            <header className="mb-12">
+                                <h1 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight mb-4">Chat Rooms</h1>
+                                <p className="text-on-surface-variant max-w-2xl text-lg leading-relaxed">Manage your multi-model creative workspaces. Orchestrate intelligence with seamless model switching.</p>
+                            </header>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                <button onClick={() => navigate('/create-room')} className="group relative flex flex-col items-center justify-center p-8 h-[340px] rounded-3xl border-2 border-dashed border-rose-300/60 hover:border-rose-400/80 hover:bg-white/40 transition-all bg-white/20">
+                                    <div className="relative z-10 w-20 h-20 rounded-full bg-white flex items-center justify-center text-primary mb-6 shadow-md border border-rose-100 group-hover:scale-110 transition-all">
+                                        <span className="material-symbols-outlined text-4xl">add</span>
+                                    </div>
+                                    <span className="font-headline font-bold text-xl text-on-surface mb-2">Create New Room</span>
+                                    <span className="text-on-surface-variant text-sm text-center px-6">Start a fresh conversation and chain your preferred models</span>
+                                </button>
+                                {[
+                                    { title: "Creative Brand Strategy", icons: "forum", models: ["GPT-4", "Claude 3", "Gemini Pro"], color: "bg-secondary-container/50", text: "secondary", time: "Active 2h ago" },
+                                    { title: "Python Microservices Refactor", icons: "terminal", models: ["Claude 3 Opus", "GPT-4 Turbo"], color: "bg-tertiary-container/50", text: "tertiary", time: "Live Now", status: "live" },
+                                    { title: "UI Design Concept Generation", icons: "brush", models: ["GPT-4o", "DALL-E 3"], color: "bg-primary-container/50", text: "on-primary-container", time: "Active 1d ago" }
+                                ].map((room, idx) => (
+                                    <div key={idx} onClick={() => navigate('/chat')} className="glass-panel p-8 rounded-3xl flex flex-col h-[340px] shadow-sm hover:shadow-xl hover:shadow-rose-500/10 transition-all group cursor-pointer">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className={`w-12 h-12 rounded-2xl ${room.color} text-${room.text} flex items-center justify-center`}>
+                                                <span className="material-symbols-outlined text-2xl active-icon">{room.icons}</span>
+                                            </div>
+                                            <button className="text-outline hover:text-on-surface p-2"><span className="material-symbols-outlined">more_horiz</span></button>
+                                        </div>
+                                        <h3 className="font-headline font-bold text-xl mb-6 group-hover:text-primary transition-colors">{room.title}</h3>
+                                        <div className="flex items-center gap-2 mb-auto overflow-hidden">
+                                            {room.models.map((m, i) => (
+                                                <React.Fragment key={i}>
+                                                    <div className="px-3 py-1.5 bg-white/60 border border-white/40 rounded-lg text-[10px] font-bold tracking-wider text-on-surface-variant uppercase whitespace-nowrap">{m}</div>
+                                                    {i < room.models.length - 1 && <span className="material-symbols-outlined text-rose-300 text-sm">arrow_forward</span>}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                        <div className="mt-8 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase ${room.status === 'live' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {room.status === 'live' && <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>}
+                                                    {room.time}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-xs text-on-surface-variant/80">
+                                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-xs">chat_bubble_outline</span> 128</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </main>
+                        <MobileNav />
+                    </div>
+                </div>
+            );
+        };
+
+        const ChatPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="flex h-screen overflow-hidden bg-white/20">
+                    <Sidebar />
+                    <main className="flex-1 lg:ml-64 flex flex-col relative min-w-0">
+                        <header className="flex justify-between items-center px-8 h-20 w-full sticky top-0 z-50 bg-white/60 backdrop-blur-3xl border-b border-rose-100/20">
+                            <div className="flex items-center gap-8">
+                                <span className="text-2xl font-black bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent font-headline">Luminous AI</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full border-2 border-primary-container p-0.5 overflow-hidden">
+                                    <img alt="User profile" className="w-full h-full object-cover rounded-full" src="https://i.pravatar.cc/100" />
+                                </div>
+                            </div>
+                        </header>
+                        <div className="px-8 py-3 bg-white/40 backdrop-blur-md border-b border-rose-100/10 flex items-center justify-between">
+                            <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap">
+                                <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-gpt4 text-white flex items-center justify-center text-xs">✓</div><span className="text-[10px] font-bold text-gpt4 uppercase tracking-widest">GPT-4</span></div>
+                                <span className="material-symbols-outlined text-slate-300 text-sm">chevron_right</span>
+                                <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-claude text-white flex items-center justify-center animate-pulse text-xs">⋯</div><span className="text-[10px] font-bold text-claude uppercase tracking-widest">Claude 3</span></div>
+                            </div>
+                            <div className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Chain: <span className="text-primary">Creative-Synthesis</span></div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-8">
+                            <div className="max-w-4xl mx-auto space-y-12 pb-32">
+                                <div className="flex flex-col items-end gap-3">
+                                    <div className="user-bubble max-w-2xl p-6 rounded-2xl rounded-tr-sm border border-rose-200/20 shadow-sm">
+                                        <p className="text-lg font-medium text-slate-800 leading-relaxed">Synthesize a backend architecture for a real-time crypto wallet tracking service.</p>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-rose-400 uppercase">Master Prompt</span>
+                                </div>
+                                <div className="flex flex-col gap-8 relative pl-10">
+                                    <div className="timeline-connector"></div>
+                                    <div className="flex flex-col gap-4 group relative">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gpt4 text-white flex items-center justify-center shadow-lg -ml-14 relative z-10 ring-4 ring-white"><span className="material-symbols-outlined text-sm">smart_toy</span></div>
+                                            <h3 className="font-headline font-bold text-slate-700">GPT-4</h3>
+                                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-gpt4 border border-emerald-100">Completed</span>
+                                        </div>
+                                        <div className="glass-bubble p-6 rounded-2xl rounded-tl-sm border border-gpt4/20 max-w-3xl">
+                                            <p className="text-sm leading-relaxed text-slate-800 font-medium">I recommend a decoupled event-driven architecture with Kafka for ingestion and Redis for sub-millisecond price cache lookups.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-4 group relative">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-claude text-white flex items-center justify-center shadow-lg -ml-14 relative z-10 ring-4 ring-white"><span className="material-symbols-outlined text-sm">bolt</span></div>
+                                            <h3 className="font-headline font-bold text-slate-700">Claude-3 Sonnet</h3>
+                                            <div className="flex items-center gap-1.5 bg-violet-50 text-claude px-2 py-0.5 rounded-full border border-violet-100">
+                                                <span className="w-1.5 h-1.5 bg-claude rounded-full streaming-cursor"></span>
+                                                <span className="text-[9px] font-black uppercase">Streaming...</span>
+                                            </div>
+                                        </div>
+                                        <div className="glass-bubble p-6 rounded-2xl rounded-tl-sm border border-claude/30 shadow-xl max-w-3xl bg-claude/5">
+                                            <p className="text-sm leading-relaxed text-slate-800 font-medium">Prioritize data integrity by implementing a redundant validation layer between the ingestion stream and the client broadcast. This ensures that users receive <span className="inline-block w-2 h-4 bg-claude ml-1 align-middle streaming-cursor"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+                            <div className="glass-card-deep rounded-[2rem] border border-white/40 shadow-2xl p-3 flex items-center gap-4">
+                                <button className="p-2 text-slate-400"><span className="material-symbols-outlined">attach_file</span></button>
+                                <textarea className="flex-1 bg-transparent border-none focus:ring-0 text-slate-700 placeholder:text-slate-400 text-sm py-2 resize-none" placeholder="Ask follow-up..." rows="1"></textarea>
+                                <button className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"><span className="material-symbols-outlined">arrow_upward</span></button>
+                            </div>
+                        </div>
+                        <MobileNav />
+                    </main>
+                </div>
+            );
+        };
+
+        const LibraryPage = () => {
+            return (
+                <div className="bg-surface mesh-gradient min-h-screen flex">
+                    <Sidebar />
+                    <div className="flex-1 lg:ml-64 flex flex-col">
+                        <TopAppBar />
+                        <main className="p-8 md:p-12 pb-24 max-w-screen-2xl mx-auto w-full">
+                            <header className="mb-10">
+                                <h1 className="text-4xl md:text-5xl font-headline font-extrabold text-on-surface tracking-tight mb-6">Prompt Library</h1>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {['All', 'Creative', 'Coding', 'Academic', 'Business'].map((cat, i) => (
+                                        <button key={cat} className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all ${i===0 ? 'bg-primary text-white shadow-md' : 'glass-card text-slate-600 hover:bg-white'}`}>{cat}</button>
+                                    ))}
+                                </div>
+                            </header>
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                                {[
+                                    { title: "Ethereal Concept Art", desc: "Create intricate digital paintings of celestial landscapes using soft pastel palettes and cinematic lighting...", tag: "Creative", color: "primary" },
+                                    { title: "Advanced Research Synth", desc: "Complex multi-step prompt designed to take research abstracts and synthesize them into outlines.", tag: "Academic", color: "tertiary" },
+                                    { title: "React Hook Refactor", desc: "Refactor legacy class components into modern functional components with hooks.", tag: "Coding", color: "secondary" }
+                                ].map((p, i) => (
+                                    <div key={i} className="group glass-card p-8 rounded-xl flex flex-col transition-all hover:-translate-y-1 hover:shadow-xl">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <span className={`bg-${p.color}-container/20 text-${p.color} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest`}>{p.tag}</span>
+                                            <button className="opacity-0 group-hover:opacity-100 p-2 text-primary"><span className="material-symbols-outlined">content_copy</span></button>
+                                        </div>
+                                        <h3 className="font-headline text-xl font-bold mb-3 text-on-surface">{p.title}</h3>
+                                        <p className="text-slate-600 text-sm leading-relaxed mb-8">{p.desc}</p>
+                                        <div className="mt-auto pt-6 border-t border-rose-100/30 flex items-center justify-between text-xs font-bold text-slate-400">
+                                            <span>Update 2h ago</span>
+                                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">star</span> 4.9</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </main>
+                        <MobileNav />
+                    </div>
+                </div>
+            );
+        };
+
+        const ProfilePage = () => {
+            return (
+                <div className="bg-surface mesh-gradient min-h-screen flex">
+                    <Sidebar />
+                    <div className="flex-1 lg:ml-64 flex flex-col">
+                        <TopAppBar />
+                        <main className="max-w-md mx-auto px-6 pt-12 pb-32 w-full">
+                            <section className="text-center mb-10">
+                                <div className="relative inline-block mb-4">
+                                    <div className="w-32 h-32 rounded-xl overflow-hidden shadow-2xl border-4 border-white">
+                                        <img src="https://i.pravatar.cc/300" alt="Profile" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 bg-primary text-white p-2 rounded-lg shadow-lg">
+                                        <span className="material-symbols-outlined text-sm active-icon">verified</span>
+                                    </div>
+                                </div>
+                                <h2 className="font-headline text-3xl font-extrabold text-on-surface mb-1">Elena Rostova</h2>
+                                <p className="text-on-surface-variant font-medium">Pro Member • Since Oct 2023</p>
+                            </section>
+                            <section className="space-y-6">
+                                <div className="glass-panel p-5 rounded-lg flex flex-col">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">Current Plan</p>
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-headline font-bold text-on-surface">Luminous Unlimited</h4>
+                                        <button className="bg-primary text-white px-4 py-2 rounded-full text-sm font-bold">Upgrade</button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {['Theme', 'Notifications', 'Language', 'Security'].map(set => (
+                                        <div key={set} className="glass-panel p-4 rounded-lg flex items-center justify-between group cursor-pointer hover:bg-white/60 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"><span className="material-symbols-outlined">settings</span></div>
+                                                <p className="font-bold text-on-surface">{set}</p>
+                                            </div>
+                                            <span className="material-symbols-outlined text-slate-400 group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button className="w-full mt-6 py-4 font-headline font-bold text-rose-500 border-2 border-rose-100 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <span className="material-symbols-outlined">logout</span> Sign Out
+                                </button>
+                            </section>
+                        </main>
+                        <MobileNav />
+                    </div>
+                </div>
+            );
+        };
+
+        const CreateRoomPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background mesh-gradient min-h-screen flex">
+                    <Sidebar />
+                    <div className="flex-1 lg:ml-64 flex flex-col">
+                        <TopAppBar />
+                        <main className="max-w-[1200px] mx-auto px-8 py-12 flex flex-col md:flex-row gap-12 w-full">
+                            <section className="w-full md:w-1/3 space-y-8">
+                                <h1 className="text-4xl font-black font-headline tracking-tight text-on-surface">Initialize New Room</h1>
+                                <div className="glass-panel p-8 rounded-xl border border-white/40 shadow-xl space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-on-surface-variant ml-1">Room Name</label>
+                                        <input className="w-full bg-white/30 border-none rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary outline-none" placeholder="e.g. Creative Assistant Hub" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-on-surface-variant ml-1">Description</label>
+                                        <textarea className="w-full bg-white/30 border-none rounded-xl px-4 py-4 focus:ring-2 focus:ring-primary outline-none resize-none" rows="3" placeholder="Room purpose..."></textarea>
+                                    </div>
+                                </div>
+                            </section>
+                            <section className="w-full md:w-2/3 space-y-6">
+                                <h2 className="text-2xl font-bold font-headline text-on-surface">Pipeline Builder</h2>
+                                <div className="space-y-2">
+                                    {[
+                                        { name: "GPT-4 Omni", sub: "Primary Reasoning", icon: "smart_toy", color: "bg-gpt4" },
+                                        { name: "Claude 3.5 Sonnet", sub: "Editorial Nuance", icon: "auto_awesome", color: "bg-claude" },
+                                        { name: "Gemini Pro 1.5", sub: "Search & Validation", icon: "database", color: "bg-blue-600" }
+                                    ].map((node, i) => (
+                                        <React.Fragment key={i}>
+                                            <div className="w-full glass-card p-5 rounded-xl border border-white/60 shadow-lg flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-lg ${node.color} flex items-center justify-center text-white`}><span className="material-symbols-outlined">{node.icon}</span></div>
+                                                    <div><h3 className="font-bold text-on-surface">{node.name}</h3><p className="text-xs text-on-surface-variant">{node.sub}</p></div>
+                                                </div>
+                                                <span className="material-symbols-outlined text-slate-400">settings</span>
+                                            </div>
+                                            {i < 2 && <div className="flex justify-center my-1"><span className="material-symbols-outlined text-rose-300">arrow_downward</span></div>}
+                                        </React.Fragment>
+                                    ))}
+                                    <button className="w-full border-2 border-dashed border-primary/40 bg-white/20 hover:bg-white/40 rounded-xl py-8 flex flex-col items-center justify-center gap-2 mt-4">
+                                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm"><span className="material-symbols-outlined">add</span></div>
+                                        <span className="text-sm font-bold text-primary">Add Step</span>
+                                    </button>
+                                </div>
+                                <div className="pt-12 flex justify-end gap-6">
+                                    <button className="text-on-surface-variant font-bold">Discard</button>
+                                    <button onClick={() => navigate('/chat')} className="bg-gradient-to-r from-primary to-amber-500 text-white px-10 py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all">Launch Room</button>
+                                </div>
+                            </section>
+                        </main>
+                        <MobileNav />
+                    </div>
+                </div>
+            );
+        };
+
+        const SettingsPage = () => {
+            return (
+                <div className="bg-surface mesh-gradient min-h-screen flex">
+                    <Sidebar />
+                    <div className="flex-1 lg:ml-64 flex flex-col">
+                        <TopAppBar />
+                        <main className="p-8 md:p-12 w-full max-w-4xl mx-auto">
+                            <h1 className="text-4xl font-extrabold font-headline mb-8">Model Configuration</h1>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                <div className="lg:col-span-8 glass-panel rounded-panel p-8 space-y-8">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2"><label className="text-sm font-bold">Model Name</label><input className="w-full bg-white/50 border-white/40 rounded-xl px-4 py-3 outline-none" defaultValue="GPT-4 Turbo Production" /></div>
+                                        <div className="space-y-2"><label className="text-sm font-bold">Provider</label><select className="w-full bg-white/50 border-white/40 rounded-xl px-4 py-3 outline-none"><option>OpenAI</option><option>Anthropic</option></select></div>
+                                    </div>
+                                    <div className="space-y-2"><label className="text-sm font-bold">Endpoint</label><input className="w-full bg-white/50 border-white/40 rounded-xl px-4 py-3 outline-none" defaultValue="https://api.openai.com/v1" /></div>
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-bold">Temperature</label>
+                                        <input type="range" className="w-full accent-primary" />
+                                        <div className="flex justify-between text-[10px] font-bold uppercase text-slate-400"><span>Precise</span><span>Creative</span></div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button className="flex-1 py-4 border border-rose-200 rounded-xl font-bold">Test Connection</button>
+                                        <button className="flex-1 py-4 bg-primary text-white rounded-xl font-bold">Save Config</button>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-4 space-y-6">
+                                    <div className="glass-panel rounded-panel p-6 text-center">
+                                        <span className="material-symbols-outlined text-5xl text-emerald-500 mb-4 active-icon">check_circle</span>
+                                        <h3 className="font-bold text-lg">Status: Operational</h3>
+                                        <p className="text-xs text-slate-500">Latency: 142ms</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                        <MobileNav />
+                    </div>
+                </div>
+            );
+        };
+
+        // --- App Shell & Router ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<LoginPage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/chat" element={<ChatPage />} />
+                        <Route path="/library" element={<LibraryPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="/create-room" element={<CreateRoomPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/models" element={<SettingsPage />} />
+                        <Route path="*" element={<DashboardPage />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>

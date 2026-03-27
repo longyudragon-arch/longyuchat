@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Luminous AI - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-highest": "#dfdbe4",
+              "on-tertiary": "#f7f0ff",
+              "on-surface-variant": "#5c5b60",
+              "error": "#b31b25",
+              "surface-dim": "#d7d3dc",
+              "error-container": "#fb5151",
+              "on-surface": "#2f2e33",
+              "primary-dim": "#893044",
+              "on-secondary": "#ffeff2",
+              "tertiary-fixed-dim": "#ab92ff",
+              "tertiary-dim": "#563ca5",
+              "on-secondary-fixed": "#68083f",
+              "on-primary-container": "#54051e",
+              "surface-container-low": "#f3eff7",
+              "tertiary-fixed": "#b8a3ff",
+              "on-tertiary-fixed": "#1c0055",
+              "surface-tint": "#993c50",
+              "on-primary-fixed": "#160004",
+              "surface": "#f9f5fc",
+              "inverse-surface": "#0e0e12",
+              "surface-variant": "#dfdbe4",
+              "secondary-fixed": "#ffc0d7",
+              "inverse-primary": "#f48498",
+              "primary-fixed-dim": "#e4778b",
+              "tertiary-container": "#b8a3ff",
+              "secondary": "#9b3667",
+              "outline-variant": "#afacb2",
+              "on-tertiary-container": "#361584",
+              "on-secondary-fixed-variant": "#8d2b5c",
+              "outline": "#78767c",
+              "tertiary": "#6249b2",
+              "surface-container-high": "#e5e1e9",
+              "secondary-dim": "#8c2a5b",
+              "on-background": "#2f2e33",
+              "error-dim": "#9f0519",
+              "secondary-fixed-dim": "#ffabcc",
+              "surface-container": "#ebe7ef",
+              "on-tertiary-fixed-variant": "#3f228d",
+              "primary": "#993c50",
+              "surface-bright": "#f9f5fc",
+              "background": "#f9f5fc",
+              "on-primary": "#ffeff0",
+              "surface-container-lowest": "#ffffff",
+              "on-error": "#ffefee",
+              "on-secondary-container": "#812153",
+              "primary-container": "#f48498",
+              "on-primary-fixed-variant": "#611027",
+              "on-error-container": "#570008",
+              "inverse-on-surface": "#9f9ca2",
+              "secondary-container": "#ffc0d7",
+              "primary-fixed": "#f48498"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .mesh-gradient {
+            background-color: #f9f5fc;
+            background-image: 
+                radial-gradient(at 0% 0%, #f48498 0px, transparent 50%),
+                radial-gradient(at 50% 0%, #ffc0d7 0px, transparent 50%),
+                radial-gradient(at 100% 0%, #b8a3ff 0px, transparent 50%),
+                radial-gradient(at 0% 100%, #f48498 0px, transparent 50%),
+                radial-gradient(at 50% 100%, #ffc0d7 0px, transparent 50%),
+                radial-gradient(at 100% 100%, #b8a3ff 0px, transparent 50%);
+            background-size: 200% 200%;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .inner-glow {
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        .ghost-border {
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface mesh-gradient min-h-screen flex items-center justify-center p-6 overflow-hidden">
+<!-- Suppressed Navigation Shell for Focused Task (Login) -->
+<main class="relative w-full max-w-[1200px] grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+<!-- Left Side: Editorial Content -->
+<div class="hidden lg:flex flex-col col-span-5 space-y-8 pr-12">
+<div class="space-y-4">
+<span class="inline-flex items-center px-4 py-2 rounded-full glass-card ghost-border text-on-primary-fixed-variant font-semibold tracking-wider text-xs uppercase">
+                    Now Live: v4.0
+                </span>
+<h1 class="font-headline font-extrabold text-6xl text-on-surface leading-tight tracking-tighter">
+                    Crafting <span class="text-primary">Intelligence</span> with Care.
+                </h1>
+<p class="text-on-surface-variant text-xl leading-relaxed max-w-md">
+                    Access your personalized AI studio and experience a workspace designed for high-end digital curators.
+                </p>
+</div>
+<div class="flex items-center space-x-4">
+<div class="flex -space-x-3">
+<img class="w-12 h-12 rounded-full border-2 border-surface shadow-sm" data-alt="Portrait of a smiling creative professional" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7kSfEzSMO3Pkiy5tBuGuVozzc3hwL1hdme5hlOSK80Vhk3LzHtDHLOn5t8DSA1YX4kAcg_KzSKrpX0BgOBRmdQnbThFsvdz5ir2LrCXCEdbzIM0P5j_B--PMnx9aQfFi3tM01kE30bzajZyezsiftU_M-xW83B1YQ2tO4K_fC7ON_WJ6RL6R58i3RAsduLTA2S9Ryg7pi7yn1JwGdjE6EdjFw1DQTB6oMawbM3zejQIwEWWrqzqj07dhTVUWtHOFG5T_hFHd_X3IW"/>
+<img class="w-12 h-12 rounded-full border-2 border-surface shadow-sm" data-alt="Portrait of a male UI designer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAy8iNehC7eCFte4a3SWqbEYWxy0tEwcQqzwit_pltL6e3VW8V6pJdDPDFXDTkQA9AeyFZgEvip1_fqNgfv5ZyfoHvjCndTQnAQVHIbKOEehk9pHeqMJWAfrfM1cvmiqbwgWC6GEoICKhx-xTackhfl09yDp3Q1-WG7CUEHNLTjJClcYDlReeb6mut7rGlIgaZgZDpgJZme0QHZKlm1_QItxNOkL6hThS-R7O7uvg-5Sw2d0bX8ycW0z5vhunl-ZKNfAuyKq88qGzHL"/>
+<img class="w-12 h-12 rounded-full border-2 border-surface shadow-sm" data-alt="Portrait of a female AI researcher" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJwztsjngkGV6HctMaZJsQnYLWRlwws8PlRObFhozg7t4eztbl4OOBa7V-mLcxL3NkIpBRAF5YpQ5uky9W8QoxGA_OHnLmFsB6N--E26q5hDRE9Rp9L2uPJZoEQmkrXncaZQioDIaGuc0i0V1Ze2Zi_9oDoJSE6hiBrHRkdZm-LLbSyljFrH6Z8FU3Wjn0UGNL9MgBLqRAI1fYYtjs-x_Wf6a3HEaq2SFTRE9tcd22hZrtguf6tPxRbEH5CMZyVqp6a0RFmdGXSLQU"/>
+</div>
+<p class="text-sm font-medium text-on-surface-variant">Joined by <span class="text-on-surface font-bold">12k+</span> curators today</p>
+</div>
+</div>
+<!-- Center Login Card -->
+<div class="col-span-1 lg:col-span-7 flex justify-center lg:justify-end">
+<div class="glass-card ghost-border inner-glow rounded-xl p-10 lg:p-14 w-full max-w-[540px] shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative overflow-hidden">
+<!-- Brand Anchor -->
+<div class="flex flex-col items-center text-center mb-12">
+<div class="w-16 h-16 bg-gradient-to-br from-primary to-primary-container rounded-2xl flex items-center justify-center mb-6 shadow-lg rotate-3">
+<span class="material-symbols-outlined text-white text-3xl" data-weight="fill">token</span>
+</div>
+<h2 class="font-headline font-black text-4xl tracking-tight text-on-surface mb-2">Luminous AI</h2>
+<p class="text-on-surface-variant font-medium text-lg">Welcome to your AI Studio</p>
+</div>
+<!-- Login Form -->
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface-variant ml-1" for="email">Email Address</label>
+<div class="relative group">
+<input class="w-full h-14 px-6 bg-white/40 border border-white/20 rounded-lg focus:ring-4 focus:ring-primary/10 focus:border-primary/40 outline-none transition-all duration-300 placeholder:text-outline/60 text-on-surface backdrop-blur-sm" id="email" placeholder="curator@luminous.ai" type="email"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">alternate_email</span>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center ml-1">
+<label class="text-sm font-semibold text-on-surface-variant" for="password">Password</label>
+<a class="text-xs font-bold text-primary hover:text-primary-dim transition-colors" href="#">Forgot Access?</a>
+</div>
+<div class="relative group">
+<input class="w-full h-14 px-6 bg-white/40 border border-white/20 rounded-lg focus:ring-4 focus:ring-primary/10 focus:border-primary/40 outline-none transition-all duration-300 placeholder:text-outline/60 text-on-surface backdrop-blur-sm" id="password" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
+</div>
+</div>
+<div class="flex items-center space-x-3 py-2">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer bg-white/50" id="remember" type="checkbox"/>
+<label class="text-sm font-medium text-on-surface-variant cursor-pointer select-none" for="remember">Remember this session</label>
+</div>
+<button class="w-full h-16 bg-gradient-to-r from-primary to-primary-container hover:from-primary-dim hover:to-primary text-on-primary font-bold rounded-lg shadow-xl shadow-primary/20 transform active:scale-95 transition-all duration-300 flex items-center justify-center space-x-3 mt-8" type="submit">
+<span class="font-mono text-xs tracking-[0.2em] opacity-80 uppercase">ENTER SYSTEM</span>
+<span class="material-symbols-outlined text-xl">arrow_forward</span>
+</button>
+</form>
+<!-- Alternative Methods -->
+<div class="mt-12">
+<div class="relative flex items-center mb-8">
+<div class="flex-grow border-t border-white/30"></div>
+<span class="flex-shrink mx-4 text-xs font-bold text-outline uppercase tracking-widest">Connect with</span>
+<div class="flex-grow border-t border-white/30"></div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center h-14 glass-card ghost-border rounded-lg hover:bg-white/80 transition-all text-sm font-bold text-on-surface group">
+<img class="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" data-alt="Google logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKUwjokYfs9z964k_ugiIET1u7kpTAUKexr0I902ORA37h40BvRISUMJHBolsIKLVySXspKLr-R8C2HoHf1qBfS1s_H49wOgJi89C8Q6Z_-dq6OnekZAr3ZzmhQRJ5PVcNjLd3WVvzmtBwufkObJ_ZZ0-8zq9BJxMCgu6moL-XpYLV3dwmsZdI-wpV5KgSAL7lACE-wCHbt5Ew2pR8tkZV99WdVPH3oyPQ3E54YplEvOlCmi2kmJ9C-aX8AxMpXM6tyifMoaMEDmNr"/>
+                            Google
+                        </button>
+<button class="flex items-center justify-center h-14 glass-card ghost-border rounded-lg hover:bg-white/80 transition-all text-sm font-bold text-on-surface group">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">ios</span>
+                            Apple
+                        </button>
+</div>
+</div>
+<div class="mt-10 text-center">
+<p class="text-sm font-medium text-on-surface-variant">
+                        New to the studio? <a class="text-primary font-extrabold underline decoration-primary/20 hover:decoration-primary transition-all" href="#">Create an account</a>
+</p>
+</div>
+<!-- Subtle Decorative Light Leak -->
+<div class="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 blur-[60px] rounded-full pointer-events-none"></div>
+<div class="absolute -bottom-20 -left-20 w-40 h-40 bg-tertiary/20 blur-[60px] rounded-full pointer-events-none"></div>
+</div>
+</div>
+</main>
+<!-- Footer Decoration -->
+<div class="fixed bottom-8 left-8 hidden lg:block">
+<p class="text-xs font-mono text-on-surface-variant tracking-widest opacity-60">
+            SYSTEM STATUS: <span class="text-emerald-500 font-bold">OPERATIONAL</span> // LMN-024
+        </p>
+</div>
+<div class="fixed bottom-8 right-8 flex space-x-6 text-xs font-bold text-on-surface-variant/70 uppercase tracking-widest">
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms</a>
+<a class="hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</body></html>

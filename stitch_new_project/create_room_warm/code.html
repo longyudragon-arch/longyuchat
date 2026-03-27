@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Luminous AI - Create Room</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&amp;family=Public+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-surface-variant": "#5c5b60", secondary: "#953b69", "surface-bright": "#f9f5fc", "on-secondary": "#ffeff3", "primary-container": "#f48498", "on-error-container": "#570008", "on-tertiary-container": "#3a2771", "outline-variant": "#afacb2", "tertiary-dim": "#55438e", outline: "#78767c", "on-primary-fixed-variant": "#611027", "surface-tint": "#993c50", "secondary-fixed": "#ffc0da", "primary-fixed": "#f48498", "on-surface": "#2f2e33", "primary-fixed-dim": "#e4778b", "surface-variant": "#dfdbe4", "surface-dim": "#d7d3dc", "on-primary-container": "#54051e", "inverse-surface": "#0e0e12", "on-secondary-fixed": "#631141", "surface-container-lowest": "#ffffff", "error-dim": "#9f0519", tertiary: "#614f9b", "error-container": "#fb5151", "secondary-container": "#ffc0da", "secondary-fixed-dim": "#ffabcf", "surface-container-highest": "#dfdbe4", "tertiary-container": "#beaafd", "on-tertiary": "#f7f0ff", "on-tertiary-fixed": "#220a59", primary: "#993c50", surface: "#f9f5fc", "secondary-dim": "#862f5d", "surface-container-low": "#f3eff7", "inverse-on-surface": "#9f9ca2", "tertiary-fixed": "#beaafd", error: "#b31b25", "on-background": "#2f2e33", "surface-container": "#ebe7ef", "on-primary-fixed": "#160004", "on-error": "#ffefee", "surface-container-high": "#e5e1e9", "on-secondary-fixed-variant": "#88305e", "tertiary-fixed-dim": "#b09cee", "on-tertiary-fixed-variant": "#43307a", "inverse-primary": "#f48498", "primary-dim": "#893044", "on-secondary-container": "#7c2654", "on-primary": "#ffeff0", background: "#f9f5fc"}, fontFamily: {headline: ["Epilogue"], body: ["Public Sans"], label: ["Public Sans"], display: "Epilogue"}, borderRadius: {DEFAULT: "1rem", lg: "2rem", xl: "3rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .amber-gradient {
+            background: linear-gradient(135deg, #8d5900 0%, #f8a010 100%);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bab9b2; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 bg-[#fefcf4]/80 backdrop-blur-xl">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold text-amber-900 tracking-tighter font-headline">Luminous AI</span>
+<div class="hidden md:flex space-x-6 font-headline font-semibold tracking-tight">
+<a class="text-stone-500 hover:text-amber-700 transition-colors" href="#">Dashboard</a>
+<a class="text-stone-500 hover:text-amber-700 transition-colors" href="#">Models</a>
+<a class="text-amber-900 border-b-2 border-amber-600 pb-1" href="#">Rooms</a>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 text-amber-700 hover:bg-amber-50/50 rounded-lg active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-amber-700 hover:bg-amber-50/50 rounded-lg active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="close-up portrait of a professional creative user with warm lighting and soft background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtfJVCBV9CH04PZFrc_CJANyc6A_AAN6xqcIzW5J3g-E-cy1fvZVf3GOhR_VHeDVLk0u_ng8QkE86OxvsU0UxitBkSdi5stYVARXIFFW-uIbb6Ix8AiHqZtRR8DvPIqW_TRMEgkqmd9slstxh9jLdGu7MwZiRlGu4-KUgWju9fdTMvKT7T6S0rVO2UZSjkOOTS-t8OJuI-aV0DDwwtPBt4oUygKdMLuESrDZ8PH9JjF1ew3tTUtjzJe0IN03VQxNNULLPlHsM8d38"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-20 bg-[#fbf9f1] flex flex-col p-4 space-y-2 shadow-[20px_0_40px_rgba(141,89,0,0.04)] hidden lg:flex">
+<div class="px-4 py-2 mb-4">
+<p class="font-headline font-bold text-amber-800 text-lg">Workbench</p>
+<p class="text-xs text-stone-500 font-label">v2.4.0-amber</p>
+</div>
+<nav class="flex-1 space-y-1">
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1">
+<span class="material-symbols-outlined mr-3" data-icon="history">history</span>
+<span class="font-label text-sm">Recent</span>
+</button>
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1">
+<span class="material-symbols-outlined mr-3" data-icon="auto_awesome_motion">auto_awesome_motion</span>
+<span class="font-label text-sm">Templates</span>
+</button>
+<button class="w-full flex items-center px-4 py-3 bg-[#fcd34d]/30 text-amber-900 font-bold rounded-lg transition-all duration-300 hover:translate-x-1">
+<span class="material-symbols-outlined mr-3" data-icon="database">database</span>
+<span class="font-label text-sm">Datasets</span>
+</button>
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1">
+<span class="material-symbols-outlined mr-3" data-icon="vpn_key">vpn_key</span>
+<span class="font-label text-sm">API Keys</span>
+</button>
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all duration-300 hover:translate-x-1">
+<span class="material-symbols-outlined mr-3" data-icon="payments">payments</span>
+<span class="font-label text-sm">Billing</span>
+</button>
+</nav>
+<div class="pt-4 border-t border-stone-200/30">
+<button class="w-full amber-gradient text-white py-3 rounded-xl font-headline font-bold shadow-lg shadow-amber-900/10 active:scale-95 duration-200">
+                New Project
+            </button>
+</div>
+<div class="mt-auto space-y-1">
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all">
+<span class="material-symbols-outlined mr-3" data-icon="help">help</span>
+<span class="font-label text-sm">Help</span>
+</button>
+<button class="w-full flex items-center px-4 py-3 text-stone-600 hover:bg-stone-200/40 rounded-lg transition-all">
+<span class="material-symbols-outlined mr-3" data-icon="logout">logout</span>
+<span class="font-label text-sm">Logout</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 px-8 pb-12 min-h-screen">
+<div class="max-w-6xl mx-auto">
+<!-- Header Section -->
+<header class="mb-12 flex justify-between items-end">
+<div>
+<h1 class="text-4xl font-extrabold font-headline text-amber-900 tracking-tight mb-2">新建房间</h1>
+<p class="text-on-surface-variant font-body leading-relaxed">Design your collaborative environment and define agent interactions.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 rounded-xl font-headline font-bold text-on-surface hover:bg-surface-container-high transition-colors">Discard</button>
+<button class="px-8 py-2.5 rounded-xl font-headline font-bold text-on-primary amber-gradient shadow-xl shadow-amber-900/10 active:scale-95 transition-all">Create Room</button>
+</div>
+</header>
+<!-- Configuration Bento Grid -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Left: Room Settings & Model Library -->
+<div class="col-span-12 lg:col-span-7 space-y-8">
+<!-- Basic Info Card -->
+<section class="bg-surface-container-lowest p-8 rounded-[2rem] shadow-[0_20px_40px_rgba(141,89,0,0.04)]">
+<h2 class="font-headline font-bold text-xl text-amber-900 mb-6">Room Configuration</h2>
+<div class="space-y-6">
+<div>
+<label class="block text-sm font-label font-semibold text-stone-500 mb-2 px-1">Room Title</label>
+<input class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-fixed text-on-surface font-body" placeholder="Enter room name..." type="text"/>
+</div>
+<div>
+<label class="block text-sm font-label font-semibold text-stone-500 mb-2 px-1">Interaction Type</label>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-3 p-4 bg-tertiary-container/30 border-2 border-primary rounded-2xl transition-all">
+<span class="material-symbols-outlined text-primary" data-icon="groups" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-headline font-bold text-amber-900">Group Room</span>
+</button>
+<button class="flex items-center justify-center gap-3 p-4 bg-surface-container-low border-2 border-transparent hover:border-outline-variant/30 rounded-2xl transition-all">
+<span class="material-symbols-outlined text-stone-400" data-icon="person">person</span>
+<span class="font-headline font-bold text-stone-600">Single Focus</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Model Library -->
+<section class="bg-surface-container-low p-8 rounded-[2rem] border border-white/40">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline font-bold text-xl text-amber-900">Model Library</h2>
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-lg" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border-none rounded-full text-sm font-label shadow-sm" placeholder="Search models..." type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[500px] pr-2">
+<!-- Model Card 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl group hover:shadow-lg transition-all duration-300 cursor-pointer border border-transparent hover:border-primary-fixed/30">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<button class="p-1.5 rounded-full hover:bg-amber-50 text-amber-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+</div>
+<h3 class="font-headline font-bold text-on-surface">GPT-4 Omni</h3>
+<p class="text-xs text-on-surface-variant font-body mb-3">Versatile multimodal reasoning powerhouse.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-secondary-container/40 text-on-secondary-container text-[10px] font-bold rounded-full tracking-wider">CREATIVE</span>
+<span class="px-2 py-0.5 bg-tertiary-container/40 text-on-tertiary-container text-[10px] font-bold rounded-full tracking-wider">FAST</span>
+</div>
+</div>
+<!-- Model Card 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl group hover:shadow-lg transition-all duration-300 cursor-pointer border border-transparent hover:border-primary-fixed/30">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
+<span class="material-symbols-outlined text-3xl" data-icon="architecture" style="font-variation-settings: 'FILL' 1;">architecture</span>
+</div>
+<button class="p-1.5 rounded-full hover:bg-amber-50 text-amber-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+</div>
+<h3 class="font-headline font-bold text-on-surface">Claude 3.5 Sonnet</h3>
+<p class="text-xs text-on-surface-variant font-body mb-3">Exceptional nuance and coding capabilities.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-secondary-container/40 text-on-secondary-container text-[10px] font-bold rounded-full tracking-wider">CODING</span>
+<span class="px-2 py-0.5 bg-tertiary-container/40 text-on-tertiary-container text-[10px] font-bold rounded-full tracking-wider">NUANCED</span>
+</div>
+</div>
+<!-- Model Card 3 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl group hover:shadow-lg transition-all duration-300 cursor-pointer border border-transparent hover:border-primary-fixed/30">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+<span class="material-symbols-outlined text-3xl" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<button class="p-1.5 rounded-full hover:bg-amber-50 text-amber-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+</div>
+<h3 class="font-headline font-bold text-on-surface">Gemini 1.5 Pro</h3>
+<p class="text-xs text-on-surface-variant font-body mb-3">Ultra-long context window specialist.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-secondary-container/40 text-on-secondary-container text-[10px] font-bold rounded-full tracking-wider">ANALYSIS</span>
+<span class="px-2 py-0.5 bg-tertiary-container/40 text-on-tertiary-container text-[10px] font-bold rounded-full tracking-wider">RESEARCH</span>
+</div>
+</div>
+<!-- Model Card 4 -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl group hover:shadow-lg transition-all duration-300 cursor-pointer border border-transparent hover:border-primary-fixed/30">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+<span class="material-symbols-outlined text-3xl" data-icon="auto_fix_high" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+</div>
+<button class="p-1.5 rounded-full hover:bg-amber-50 text-amber-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+</div>
+<h3 class="font-headline font-bold text-on-surface">Llama 3 70B</h3>
+<p class="text-xs text-on-surface-variant font-body mb-3">Open-source efficiency and logic.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-secondary-container/40 text-on-secondary-container text-[10px] font-bold rounded-full tracking-wider">LOCAL</span>
+<span class="px-2 py-0.5 bg-tertiary-container/40 text-on-tertiary-container text-[10px] font-bold rounded-full tracking-wider">EFFICIENT</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right: Speaking Order (Draggable Sequence) -->
+<div class="col-span-12 lg:col-span-5">
+<section class="glass-panel p-8 rounded-[2.5rem] sticky top-24 border border-white/60 shadow-[0_30px_60px_rgba(141,89,0,0.08)]">
+<div class="flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="low_priority">low_priority</span>
+<h2 class="font-headline font-extrabold text-2xl text-amber-900 tracking-tight">发言顺序</h2>
+</div>
+<div class="space-y-4 relative">
+<!-- Visual Connector Line -->
+<div class="absolute left-6 top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary-container via-primary-fixed to-transparent opacity-20 z-0"></div>
+<!-- Draggable Item 1 -->
+<div class="relative z-10 flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl border border-primary-container/20 shadow-sm group cursor-move hover:-translate-y-1 transition-all duration-300">
+<div class="w-12 h-12 flex-shrink-0 rounded-full bg-primary-container flex items-center justify-center text-white font-headline font-black text-xl">1</div>
+<div class="flex-1">
+<p class="font-headline font-bold text-on-surface">GPT-4 Omni</p>
+<p class="text-xs text-on-surface-variant font-label">Lead Moderator</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-primary transition-colors" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<!-- Draggable Item 2 -->
+<div class="relative z-10 flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl border border-transparent shadow-sm group cursor-move hover:-translate-y-1 transition-all duration-300">
+<div class="w-12 h-12 flex-shrink-0 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-headline font-black text-xl">2</div>
+<div class="flex-1">
+<p class="font-headline font-bold text-on-surface">Claude 3.5 Sonnet</p>
+<p class="text-xs text-on-surface-variant font-label">Logic &amp; Code Analyst</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-primary transition-colors" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<!-- Draggable Item 3 -->
+<div class="relative z-10 flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl border border-transparent shadow-sm group cursor-move hover:-translate-y-1 transition-all duration-300">
+<div class="w-12 h-12 flex-shrink-0 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant font-headline font-black text-xl">3</div>
+<div class="flex-1">
+<p class="font-headline font-bold text-on-surface">Llama 3 70B</p>
+<p class="text-xs text-on-surface-variant font-label">Critique specialist</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-primary transition-colors" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<!-- Empty Slot Suggestion -->
+<button class="w-full py-8 border-2 border-dashed border-stone-200 rounded-[2rem] flex flex-col items-center justify-center gap-2 hover:bg-amber-50/30 hover:border-primary-fixed/40 transition-all text-stone-400 hover:text-primary">
+<span class="material-symbols-outlined text-4xl" data-icon="add_circle">add_circle</span>
+<span class="font-headline font-bold text-sm">Add step to sequence</span>
+</button>
+</div>
+<div class="mt-10 p-5 bg-tertiary-container/10 rounded-2xl border border-tertiary-container/30">
+<div class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-tertiary-dim" data-icon="info" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="text-xs leading-relaxed text-on-tertiary-container font-medium">
+                                    The sequence determines the primary flow of logic. In <span class="font-bold">Group Room</span> mode, agents will respond sequentially unless interrupted by user priority.
+                                </p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button - Mobile Only -->
+<button class="md:hidden fixed bottom-6 right-6 w-14 h-14 amber-gradient text-on-primary rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-50">
+<span class="material-symbols-outlined text-3xl" data-icon="rocket_launch" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</button>
+</body></html>
