@@ -4,6 +4,14 @@ out/
 dist/
 coverage/
 .turbo/
+.agents/
+.codex/
+_stitch_export/
+backup_snapshots/
+stitch_handoff/
+stitch_new_project/
+var/log/
+tsconfig.tsbuildinfo
 .env
 .env.local
 .env.development.local
