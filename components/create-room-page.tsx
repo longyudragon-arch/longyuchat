@@ -8,13 +8,13 @@ import {
   ensureLocalMockModels,
   fetchJson,
   getProviderChineseLabel,
-  getProviderIconClassName,
   getProviderOptionLabel,
-  getProviderShortName,
   providerOptions,
   reorderIds,
   supportsLocalMockTools,
 } from "@/lib/client/chat-lab-client";
+import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
+
 import type { ModelView, ProviderType, RoomType, RoomView } from "@/types/app";
 
 export function CreateRoomPage() {
@@ -238,7 +238,10 @@ export function CreateRoomPage() {
             ) : (
               filteredModels.map((model) => {
                 const selected = roomForm.modelIds.includes(model.id);
+              const avatar = resolveModelAvatar(model.provider, model.baseUrl, model.avatarLabel, model.avatarColor);
+              const avatarPalette = getModelAvatarPalette(model.provider, avatar.avatarColor);
                 return (
+
                   <button
                     key={model.id}
                     type="button"
@@ -250,9 +253,17 @@ export function CreateRoomPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-[9px] font-bold tracking-wide shadow-sm transition-transform group-hover:scale-105 ${selected ? "bg-white/20 text-white" : getProviderIconClassName(model.provider)}`}>
-                        {getProviderShortName(model.provider)}
+                      <span
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-[9px] font-bold tracking-wide shadow-sm transition-transform group-hover:scale-105 ${selected ? "ring-2 ring-white/60" : ""}`}
+                        style={{
+                          backgroundColor: avatarPalette.baseColor,
+                          color: avatarPalette.textColor,
+                          boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                        }}
+                      >
+                  {avatar.avatarLabel}
                       </span>
+
                       <div className="min-w-0">
                         <p className={`text-[14px] font-display font-bold tracking-tight ${selected ? "text-white" : ""}`}>{model.name}</p>
                         <p className={`mt-0.5 text-[11px] font-medium truncate ${selected ? "text-white/80" : "text-[var(--muted)]"}`}>{model.modelName}</p>
@@ -287,8 +298,11 @@ export function CreateRoomPage() {
                   const isDragging = draggedModelId === model.id;
                   const isDropTarget = dragOverModelId === model.id && draggedModelId !== model.id;
                   const isLast = index === selectedModels.length - 1;
+              const avatar = resolveModelAvatar(model.provider, model.baseUrl, model.avatarLabel, model.avatarColor);
+              const avatarPalette = getModelAvatarPalette(model.provider, avatar.avatarColor);
 
                   return (
+
                     <div key={model.id} className="relative">
                       {!isLast && selectedModels.length > 1 && (
                         <div className="absolute left-[28px] top-12 bottom-[-0.75rem] w-0.5 bg-[var(--accent)]/20 rounded-full" />
@@ -318,9 +332,17 @@ export function CreateRoomPage() {
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-white shadow-sm relative z-10">
                               {index + 1}
                             </span>
-                            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm ${getProviderIconClassName(model.provider)}`}>
-                              {getProviderShortName(model.provider)}
+                            <span
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm"
+                              style={{
+                                backgroundColor: avatarPalette.baseColor,
+                                color: avatarPalette.textColor,
+                                boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                              }}
+                            >
+                  {avatar.avatarLabel}
                             </span>
+
                             <div className="min-w-0">
                               <p className="text-[14px] font-display font-bold tracking-tight">{model.name}</p>
                               <p className="text-[10px] font-bold tracking-wider text-[var(--muted)] opacity-60 uppercase">{getProviderChineseLabel(model.provider)}</p>

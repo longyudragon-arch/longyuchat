@@ -1,4 +1,6 @@
-import type { ChatRoom, ChatRoomModel, Message, ModelConfig } from "@/generated/prisma/client";
+import type { ChatRoom, ChatRoomModel, Message, ModelConfig, ProviderConnection } from "@/generated/prisma/client";
+import type { ProviderConnectionTemplateView } from "@/types/app";
+import { supportsAutomaticModelDiscovery } from "@/lib/provider-catalog";
 
 type SafeModelConfig = Omit<
   ModelConfig,
@@ -6,6 +8,37 @@ type SafeModelConfig = Omit<
 > & {
   hasApiKey: boolean;
   lastConnectionTest: {
+    status: "success" | "error";
+    message: string;
+    testedAt: Date;
+  } | null;
+};
+
+type ProviderConnectionWithCount = ProviderConnection & {
+  _count: {
+    models: number;
+  };
+};
+
+type SafeProviderConnection = Omit<
+  ProviderConnection,
+  | "apiKey"
+  | "lastAuthStatus"
+  | "lastAuthMessage"
+  | "lastAuthCheckedAt"
+  | "lastDiscoveryStatus"
+  | "lastDiscoveryMessage"
+  | "lastDiscoveredAt"
+> & {
+  hasApiKey: boolean;
+  modelCount: number;
+  supportsAutomaticModelDiscovery: boolean;
+  lastAuthCheck: {
+    status: "success" | "error";
+    message: string;
+    testedAt: Date;
+  } | null;
+  lastDiscoveryCheck: {
     status: "success" | "error";
     message: string;
     testedAt: Date;
@@ -44,6 +77,22 @@ function presentLastConnectionTest(
   } as const;
 }
 
+function presentProviderConnectionCheck(
+  status: ProviderConnection["lastAuthStatus"],
+  message: ProviderConnection["lastAuthMessage"],
+  testedAt: ProviderConnection["lastAuthCheckedAt"],
+) {
+  if (!status || !message || !testedAt) {
+    return null;
+  }
+
+  return {
+    status: status === "SUCCESS" ? "success" : "error",
+    message,
+    testedAt,
+  } as const;
+}
+
 export function presentModelConfig(model: ModelConfig): SafeModelConfig {
   const { apiKey, lastTestStatus, lastTestMessage, lastTestedAt, ...rest } = model;
 
@@ -56,6 +105,44 @@ export function presentModelConfig(model: ModelConfig): SafeModelConfig {
 
 export function presentModelConfigList(models: ModelConfig[]) {
   return models.map(presentModelConfig);
+}
+
+export function presentProviderConnection(connection: ProviderConnectionWithCount): SafeProviderConnection {
+  const {
+    apiKey,
+    lastAuthStatus,
+    lastAuthMessage,
+    lastAuthCheckedAt,
+    lastDiscoveryStatus,
+    lastDiscoveryMessage,
+    lastDiscoveredAt,
+    _count,
+    ...rest
+  } = connection;
+
+  return {
+    ...rest,
+    hasApiKey: Boolean(apiKey),
+    modelCount: _count.models,
+    supportsAutomaticModelDiscovery:
+      supportsAutomaticModelDiscovery(connection.provider) && connection.discoveryStrategy !== "MANUAL_ONLY",
+    lastAuthCheck: presentProviderConnectionCheck(lastAuthStatus, lastAuthMessage, lastAuthCheckedAt),
+    lastDiscoveryCheck: presentProviderConnectionCheck(lastDiscoveryStatus, lastDiscoveryMessage, lastDiscoveredAt),
+  };
+}
+
+export function presentProviderConnectionList(connections: ProviderConnectionWithCount[]) {
+  return connections.map(presentProviderConnection);
+}
+
+export function presentProviderConnectionTemplate(template: ProviderConnectionTemplateView) {
+  return {
+    ...template,
+  };
+}
+
+export function presentProviderConnectionTemplateList(templates: ProviderConnectionTemplateView[]) {
+  return templates.map(presentProviderConnectionTemplate);
 }
 
 export function presentRoom(room: RoomWithModels) {
@@ -93,7 +180,10 @@ function presentMessageModelSnapshot(model: ModelConfig | null) {
     name: model.name,
     provider: model.provider,
     modelName: model.modelName,
+    avatarLabel: model.avatarLabel,
+    avatarColor: model.avatarColor,
     defaultReplyLength: model.defaultReplyLength,
+
   };
 }
 

@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelConfig } from "@/generated/prisma/client";
 import {
+  createModelConfigWithDependencies,
   deleteModelConfig,
   testModelConnectionById,
+  toPrismaModelConfigCreateData,
+  toPrismaModelConfigUpdateData,
   toModelRuntimeConfig,
+  updateModelConfigWithDependencies,
 } from "@/server/services/model-config-service";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
 import { ApiError } from "@/server/http/api-error";
@@ -15,10 +19,14 @@ function buildModel(id: string): ModelConfig {
   return {
     id,
     name: `Model ${id}`,
+    connectionId: null,
     provider: "OPENAI_COMPATIBLE",
     baseUrl: "https://example.com/v1",
     modelName: "gpt-test",
+    avatarLabel: "OA",
+    avatarColor: "#10b981",
     apiKey: "secret-key",
+
     defaultReplyLength: 300,
     lastTestStatus: null,
     lastTestMessage: null,
@@ -142,6 +150,224 @@ describe("testModelConnectionById", () => {
     expect(runtimeConfig.apiKey).toBe("secret-key");
   });
 });
+
+describe("createModelConfigWithDependencies", () => {
+  it("creates a model from a provider connection snapshot", async () => {
+    const createdModel = {
+      ...buildModel("model-connection"),
+      connectionId: "conn-1",
+      provider: "GEMINI" as const,
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: "encrypted-connection-key",
+      modelName: "gemini-2.5-pro",
+    };
+
+    const createModel = vi.fn(async () => createdModel);
+
+    const result = await createModelConfigWithDependencies(
+      {
+        name: "Gemini 主模型",
+        connectionId: "conn-1",
+        modelName: "gemini-2.5-pro",
+      },
+      {
+        getConnectionById: async () => ({
+          id: "conn-1",
+          provider: "GEMINI",
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+          apiKey: "encrypted-connection-key",
+        }),
+        createModel,
+      },
+    );
+
+    expect(createModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionId: "conn-1",
+        provider: "GEMINI",
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        avatarLabel: "GM",
+        avatarColor: "#0ea5e9",
+        apiKey: "encrypted-connection-key",
+      }),
+    );
+
+    expect(result.connectionId).toBe("conn-1");
+  });
+});
+
+describe("Prisma model config data mapping", () => {
+  it("maps linked connection creates to nested connect syntax", () => {
+    expect(
+      toPrismaModelConfigCreateData({
+        name: "Gemini 主模型",
+        connectionId: "conn-1",
+        provider: "GEMINI",
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        modelName: "gemini-2.5-pro",
+        avatarLabel: "GM",
+        avatarColor: "#0ea5e9",
+        apiKey: "encrypted-key",
+        defaultReplyLength: 300,
+        enabled: true,
+      }),
+    ).toMatchObject({
+      name: "Gemini 主模型",
+      provider: "GEMINI",
+      avatarLabel: "GM",
+      connection: {
+        connect: {
+          id: "conn-1",
+        },
+      },
+    });
+  });
+
+  it("maps linked connection updates to nested connect/disconnect syntax", () => {
+    expect(
+      toPrismaModelConfigUpdateData({
+        connectionId: "conn-2",
+      }),
+    ).toMatchObject({
+      connection: {
+        connect: {
+          id: "conn-2",
+        },
+      },
+    });
+
+    expect(
+      toPrismaModelConfigUpdateData({
+        connectionId: null,
+      }),
+    ).toMatchObject({
+      connection: {
+        disconnect: true,
+      },
+    });
+  });
+});
+
+describe("updateModelConfigWithDependencies", () => {
+  it("rejects direct provider edits for models linked to a provider connection", async () => {
+    await expect(
+      updateModelConfigWithDependencies(
+        "model-linked",
+        {
+          baseUrl: "https://example.com/v1",
+        },
+        {
+          getModelById: async () => ({
+            ...buildModel("model-linked"),
+            name: "受连接保护的模型",
+            connectionId: "conn-1",
+          }),
+          getConnectionById: async () => null,
+          updateModel: vi.fn(),
+        },
+      ),
+    ).rejects.toMatchObject<ApiError>({
+      status: 400,
+      message:
+        "Model 受连接保护的模型 is linked to a provider connection. Please update the connection or switch the model to another connection first.",
+    });
+  });
+
+  it("switches a model to a provider connection and syncs provider fields", async () => {
+    const updatedModel = {
+      ...buildModel("model-switch"),
+      connectionId: "conn-2",
+      provider: "DEEPSEEK" as const,
+      baseUrl: "https://api.deepseek.com/v1",
+      apiKey: "encrypted-connection-key",
+    };
+    const updateModel = vi.fn(async () => updatedModel);
+
+    const result = await updateModelConfigWithDependencies(
+      "model-switch",
+      {
+        connectionId: "conn-2",
+        modelName: "deepseek-reasoner",
+      },
+      {
+        getModelById: async () => buildModel("model-switch"),
+        getConnectionById: async () => ({
+          id: "conn-2",
+          provider: "DEEPSEEK",
+          baseUrl: "https://api.deepseek.com/v1",
+          apiKey: "encrypted-connection-key",
+        }),
+        updateModel,
+      },
+    );
+
+    expect(updateModel).toHaveBeenCalledWith(
+      "model-switch",
+      expect.objectContaining({
+        connectionId: "conn-2",
+        provider: "DEEPSEEK",
+        baseUrl: "https://api.deepseek.com/v1",
+        apiKey: "encrypted-connection-key",
+      }),
+    );
+    expect(result.connectionId).toBe("conn-2");
+  });
+
+  it("updates a model avatar color with a validated custom hex value", async () => {
+    const updateModel = vi.fn(async () => ({
+      ...buildModel("model-color"),
+      avatarColor: "#123abc",
+    }));
+
+    const result = await updateModelConfigWithDependencies(
+      "model-color",
+      {
+        avatarColor: "#123abc",
+      },
+      {
+        getModelById: async () => buildModel("model-color"),
+        getConnectionById: async () => null,
+        updateModel,
+      },
+    );
+
+    expect(updateModel).toHaveBeenCalledWith(
+      "model-color",
+      expect.objectContaining({
+        avatarColor: "#123abc",
+      }),
+    );
+    expect(result.avatarColor).toBe("#123abc");
+  });
+
+  it("updates a model avatar label with a validated short token", async () => {
+    const updateModel = vi.fn(async () => ({
+      ...buildModel("model-label"),
+      avatarLabel: "KM",
+    }));
+
+    const result = await updateModelConfigWithDependencies(
+      "model-label",
+      {
+        avatarLabel: "km",
+      },
+      {
+        getModelById: async () => buildModel("model-label"),
+        getConnectionById: async () => null,
+        updateModel,
+      },
+    );
+
+    expect(updateModel).toHaveBeenCalledWith(
+      "model-label",
+      expect.objectContaining({
+        avatarLabel: "KM",
+      }),
+    );
+    expect(result.avatarLabel).toBe("KM");
+  });
+});
+
 
 describe("deleteModelConfig", () => {
   it("blocks deleting a model that is still used by chat rooms", async () => {

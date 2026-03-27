@@ -1,6 +1,13 @@
 import { ApiError } from "@/server/http/api-error";
 
-export type ProviderErrorKind = "authentication" | "quota" | "not_found" | "request";
+export type ProviderErrorKind =
+  | "authentication"
+  | "quota"
+  | "not_found"
+  | "network"
+  | "empty_response"
+  | "reasoning_only"
+  | "request";
 
 function stripToSingleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -77,11 +84,12 @@ function isAuthenticationFailure(status: number, normalized: string) {
     status === 403 ||
     normalized.includes("invalid_api_key") ||
     normalized.includes("api_key_invalid") ||
+    normalized.includes("key not found") ||
     normalized.includes("api key not found") ||
-    normalized.includes("api key") ||
     normalized.includes("invalid api key") ||
+    normalized.includes("incorrect api key") ||
     normalized.includes("unauthorized") ||
-    normalized.includes("authentication")
+    normalized.includes("authentication failed")
   );
 }
 
@@ -91,7 +99,9 @@ function isQuotaFailure(status: number, normalized: string) {
     normalized.includes("quota") ||
     normalized.includes("rate limit") ||
     normalized.includes("billing") ||
-    normalized.includes("insufficient_quota")
+    normalized.includes("insufficient_quota") ||
+    normalized.includes("token is exhausted") ||
+    normalized.includes("tokens are exhausted")
   );
 }
 
@@ -102,6 +112,16 @@ function isMissingTargetFailure(status: number, normalized: string) {
     normalized.includes("not_found") ||
     normalized.includes("resource not found") ||
     normalized.includes("404")
+  );
+}
+
+function isNetworkFailure(normalized: string) {
+  return (
+    normalized.includes("could not reach") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("timed out") ||
+    normalized.includes("timeout") ||
+    normalized.includes("network")
   );
 }
 
@@ -119,6 +139,10 @@ export function inferProviderErrorKind(status: number, bodyText: string): Provid
 
   if (isMissingTargetFailure(status, normalized)) {
     return "not_found";
+  }
+
+  if (isNetworkFailure(normalized)) {
+    return "network";
   }
 
   return "request";
@@ -143,7 +167,9 @@ export function inferProviderErrorKindFromMessage(message: string): ProviderErro
     normalized.includes("quota") ||
     normalized.includes("rate limit") ||
     normalized.includes("billing") ||
-    normalized.includes("insufficient_quota")
+    normalized.includes("insufficient_quota") ||
+    normalized.includes("token is exhausted") ||
+    normalized.includes("tokens are exhausted")
   ) {
     return "quota";
   }
@@ -156,7 +182,27 @@ export function inferProviderErrorKindFromMessage(message: string): ProviderErro
     return "not_found";
   }
 
+  if (normalized.includes("reasoning content but no final answer")) {
+    return "reasoning_only";
+  }
+
+  if (normalized.includes("returned an empty response") || normalized.includes("empty final answer")) {
+    return "empty_response";
+  }
+
+  if (isNetworkFailure(normalized)) {
+    return "network";
+  }
+
   return "request";
+}
+
+export function shouldPauseModelOnProviderErrorKind(kind: ProviderErrorKind) {
+  return (
+    kind === "authentication" ||
+    kind === "quota" ||
+    kind === "not_found"
+  );
 }
 
 export function formatProviderError(status: number, bodyText: string) {
@@ -173,6 +219,10 @@ export function formatProviderError(status: number, bodyText: string) {
 
   if (kind === "not_found") {
     return `Provider target was not found with ${status}: ${summary || "The upstream model, endpoint, or resource does not exist."}`;
+  }
+
+  if (kind === "network") {
+    return `Provider network request failed with ${status}: ${summary || bodyText.slice(0, 600)}`;
   }
 
   return `Provider request failed with ${status}: ${summary || bodyText.slice(0, 600)}`;
@@ -192,5 +242,47 @@ export function createProviderApiError(input: {
     providerErrorKind: kind,
     upstreamStatus: input.status,
     endpoint: input.endpoint,
+  });
+}
+
+export function createProviderResponseApiError(input: {
+  provider: string;
+  endpoint: string;
+  kind: "empty_response" | "reasoning_only";
+  finishReason?: string | null;
+  attemptCount: number;
+  contentLength: number;
+  reasoningLength: number;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  reasoningTokens?: number | null;
+  initialFinishReason?: string | null;
+  initialPromptTokens?: number | null;
+  initialCompletionTokens?: number | null;
+  initialReasoningTokens?: number | null;
+}) {
+  const finishReason = input.finishReason ? ` finish_reason=${input.finishReason}.` : "";
+  const completionTokens =
+    typeof input.completionTokens === "number" ? ` completion_tokens=${input.completionTokens}.` : "";
+  const message =
+    input.kind === "reasoning_only"
+      ? `The provider returned reasoning content but no final answer.${finishReason}${completionTokens}`
+      : `The provider returned an empty response without a usable final answer.${finishReason}${completionTokens}`;
+
+  return new ApiError(502, message, {
+    provider: input.provider,
+    providerErrorKind: input.kind,
+    endpoint: input.endpoint,
+    finishReason: input.finishReason ?? null,
+    attemptCount: input.attemptCount,
+    contentLength: input.contentLength,
+    reasoningLength: input.reasoningLength,
+    promptTokens: input.promptTokens ?? null,
+    completionTokens: input.completionTokens ?? null,
+    reasoningTokens: input.reasoningTokens ?? null,
+    initialFinishReason: input.initialFinishReason ?? null,
+    initialPromptTokens: input.initialPromptTokens ?? null,
+    initialCompletionTokens: input.initialCompletionTokens ?? null,
+    initialReasoningTokens: input.initialReasoningTokens ?? null,
   });
 }

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildParticipationInstruction,
   buildReplyLengthInstruction,
+  buildShortInputStabilityInstruction,
   runSequentialConversation,
 } from "@/server/orchestrators/conversation-orchestrator";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
@@ -40,6 +41,17 @@ function createPersistMessage(roomId: string) {
 }
 
 describe("runSequentialConversation", () => {
+  it("adds a stability instruction for ultra-short follow-up inputs", () => {
+    const instruction = buildShortInputStabilityInstruction([
+      { role: "user", content: "请先介绍一下你自己" },
+      { role: "assistant", content: "好的" },
+      { role: "user", content: "1" },
+    ]);
+
+    expect(instruction?.role).toBe("system");
+    expect(instruction?.content).toContain("最近一条较完整的用户消息「请先介绍一下你自己」");
+  });
+
   it("preserves reply order and forwards earlier replies to later models", async () => {
     const seenMessages = new Map<string, ChatMessage[]>();
 

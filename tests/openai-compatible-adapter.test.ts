@@ -13,6 +13,14 @@ const runtimeConfig: ModelRuntimeConfig = {
   defaultReplyLength: 300,
 };
 
+function createSuccessResponse(payload: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(payload),
+  };
+}
+
 describe("OpenAiCompatibleAdapter", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -20,14 +28,11 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("tests connectivity through the OpenAI-compatible chat completions endpoint", async () => {
-    const json = vi.fn(async () => ({
-      choices: [{ message: { content: "pong" } }],
-    }));
-
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json,
-    }));
+    const fetchMock = vi.fn(async () =>
+      createSuccessResponse({
+        choices: [{ message: { content: "pong" } }],
+      }),
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -54,9 +59,8 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("normalizes rich content arrays into a single text reply", async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    const fetchMock = vi.fn(async () =>
+      createSuccessResponse({
         choices: [
           {
             message: {
@@ -68,7 +72,7 @@ describe("OpenAiCompatibleAdapter", () => {
           },
         ],
       }),
-    }));
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -81,108 +85,180 @@ describe("OpenAiCompatibleAdapter", () => {
     expect(result.content).toBe("Hello world");
   });
 
-  it("requests a compression rewrite before returning an overlong reply", async () => {
-    const shortConfig: ModelRuntimeConfig = {
-      ...runtimeConfig,
-      defaultReplyLength: 5,
-    };
-
+  it("rewrites overly long replies with the Chinese default-language instruction", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createSuccessResponse({
           choices: [
             {
               message: {
-                content: "你好，世界，欢迎你",
+                content: "这是一段明显超过限制的回复，需要再次压缩。".repeat(30),
               },
             },
           ],
         }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      )
+      .mockResolvedValueOnce(
+        createSuccessResponse({
           choices: [
             {
               message: {
-                content: "你好呀",
+                content: "压缩后的中文回复",
               },
             },
           ],
         }),
-      });
+      );
 
     vi.stubGlobal("fetch", fetchMock);
 
     const adapter = new OpenAiCompatibleAdapter();
     const result = await adapter.generateReply({
-      config: shortConfig,
-      messages: [{ role: "user", content: "打个招呼" }],
+      config: {
+        ...runtimeConfig,
+        defaultReplyLength: 20,
+      },
+      messages: [{ role: "user", content: "请简短回答" }],
     });
 
+    expect(result.content).toBe("压缩后的中文回复");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.content).toBe("你好呀");
 
     const rewritePayload = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
-    expect(rewritePayload.max_tokens).toBe(64);
-    expect(rewritePayload.messages).toEqual([
-      {
-        role: "system",
-        content:
-          "Rewrite the assistant draft so the final answer keeps the same language, key meaning, and tone, but stays within 5 visible characters, including punctuation and spaces. Reply with the rewritten answer only.",
-      },
-      {
-        role: "user",
-        content: "Draft to rewrite:\n你好，世界，欢迎你",
-      },
-    ]);
+    expect(rewritePayload.messages[0]?.content).toContain("默认使用简体中文");
+    expect(rewritePayload.messages[1]?.content).toContain("待改写草稿");
   });
 
-  it("falls back to hard trimming when the compression pass is still too long", async () => {
-    const shortConfig: ModelRuntimeConfig = {
-      ...runtimeConfig,
-      defaultReplyLength: 5,
-    };
+  it("allocates a larger token budget for ultra-short numeric follow-up inputs", async () => {
+    const fetchMock = vi.fn(async () =>
+      createSuccessResponse({
+        choices: [{ message: { content: "收到" } }],
+      }),
+    );
 
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OpenAiCompatibleAdapter();
+    await adapter.generateReply({
+      config: runtimeConfig,
+      messages: [{ role: "user", content: "1" }],
+    });
+
+    const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(payload.max_tokens).toBeGreaterThan(360);
+  });
+
+  it("retries once when the provider only returns reasoning content", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createSuccessResponse({
           choices: [
             {
+              finish_reason: "length",
               message: {
-                content: "你好，世界，欢迎你",
+                content: "",
+                reasoning_content: "internal reasoning",
               },
             },
           ],
         }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      )
+      .mockResolvedValueOnce(
+        createSuccessResponse({
           choices: [
             {
+              finish_reason: "stop",
               message: {
-                content: "你好，世界，继续欢迎你",
+                content: "Recovered final answer",
               },
             },
           ],
         }),
-      });
+      );
 
     vi.stubGlobal("fetch", fetchMock);
 
     const adapter = new OpenAiCompatibleAdapter();
     const result = await adapter.generateReply({
-      config: shortConfig,
-      messages: [{ role: "user", content: "打个招呼" }],
+      config: runtimeConfig,
+      messages: [{ role: "user", content: "Continue" }],
     });
 
+    expect(result.content).toBe("Recovered final answer");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.content).toBe("你好，世界");
+
+    const retryPayload = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(retryPayload.max_tokens).toBeGreaterThan(360);
+    expect(retryPayload.messages[0]?.content).toContain("默认使用简体中文");
+  });
+
+  it("throws a structured provider error after retry still has no final answer", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createSuccessResponse({
+          choices: [
+            {
+              finish_reason: "length",
+              message: {
+                content: "",
+                reasoning_content: "first reasoning",
+              },
+            },
+          ],
+          usage: {
+            prompt_tokens: 120,
+            completion_tokens: 0,
+            completion_tokens_details: {
+              reasoning_tokens: 18,
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createSuccessResponse({
+          choices: [
+            {
+              finish_reason: "length",
+              message: {
+                content: "",
+                reasoning_content: "second reasoning",
+              },
+            },
+          ],
+          usage: {
+            prompt_tokens: 150,
+            completion_tokens: 0,
+            completion_tokens_details: {
+              reasoning_tokens: 22,
+            },
+          },
+        }),
+      );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OpenAiCompatibleAdapter();
+
+    await expect(
+      adapter.generateReply({
+        config: runtimeConfig,
+        messages: [{ role: "user", content: "Continue" }],
+      }),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("reasoning content but no final answer"),
+      details: expect.objectContaining({
+        providerErrorKind: "reasoning_only",
+        attemptCount: 2,
+        completionTokens: 0,
+        reasoningTokens: 22,
+        initialCompletionTokens: 0,
+        initialReasoningTokens: 18,
+      }),
+    });
   });
 
   it("reuses the OpenAI-compatible adapter for compatible providers", () => {
@@ -221,7 +297,7 @@ describe("OpenAiCompatibleAdapter", () => {
     }
   });
 
-  it("surfaces upstream Gemini API key failures as authentication errors", async () => {
+  it("surfaces upstream API key failures as authentication errors", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
       status: 400,

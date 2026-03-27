@@ -9,15 +9,14 @@ import {
   describeClientError,
   fetchJson,
   formatDate,
-  getProviderIconClassName,
   getProviderOptionLabel,
-  getProviderShortName,
   providerOptions,
   supportsLocalMockTools,
   toRoleLabel,
   toRoomLabel,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
+import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
 import type { ProviderType, RoomType, RoomView } from "@/types/app";
 
 type RoomFilterType = RoomType | "ALL";
@@ -392,11 +391,29 @@ export function RoomsPage() {
                   {/* Model preview dots */}
                   <div className="flex items-center gap-2 mb-6 z-10 relative">
                      <div className="flex -space-x-2">
-                     {orderedModels.slice(0, 3).map((rm) => (
-                        <div key={rm.id} className={`w-8 h-8 rounded-full border-2 border-white bg-[#FF8DA1]/10 flex items-center justify-center text-[10px] font-bold ${getProviderIconClassName(rm.model.provider)}`}>
-                           {getProviderShortName(rm.model.provider)}
-                        </div>
-                     ))}
+                     {orderedModels.slice(0, 3).map((rm) => {
+                              const avatar = resolveModelAvatar(
+                                rm.model.provider,
+                                rm.model.baseUrl,
+                                rm.model.avatarLabel,
+                                rm.model.avatarColor,
+                              );
+                              const avatarPalette = getModelAvatarPalette(rm.model.provider, avatar.avatarColor);
+
+                        return (
+                          <div
+                            key={rm.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold"
+                            style={{
+                              backgroundColor: avatarPalette.baseColor,
+                              color: avatarPalette.textColor,
+                              boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                            }}
+                          >
+                                {avatar.avatarLabel}
+                          </div>
+                        );
+                     })}
                      {orderedModels.length > 3 && (
                         <div className="w-8 h-8 rounded-full border-2 border-white bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-500">
                            +{orderedModels.length - 3}

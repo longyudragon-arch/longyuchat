@@ -1,15 +1,53 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   countAssistantRepliesForUserMessage,
+  createProviderConnectionRequest,
   ClientRequestError,
+  deleteProviderConnectionRequest,
   describeClientError,
   describePartialSendResult,
-  findNextUserMessageAfterSequence,
+  discoverProviderModelsByConnectionRequest,
+  findMatchingProviderTemplate,
+    fetchProviderCatalogRequest,
+    fetchProviderConnectionByIdRequest,
+    fetchProviderConnectionsRequest,
+    getDefaultDiscoveryStrategy,
+    getProviderTemplateById,
+    findNextUserMessageAfterSequence,
+
   getUserMessageRoundStatus,
+  providerConnectionTemplates,
   supportsAutomaticModelDiscovery,
+  testProviderConnectionRequest,
+  updateProviderConnectionRequest,
 } from "@/lib/client/chat-lab-client";
-import type { MessageView } from "@/types/app";
+import type { MessageView, ProviderConnectionView } from "@/types/app";
+
+const exampleConnection: ProviderConnectionView = {
+  id: "connection-1",
+  name: "Google Workspace",
+  provider: "GEMINI",
+  baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+  discoveryStrategy: "AUTO_FETCH_WITH_MANUAL_FALLBACK",
+  enabled: true,
+  createdAt: "2026-03-25T10:00:00.000Z",
+  updatedAt: "2026-03-25T10:00:00.000Z",
+  hasApiKey: true,
+  modelCount: 2,
+  supportsAutomaticModelDiscovery: true,
+  lastAuthCheck: null,
+  lastDiscoveryCheck: null,
+};
+
+function createJsonResponse(body: unknown, init?: ResponseInit) {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    ...init,
+  });
+}
 
 describe("describeClientError", () => {
   it("returns API key guidance for authentication failures", () => {
@@ -71,6 +109,26 @@ describe("describeClientError", () => {
     expect(feedback.suggestion).toContain("移除这个模型");
     expect(feedback.tone).toBe("warning");
   });
+
+  it("returns connection-reference guidance when deleting a provider connection still used by models", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Provider connection Google Workspace is still used by 2 model(s).", 409, {
+        connectionId: "connection-1",
+        connectionName: "Google Workspace",
+        modelCount: 2,
+        models: [
+          { id: "model-1", name: "Gemini 2.5 Flash", enabled: true },
+          { id: "model-2", name: "Gemini 2.5 Pro", enabled: false },
+        ],
+      }),
+    );
+
+    expect(feedback.title).toBe("连接下仍有模型在使用");
+    expect(feedback.description).toContain("Google Workspace");
+    expect(feedback.description).toContain("2 个模型");
+    expect(feedback.suggestion).toContain("关联模型");
+    expect(feedback.tone).toBe("warning");
+  });
 });
 
 describe("describePartialSendResult", () => {
@@ -81,6 +139,7 @@ describe("describePartialSendResult", () => {
         status: "partial",
         failedModelId: "model-b",
         error: "Provider timeout",
+        providerErrorKind: "network",
       },
       "Mock Beta",
     );
@@ -91,17 +150,110 @@ describe("describePartialSendResult", () => {
     });
     expect(feedback?.suggestion).toContain("Base URL");
   });
+
+  it("surfaces upstream zero-token diagnostics for empty responses", () => {
+    const feedback = describePartialSendResult(
+      {
+        roomId: "room-1",
+        status: "partial",
+        failedModelId: "model-b",
+        error: "The provider returned an empty response without a usable final answer. finish_reason=stop. completion_tokens=0.",
+        providerErrorKind: "empty_response",
+        providerErrorDetails: {
+          finishReason: "stop",
+          attemptCount: 2,
+          completionTokens: 0,
+        },
+      },
+      "Mock Beta",
+    );
+
+    expect(feedback).toMatchObject({
+      title: "Mock Beta 未返回可用答案",
+      tone: "warning",
+    });
+    expect(feedback?.description).toContain("completion_tokens=0");
+    expect(feedback?.suggestion).toContain("平台侧空响应");
+  });
+
+  it("shows quota guidance when the failed model has been auto-paused", () => {
+    const feedback = describePartialSendResult(
+      {
+        roomId: "room-1",
+        status: "partial",
+        failedModelId: "model-b",
+        error: "Provider quota or billing check failed with 429: token is exhausted.",
+        providerErrorKind: "quota",
+        failedModelPaused: true,
+        failedModelPauseReason: "Model Mock Beta was automatically paused after the provider reported quota or token exhaustion.",
+      },
+      "Mock Beta",
+    );
+
+    expect(feedback).toMatchObject({
+      title: "Mock Beta 已自动暂停",
+      tone: "warning",
+    });
+    expect(feedback?.suggestion).toContain("token");
+    expect(feedback?.description).toContain("automatically paused");
+  });
+
+  it("shows short-input guidance for reasoning-only partial failures", () => {
+    const feedback = describePartialSendResult(
+      {
+        roomId: "room-1",
+        status: "partial",
+        failedModelId: "model-b",
+        error: "Provider returned reasoning content but no final answer after 2 attempts.",
+        providerErrorKind: "reasoning_only",
+      },
+      "Mock Beta",
+    );
+
+    expect(feedback).toMatchObject({
+      title: "Mock Beta 只返回了推理内容",
+      tone: "warning",
+    });
+    expect(feedback?.suggestion).toContain("超短输入");
+  });
 });
 
+
+
 describe("supportsAutomaticModelDiscovery", () => {
-  it("keeps OpenAI-compatible discovery enabled and leaves the new providers manual for now", () => {
+  it("keeps only the currently supported provider families discoverable", () => {
     expect(supportsAutomaticModelDiscovery("OPENAI_COMPATIBLE")).toBe(true);
     expect(supportsAutomaticModelDiscovery("DOUBAO")).toBe(true);
     expect(supportsAutomaticModelDiscovery("MODELSCOPE")).toBe(true);
-    expect(supportsAutomaticModelDiscovery("HUNYUAN")).toBe(false);
-    expect(supportsAutomaticModelDiscovery("QWEN")).toBe(false);
+    expect(supportsAutomaticModelDiscovery("HUNYUAN")).toBe(true);
+    expect(supportsAutomaticModelDiscovery("QWEN")).toBe(true);
     expect(supportsAutomaticModelDiscovery("CLAUDE")).toBe(false);
   });
+});
+
+
+
+describe("provider connection templates", () => {
+  it("exposes curated domestic and global templates", () => {
+    expect(providerConnectionTemplates.some((template) => template.id === "moonshot")).toBe(true);
+    expect(providerConnectionTemplates.some((template) => template.id === "openrouter")).toBe(true);
+  });
+
+  it("matches saved base URLs back to curated templates", () => {
+    const template = findMatchingProviderTemplate("HUNYUAN", "https://api.hunyuan.cloud.tencent.com/v1/");
+
+    expect(template?.id).toBe("hunyuan");
+  });
+
+  it("keeps fallback discovery enabled for curated templates with built-in official endpoints", () => {
+    expect(getProviderTemplateById("moonshot")?.preferredDiscoveryStrategy).toBe("AUTO_FETCH_WITH_MANUAL_FALLBACK");
+    expect(getProviderTemplateById("dashscope")?.preferredDiscoveryStrategy).toBe("AUTO_FETCH_WITH_MANUAL_FALLBACK");
+    expect(getProviderTemplateById("github-models")?.preferredDiscoveryStrategy).toBe("AUTO_FETCH_WITH_MANUAL_FALLBACK");
+    expect(getDefaultDiscoveryStrategy("OPENAI_COMPATIBLE")).toBe("AUTO_FETCH_WITH_MANUAL_FALLBACK");
+    expect(getDefaultDiscoveryStrategy("QWEN")).toBe("AUTO_FETCH_WITH_MANUAL_FALLBACK");
+  });
+
+
 });
 
 describe("message round helpers", () => {
@@ -210,5 +362,127 @@ describe("message round helpers", () => {
         sendInProgress: true,
       }),
     ).toBe("completed");
+  });
+});
+
+describe("provider connection client requests", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("lists provider connections", async () => {
+    const fetchMock = vi.fn(async () =>
+      createJsonResponse({
+        connections: [exampleConnection],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchProviderConnectionsRequest();
+
+    expect(result.connections).toHaveLength(1);
+    expect(result.connections[0]?.name).toBe("Google Workspace");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/provider-connections",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("loads the shared provider catalog", async () => {
+    const fetchMock = vi.fn(async () =>
+      createJsonResponse({
+        templates: [
+          {
+            id: "openrouter",
+            category: "GLOBAL",
+            name: "OpenRouter",
+            subtitle: "全球聚合平台，适合自动发现 + 过滤模型",
+            provider: "OPENAI_COMPATIBLE",
+            suggestedBaseUrl: "https://openrouter.ai/api/v1",
+            preferredDiscoveryStrategy: "AUTO_FETCH_WITH_MANUAL_FALLBACK",
+            officialUrl: "https://openrouter.ai",
+            apiKeyUrl: "https://openrouter.ai",
+            docsUrl: "https://openrouter.ai",
+            note: "模型很多，建议拉取后只保留准备使用的模型。",
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchProviderCatalogRequest();
+
+    expect(result.templates).toHaveLength(1);
+    expect(result.templates[0]?.id).toBe("openrouter");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/provider-catalog",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("creates and updates a provider connection through the new endpoints", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ connection: exampleConnection }, { status: 201 }))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          connection: {
+            ...exampleConnection,
+            name: "Google Workspace Updated",
+            enabled: false,
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await createProviderConnectionRequest({
+      name: "Google Workspace",
+      provider: "GEMINI",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: "test-key",
+      discoveryStrategy: "AUTO_FETCH_WITH_MANUAL_FALLBACK",
+      enabled: true,
+    });
+    const updated = await updateProviderConnectionRequest("connection-1", {
+      name: "Google Workspace Updated",
+      enabled: false,
+    });
+
+    expect(created.connection.name).toBe("Google Workspace");
+    expect(updated.connection.name).toBe("Google Workspace Updated");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/provider-connections");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/provider-connections/connection-1");
+  });
+
+  it("supports testing, discovering, reading, and deleting a provider connection", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ connection: exampleConnection }))
+      .mockResolvedValueOnce(createJsonResponse({ ok: true, connection: exampleConnection }))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          models: [{ id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: null }],
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const connection = await fetchProviderConnectionByIdRequest("connection-1");
+    const tested = await testProviderConnectionRequest("connection-1", { modelName: "gemini-2.5-flash" });
+    const discovered = await discoverProviderModelsByConnectionRequest("connection-1");
+    const deleted = await deleteProviderConnectionRequest("connection-1");
+
+    expect(connection.connection.id).toBe("connection-1");
+    expect(tested.ok).toBe(true);
+    expect(discovered.models[0]?.id).toBe("gemini-2.5-flash");
+    expect(deleted).toBeNull();
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/provider-connections/connection-1/test");
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/provider-connections/connection-1/discover-models");
+    expect(fetchMock.mock.calls[3]?.[0]).toBe("/api/provider-connections/connection-1");
   });
 });

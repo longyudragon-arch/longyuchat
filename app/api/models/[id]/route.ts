@@ -6,24 +6,28 @@ import { parseJsonBody } from "@/server/http/request";
 import { presentModelConfig } from "@/server/presenters/api-presenters";
 import { deleteModelConfig, getModelConfigById, updateModelConfig } from "@/server/services/model-config-service";
 
+const providerEnumSchema = z.enum([
+  "OPENAI_COMPATIBLE",
+  "CLAUDE",
+  "GEMINI",
+  "GROK",
+  "DOUBAO",
+  "DEEPSEEK",
+  "MODELSCOPE",
+  "HUNYUAN",
+  "QWEN",
+]);
+
 const updateModelSchema = z.object({
   name: z.string().min(1).optional(),
-  provider: z
-    .enum([
-      "OPENAI_COMPATIBLE",
-      "CLAUDE",
-      "GEMINI",
-      "GROK",
-      "DOUBAO",
-      "DEEPSEEK",
-      "MODELSCOPE",
-      "HUNYUAN",
-      "QWEN",
-    ])
-    .optional(),
+  connectionId: z.string().min(1).nullable().optional(),
+  provider: providerEnumSchema.optional(),
   baseUrl: z.string().url().optional(),
   modelName: z.string().min(1).optional(),
+  avatarLabel: z.string().trim().min(1).max(3).optional(),
+  avatarColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   apiKey: z.string().min(1).optional(),
+
   defaultReplyLength: z.number().int().min(50).max(4000).optional(),
   enabled: z.boolean().optional(),
 });

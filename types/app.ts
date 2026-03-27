@@ -11,7 +11,13 @@ export type ProviderType =
 export type RoomType = "SINGLE" | "GROUP";
 export type MessageRole = "USER" | "ASSISTANT" | "SYSTEM";
 export type ModelTestResultStatus = "success" | "error";
+export type ProviderConnectionDiscoveryStrategy =
+  | "AUTO_FETCH"
+  | "MANUAL_ONLY"
+  | "AUTO_FETCH_WITH_MANUAL_FALLBACK";
+export type ProviderConnectionCheckResultStatus = "success" | "error";
 export type AccessProtectionMode = "app" | "basic" | "none";
+export type ProviderConnectionTemplateCategory = "DOMESTIC" | "GLOBAL";
 
 export interface ModelTestResultView {
   status: ModelTestResultStatus;
@@ -22,15 +28,85 @@ export interface ModelTestResultView {
 export interface ModelView {
   id: string;
   name: string;
+  connectionId: string | null;
   provider: ProviderType;
   baseUrl: string;
   modelName: string;
+  avatarLabel: string;
+  avatarColor: string;
   defaultReplyLength: number;
+
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
   hasApiKey: boolean;
   lastConnectionTest: ModelTestResultView | null;
+}
+
+export interface ProviderConnectionCheckView {
+  status: ProviderConnectionCheckResultStatus;
+  message: string;
+  testedAt: string;
+}
+
+export interface ProviderConnectionView {
+  id: string;
+  name: string;
+  provider: ProviderType;
+  baseUrl: string;
+  discoveryStrategy: ProviderConnectionDiscoveryStrategy;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  hasApiKey: boolean;
+  modelCount: number;
+  supportsAutomaticModelDiscovery: boolean;
+  lastAuthCheck: ProviderConnectionCheckView | null;
+  lastDiscoveryCheck: ProviderConnectionCheckView | null;
+}
+
+export interface ProviderConnectionTemplateView {
+  id: string;
+  category: ProviderConnectionTemplateCategory;
+  name: string;
+  subtitle: string;
+  provider: ProviderType;
+  suggestedBaseUrl?: string;
+  defaultModelName?: string;
+  avatarLabel?: string;
+  avatarColor?: string;
+  preferredDiscoveryStrategy: ProviderConnectionDiscoveryStrategy;
+  officialUrl: string;
+  apiKeyUrl?: string;
+  docsUrl?: string;
+  modelsUrl?: string;
+  note: string;
+}
+
+export interface ProviderCatalogView {
+  templates: ProviderConnectionTemplateView[];
+}
+
+export interface CreateProviderConnectionPayload {
+  name: string;
+  provider: ProviderType;
+  baseUrl: string;
+  apiKey: string;
+  discoveryStrategy?: ProviderConnectionDiscoveryStrategy;
+  enabled?: boolean;
+}
+
+export interface UpdateProviderConnectionPayload {
+  name?: string;
+  provider?: ProviderType;
+  baseUrl?: string;
+  apiKey?: string;
+  discoveryStrategy?: ProviderConnectionDiscoveryStrategy;
+  enabled?: boolean;
+}
+
+export interface TestProviderConnectionPayload {
+  modelName?: string;
 }
 
 export interface RoomModelView {
@@ -74,7 +150,33 @@ export interface MessageModelSnapshotView {
   name: string;
   provider: ProviderType;
   modelName: string;
+  avatarLabel: string;
+  avatarColor: string;
   defaultReplyLength: number;
+
+}
+
+export type SendRoomMessageFailureKind =
+  | "authentication"
+  | "quota"
+  | "not_found"
+  | "network"
+  | "empty_response"
+  | "reasoning_only"
+  | "request";
+
+export interface ProviderErrorDetailsView {
+  finishReason?: string | null;
+  attemptCount?: number | null;
+  contentLength?: number | null;
+  reasoningLength?: number | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  reasoningTokens?: number | null;
+  initialFinishReason?: string | null;
+  initialPromptTokens?: number | null;
+  initialCompletionTokens?: number | null;
+  initialReasoningTokens?: number | null;
 }
 
 export interface SendRoomMessageResult {
@@ -82,7 +184,12 @@ export interface SendRoomMessageResult {
   status: "completed" | "partial";
   failedModelId?: string;
   error?: string;
+  providerErrorKind?: SendRoomMessageFailureKind;
+  providerErrorDetails?: ProviderErrorDetailsView;
+  failedModelPaused?: boolean;
+  failedModelPauseReason?: string;
 }
+
 
 export interface DiscoveredModelView {
   id: string;

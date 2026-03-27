@@ -1,20 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Quicksand, Nunito } from "next/font/google";
 import { AppNavigation } from "@/components/app-navigation";
 import "./globals.css";
-
-const quicksand = Quicksand({
-  subsets: ["latin"],
-  variable: "--font-quicksand",
-  display: "swap",
-});
-
-const nunito = Nunito({
-  subsets: ["latin"],
-  variable: "--font-nunito",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -48,7 +35,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={`${quicksand.variable} ${nunito.variable}`}>
+    <html lang="zh-CN">
       <body className="font-sans antialiased text-[var(--foreground)] selection:bg-[var(--accent)] selection:text-white">
         <AppNavigation />
         {children}

@@ -12,8 +12,8 @@ import {
   findNextUserMessageAfterSequence,
   formatDate,
   formatReplyLength,
+  getModelOperationalInsight,
   getProviderBadgeClassName,
-  getProviderIconClassName,
   getProviderSoftClassName,
   getProviderShortName,
   reorderIds,
@@ -21,6 +21,7 @@ import {
   toRoomLabel,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
+import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
 import type { MessageView, ProviderType, RoomView } from "@/types/app";
 
 interface RoomChatPageProps {
@@ -108,6 +109,42 @@ function FeedbackPanel({ feedback, onDismiss }: { feedback: ClientErrorFeedback 
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
+    </div>
+  );
+}
+
+function RoomModelAlert({
+  modelName,
+  shortLabel,
+  title,
+  description,
+  suggestion,
+  tone,
+}: {
+  modelName: string;
+  shortLabel: string;
+  title: string;
+  description: string;
+  suggestion: string;
+  tone: "warning" | "error";
+}) {
+  const toneClass =
+    tone === "warning"
+      ? "border-amber-200/70 bg-amber-50/85 text-amber-900"
+      : "border-red-200/70 bg-red-50/85 text-red-900";
+  const badgeClass =
+    tone === "warning"
+      ? "border-amber-300/70 bg-amber-100/80 text-amber-800"
+      : "border-red-300/70 bg-red-100/80 text-red-700";
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide ${badgeClass}`}>{shortLabel}</span>
+        <p className="text-[12px] font-bold">{modelName}：{title}</p>
+      </div>
+      <p className="mt-1 text-[12px] leading-6 opacity-90">{description}</p>
+      <p className="mt-1 text-[11px] leading-5 opacity-75">建议：{suggestion}</p>
     </div>
   );
 }
@@ -266,6 +303,17 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     if (activeIndex >= total) return null;
     return orderedRoomModels[activeIndex]?.model ?? null;
   }, [isSending, orderedRoomModels, pendingRound]);
+
+  const roomModelAlerts = useMemo(
+    () =>
+      orderedRoomModels
+        .map((roomModel) => {
+          const insight = getModelOperationalInsight(roomModel.model);
+          return insight ? { modelName: roomModel.model.name, insight } : null;
+        })
+        .filter((item): item is { modelName: string; insight: NonNullable<ReturnType<typeof getModelOperationalInsight>> } => Boolean(item)),
+    [orderedRoomModels],
+  );
 
   /* ─── Actions ─── */
 
@@ -533,6 +581,22 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
             }}
           >
             <div className="ly-reading-wrap space-y-10">
+               {roomModelAlerts.length > 0 && (
+                 <div className="space-y-3">
+                   {roomModelAlerts.map(({ modelName, insight }) => (
+                     <RoomModelAlert
+                       key={`${modelName}-${insight.shortLabel}`}
+                       modelName={modelName}
+                       shortLabel={insight.shortLabel}
+                       title={insight.title}
+                       description={insight.description}
+                       suggestion={insight.suggestion}
+                       tone={insight.tone}
+                     />
+                   ))}
+                 </div>
+               )}
+
                {/* Empty chat state */}
                {messages.length === 0 && !pendingUserContent && (
                  <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -569,14 +633,35 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   const providerBadgeClassName = provider
                     ? getProviderBadgeClassName(provider)
                     : "border-stone-200 bg-stone-50 text-stone-600";
+                  const avatarPalette = provider
+                    ? getModelAvatarPalette(provider, messageModel?.avatarColor ?? roomModel?.model.avatarColor)
+                    : null;
+                  const resolvedMessageAvatar = provider
+                    ? resolveModelAvatar(
+                        provider,
+                        roomModel?.model.baseUrl ?? "",
+                        messageModel?.avatarLabel ?? roomModel?.model.avatarLabel,
+                        messageModel?.avatarColor ?? roomModel?.model.avatarColor,
+                      )
+                    : null;
 
                   return (
                      <article key={message.id} className="flex flex-col items-start gap-2 max-w-[90%] sm:max-w-3xl animate-chat-in">
                         <div className="flex items-center gap-2 px-1">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-[#2f2e33] tracking-wider uppercase flex items-center gap-1.5 shadow-sm border ${providerBadgeClassName}`}>
                             {provider && (
-                              <span className={`inline-flex items-center justify-center rounded text-[8px] font-bold ${getProviderIconClassName(provider)}`}>
-                                {getProviderShortName(provider)}
+                              <span
+                                className="inline-flex items-center justify-center rounded px-1 text-[8px] font-bold"
+                                style={
+                                  avatarPalette
+                                    ? {
+                                        backgroundColor: avatarPalette.baseColor,
+                                        color: avatarPalette.textColor,
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {resolvedMessageAvatar?.avatarLabel ?? getProviderShortName(provider)}
                               </span>
                             )}
                             {messageModel?.name ?? "AI 助手"}
@@ -587,8 +672,19 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/50 pb-3">
                             <div className="flex items-center gap-2">
                               {provider && (
-                                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl text-[10px] font-bold shadow-sm ${getProviderIconClassName(provider)}`}>
-                                  {getProviderShortName(provider)}
+                                <span
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-[10px] font-bold shadow-sm"
+                                  style={
+                                    avatarPalette
+                                      ? {
+                                          backgroundColor: avatarPalette.baseColor,
+                                          color: avatarPalette.textColor,
+                                          boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  {resolvedMessageAvatar?.avatarLabel ?? getProviderShortName(provider)}
                                 </span>
                               )}
                               <div className="min-w-0">
@@ -602,7 +698,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             </div>
                             {provider && (
                               <span className={`inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${providerBadgeClassName}`}>
-                                {getProviderShortName(provider)}
+                                {resolvedMessageAvatar?.avatarLabel ?? getProviderShortName(provider)}
                               </span>
                             )}
                           </div>
@@ -741,6 +837,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                        const providerSoftClassName = getProviderSoftClassName(provider);
                        const providerSurfaceClassName = getProviderMessageSurfaceClassName(provider);
                        const providerAccentClassName = getProviderAccentClassName(provider);
+                       const resolvedRoomAvatar = resolveModelAvatar(
+                         provider,
+                         roomModel.model.baseUrl,
+                         roomModel.model.avatarLabel,
+                         roomModel.model.avatarColor,
+                       );
+                       const avatarPalette = getModelAvatarPalette(provider, resolvedRoomAvatar.avatarColor);
+                       const modelInsight = getModelOperationalInsight(roomModel.model);
 
                        return (
                         <div
@@ -786,18 +890,36 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                </span>
                             </div>
                             <div className="flex items-center gap-2 text-[10px] text-stone-500 font-medium tracking-wide border-t border-stone-100 pt-2 mt-1">
-                               <span className={`inline-flex w-4 h-4 items-center justify-center rounded-[4px] text-[7px] font-bold ${getProviderIconClassName(roomModel.model.provider)}`}>
-                                 {getProviderShortName(roomModel.model.provider)}
+                               <span
+                                 className="inline-flex h-4 w-4 items-center justify-center rounded-[4px] text-[7px] font-bold"
+                                 style={{
+                                   backgroundColor: avatarPalette.baseColor,
+                                   color: avatarPalette.textColor,
+                                 }}
+                               >
+                                 {resolvedRoomAvatar.avatarLabel}
                                </span>
                                <span>预设字数: {formatReplyLength(roomModel.model.defaultReplyLength)}</span>
                             </div>
-                             {isCurrent && (
-                                <div className="mt-3 flex items-center gap-2">
-                                  <div className="h-1 flex-1 rounded-full overflow-hidden relative bg-white/65">
-                                     <div className={`absolute inset-y-0 left-0 w-1/2 rounded-full animate-[slideRight_1.5s_infinite_ease-in-out] ${providerAccentClassName}`}></div>
-                                  </div>
+                            {modelInsight && (
+                              <div
+                                className={`mt-3 rounded-xl border px-3 py-2 text-[11px] leading-5 ${
+                                  modelInsight.tone === "warning"
+                                    ? "border-amber-200/70 bg-amber-50/80 text-amber-900"
+                                    : "border-red-200/70 bg-red-50/80 text-red-900"
+                                }`}
+                              >
+                                <p className="font-bold">{modelInsight.shortLabel} · {modelInsight.title}</p>
+                                <p className="mt-1 opacity-80">{modelInsight.description}</p>
+                              </div>
+                            )}
+                            {isCurrent && (
+                              <div className="mt-3 flex items-center gap-2">
+                                <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/65">
+                                  <div className={`absolute inset-y-0 left-0 w-1/2 rounded-full animate-[slideRight_1.5s_infinite_ease-in-out] ${providerAccentClassName}`} />
                                 </div>
-                             )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

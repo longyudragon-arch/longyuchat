@@ -1,10 +1,12 @@
 import type { ChatRoom, ChatRoomModel, Message, ModelConfig } from "@/generated/prisma/client";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
+import { inferProviderErrorKindFromMessage, shouldPauseModelOnProviderErrorKind } from "@/server/http/provider-error";
+import { logServerEvent } from "@/server/observability/server-logger";
 import { runSequentialConversation } from "@/server/orchestrators/conversation-orchestrator";
 import { getChatRoomById } from "@/server/services/chat-room-service";
 import { createAssistantMessage, createUserMessage, listMessagesByRoomId } from "@/server/services/message-service";
-import { toModelRuntimeConfig } from "@/server/services/model-config-service";
+import { pauseModelConfig, toModelRuntimeConfig } from "@/server/services/model-config-service";
 import type { ChatMessage } from "@/types/chat";
 
 type RoomWithModels = ChatRoom & {
@@ -17,6 +19,7 @@ interface SendRoomMessageDependencies {
   createUserMessage: (roomId: string, content: string) => Promise<Message>;
   createAssistantMessage: (roomId: string, modelId: string, content: string) => Promise<Message>;
   createAdapter: typeof createModelAdapter;
+  pauseModel: (modelId: string, reason: string) => Promise<ModelConfig>;
 }
 
 const defaultDependencies: SendRoomMessageDependencies = {
@@ -25,6 +28,7 @@ const defaultDependencies: SendRoomMessageDependencies = {
   createUserMessage,
   createAssistantMessage,
   createAdapter: createModelAdapter,
+  pauseModel: pauseModelConfig,
 };
 
 function toHistoryMessage(message: Message): ChatMessage {
@@ -52,6 +56,22 @@ function assertRunnableRoom(room: RoomWithModels | null, roomId: string) {
   }
 
   return room;
+}
+
+function buildPauseReason(modelName: string, error: string, providerErrorKind: string) {
+  if (providerErrorKind === "quota") {
+    return `Model ${modelName} was automatically paused after the provider reported quota or token exhaustion. ${error}`;
+  }
+
+  if (providerErrorKind === "authentication") {
+    return `Model ${modelName} was automatically paused after the provider rejected the API key or authentication. ${error}`;
+  }
+
+  if (providerErrorKind === "not_found") {
+    return `Model ${modelName} was automatically paused because the configured model ID or endpoint was not found upstream. ${error}`;
+  }
+
+  return `Model ${modelName} was automatically paused after the provider returned an unusable reply. ${error}`;
 }
 
 export interface SendRoomMessageInput {
@@ -89,6 +109,34 @@ export async function sendRoomMessage(
     },
   });
 
+  const providerErrorKind = result.error
+    ? (result.providerErrorKind ?? inferProviderErrorKindFromMessage(result.error))
+    : undefined;
+
+  let failedModelPaused = false;
+  let failedModelPauseReason: string | undefined;
+
+  if (result.status === "partial" && result.failedModelId && result.error && providerErrorKind) {
+    const failedRoomModel = room.roomModels.find((roomModel) => roomModel.modelId === result.failedModelId);
+
+    if (failedRoomModel && shouldPauseModelOnProviderErrorKind(providerErrorKind)) {
+      failedModelPauseReason = buildPauseReason(failedRoomModel.model.name, result.error, providerErrorKind);
+
+      try {
+        await dependencies.pauseModel(result.failedModelId, failedModelPauseReason);
+        failedModelPaused = true;
+      } catch (pauseError) {
+        logServerEvent("error", "room_message_pause_failed", {
+          roomId: input.roomId,
+          failedModelId: result.failedModelId,
+          providerErrorKind,
+          pauseReason: failedModelPauseReason,
+          error: pauseError instanceof Error ? pauseError.message : "Unknown pause failure",
+        });
+      }
+    }
+  }
+
   return {
     roomId: input.roomId,
     status: result.status,
@@ -96,6 +144,9 @@ export async function sendRoomMessage(
     assistantMessages: result.messages,
     failedModelId: result.failedModelId,
     error: result.error,
+    providerErrorKind,
+    providerErrorDetails: result.providerErrorDetails,
+    failedModelPaused,
+    failedModelPauseReason,
   };
 }
-

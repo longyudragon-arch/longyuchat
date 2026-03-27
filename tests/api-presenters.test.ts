@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { MessageRole, ModelTestStatus, ProviderType, RoomType } from "@/generated/prisma/enums";
-import { presentMessages, presentRoom } from "@/server/presenters/api-presenters";
+import {
+  presentMessages,
+  presentProviderConnection,
+  presentProviderConnectionTemplateList,
+  presentRoom,
+} from "@/server/presenters/api-presenters";
 
 describe("presentRoom", () => {
   it("exposes safe room summary metadata without leaking api keys", () => {
@@ -20,10 +25,14 @@ describe("presentRoom", () => {
           model: {
             id: "model-1",
             name: "OpenAI 主模型",
+            connectionId: null,
             provider: ProviderType.OPENAI_COMPATIBLE,
             baseUrl: "https://api.openai.com/v1",
             modelName: "gpt-4.1-mini",
+            avatarLabel: "OA",
+            avatarColor: "#10b981",
             apiKey: "secret-key",
+
             defaultReplyLength: 240,
             lastTestStatus: ModelTestStatus.SUCCESS,
             lastTestMessage: "连接成功",
@@ -57,7 +66,9 @@ describe("presentRoom", () => {
       createdAt: new Date("2026-03-11T02:29:00.000Z"),
     });
     expect(room.roomModels[0]?.model.hasApiKey).toBe(true);
+    expect(room.roomModels[0]?.model.avatarColor).toBe("#10b981");
     expect(room.roomModels[0]?.model).not.toHaveProperty("apiKey");
+
   });
 
   it("returns a null preview when the room has no messages yet", () => {
@@ -93,10 +104,14 @@ describe("presentMessages", () => {
         model: {
           id: "model-1",
           name: "Gemini 助手",
+          connectionId: null,
           provider: ProviderType.GEMINI,
           baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
           modelName: "gemini-2.5-flash",
+          avatarLabel: "GM",
+          avatarColor: "#0ea5e9",
           apiKey: "secret-key",
+
           defaultReplyLength: 180,
           lastTestStatus: null,
           lastTestMessage: null,
@@ -115,9 +130,72 @@ describe("presentMessages", () => {
         name: "Gemini 助手",
         provider: ProviderType.GEMINI,
         modelName: "gemini-2.5-flash",
+        avatarLabel: "GM",
+        avatarColor: "#0ea5e9",
         defaultReplyLength: 180,
+
       },
     });
     expect(messages[0]?.model).not.toHaveProperty("apiKey");
+  });
+});
+
+describe("presentProviderConnection", () => {
+  it("respects discoveryStrategy when exposing automatic discovery capability", () => {
+    const connection = presentProviderConnection({
+      id: "connection-1",
+      name: "Moonshot 手动连接",
+      provider: ProviderType.OPENAI_COMPATIBLE,
+      baseUrl: "https://api.moonshot.cn/v1",
+      apiKey: "secret-key",
+      discoveryStrategy: "MANUAL_ONLY",
+      enabled: true,
+      lastAuthStatus: null,
+      lastAuthMessage: null,
+      lastAuthCheckedAt: null,
+      lastDiscoveryStatus: null,
+      lastDiscoveryMessage: null,
+      lastDiscoveredAt: null,
+      createdAt: new Date("2026-03-25T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-25T10:00:00.000Z"),
+      _count: {
+        models: 0,
+      },
+    });
+
+    expect(connection.supportsAutomaticModelDiscovery).toBe(false);
+    expect(connection.hasApiKey).toBe(true);
+  });
+});
+
+describe("presentProviderConnectionTemplateList", () => {
+  it("exposes provider template metadata for the frontend without reshaping links", () => {
+    const templates = presentProviderConnectionTemplateList([
+      {
+        id: "moonshot",
+        category: "DOMESTIC",
+        name: "Moonshot AI / Kimi",
+        subtitle: "月之暗面，通常按 OpenAI 兼容方式接入",
+        provider: ProviderType.OPENAI_COMPATIBLE,
+        suggestedBaseUrl: "https://api.moonshot.cn/v1",
+        avatarLabel: "KM",
+        avatarColor: "#14b8a6",
+        preferredDiscoveryStrategy: "MANUAL_ONLY",
+        officialUrl: "https://platform.moonshot.cn",
+        apiKeyUrl: "https://platform.moonshot.cn",
+        docsUrl: "https://platform.moonshot.cn",
+        note: "如果 /models 不可用，请手动填写模型 ID。",
+      },
+    ]);
+
+    expect(templates).toEqual([
+      expect.objectContaining({
+        id: "moonshot",
+        category: "DOMESTIC",
+        provider: ProviderType.OPENAI_COMPATIBLE,
+        preferredDiscoveryStrategy: "MANUAL_ONLY",
+        officialUrl: "https://platform.moonshot.cn",
+      }),
+    ]);
   });
 });

@@ -35,13 +35,28 @@ enum ModelTestStatus {
   ERROR
 }
 
+enum ProviderConnectionDiscoveryStrategy {
+  AUTO_FETCH
+  MANUAL_ONLY
+  AUTO_FETCH_WITH_MANUAL_FALLBACK
+}
+
+enum ProviderConnectionCheckStatus {
+  SUCCESS
+  ERROR
+}
+
 model ModelConfig {
   id                 String          @id @default(cuid())
   name               String          @unique
+  connectionId       String?         @map("connection_id")
   provider           ProviderType
   baseUrl            String          @map("base_url")
   modelName          String          @map("model_name")
+  avatarLabel        String          @default("OA") @map("avatar_label")
+  avatarColor        String          @default("#10b981") @map("avatar_color")
   apiKey             String          @map("api_key")
+
   defaultReplyLength Int             @default(300) @map("default_reply_length")
   lastTestStatus     ModelTestStatus? @map("last_test_status")
   lastTestMessage    String?         @map("last_test_message")
@@ -49,10 +64,33 @@ model ModelConfig {
   enabled            Boolean         @default(true)
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
+  connection         ProviderConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
   roomModels         ChatRoomModel[]
   messages           Message[]
 
+  @@index([connectionId])
   @@map("model_configs")
+}
+
+model ProviderConnection {
+  id                   String                              @id @default(cuid())
+  name                 String                              @unique
+  provider             ProviderType
+  baseUrl              String                              @map("base_url")
+  apiKey               String                              @map("api_key")
+  discoveryStrategy    ProviderConnectionDiscoveryStrategy @default(AUTO_FETCH_WITH_MANUAL_FALLBACK) @map("discovery_strategy")
+  enabled              Boolean                             @default(true)
+  lastAuthStatus       ProviderConnectionCheckStatus?      @map("last_auth_status")
+  lastAuthMessage      String?                             @map("last_auth_message")
+  lastAuthCheckedAt    DateTime?                           @map("last_auth_checked_at")
+  lastDiscoveryStatus  ProviderConnectionCheckStatus?      @map("last_discovery_status")
+  lastDiscoveryMessage String?                             @map("last_discovery_message")
+  lastDiscoveredAt     DateTime?                           @map("last_discovered_at")
+  createdAt            DateTime                            @default(now()) @map("created_at")
+  updatedAt            DateTime                            @updatedAt @map("updated_at")
+  models               ModelConfig[]
+
+  @@map("provider_connections")
 }
 
 model ChatRoom {

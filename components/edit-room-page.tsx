@@ -8,13 +8,13 @@ import {
   describeClientError,
   fetchJson,
   getProviderChineseLabel,
-  getProviderIconClassName,
   getProviderOptionLabel,
-  getProviderShortName,
   providerOptions,
   reorderIds,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
+import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
+
 import type { ModelView, ProviderType, RoomType, RoomView } from "@/types/app";
 
 interface EditRoomPageProps {
@@ -288,7 +288,10 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
             ) : (
               filteredModels.map((model) => {
                 const selected = form.modelIds.includes(model.id);
+              const avatar = resolveModelAvatar(model.provider, model.baseUrl, model.avatarLabel, model.avatarColor);
+              const avatarPalette = getModelAvatarPalette(model.provider, avatar.avatarColor);
                 return (
+
                   <button
                     key={model.id}
                     type="button"
@@ -300,9 +303,17 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                     } ${!model.enabled && !selected ? "opacity-50 grayscale hover:grayscale-0 hover:opacity-80" : ""}`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm transition-transform group-hover:scale-105 ${selected ? "bg-white/20 text-white" : getProviderIconClassName(model.provider)}`}>
-                        {getProviderShortName(model.provider)}
+                      <span
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm transition-transform group-hover:scale-105 ${selected ? "ring-2 ring-white/60" : ""}`}
+                        style={{
+                          backgroundColor: avatarPalette.baseColor,
+                          color: avatarPalette.textColor,
+                          boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                        }}
+                      >
+                  {avatar.avatarLabel}
                       </span>
+
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-[14px] font-display font-bold tracking-tight ${selected ? "text-white" : ""}`}>{model.name}</p>
@@ -339,8 +350,11 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                   const isDragging = draggedModelId === model.id;
                   const isDropTarget = dragOverModelId === model.id && draggedModelId !== model.id;
                   const isLast = index === selectedModels.length - 1;
+              const avatar = resolveModelAvatar(model.provider, model.baseUrl, model.avatarLabel, model.avatarColor);
+              const avatarPalette = getModelAvatarPalette(model.provider, avatar.avatarColor);
 
                   return (
+
                     <div key={model.id} className="relative">
                       {!isLast && selectedModels.length > 1 && (
                         <div className="absolute left-[28px] top-12 bottom-[-0.75rem] w-0.5 bg-[var(--accent)]/20 rounded-full" />
@@ -370,9 +384,21 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
                             <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold shadow-sm relative z-10 ${!model.enabled ? "bg-red-500 text-white" : "bg-[var(--accent)] text-white"}`}>
                               {index + 1}
                             </span>
-                            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm ${!model.enabled ? "bg-white text-red-500 opacity-60" : getProviderIconClassName(model.provider)}`}>
-                              {getProviderShortName(model.provider)}
+                            <span
+                              className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[9px] font-bold tracking-wide shadow-sm ${!model.enabled ? "bg-white text-red-500 opacity-60" : ""}`}
+                              style={
+                                !model.enabled
+                                  ? undefined
+                                  : {
+                                      backgroundColor: avatarPalette.baseColor,
+                                      color: avatarPalette.textColor,
+                                      boxShadow: `0 8px 18px ${avatarPalette.shadowColor}`,
+                                    }
+                              }
+                            >
+                  {avatar.avatarLabel}
                             </span>
+
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className={`text-[14px] font-display font-bold tracking-tight ${!model.enabled ? "text-red-700" : ""}`}>{model.name}</p>

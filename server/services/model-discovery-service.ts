@@ -1,6 +1,7 @@
 import { ApiError } from "@/server/http/api-error";
 import { createProviderApiError } from "@/server/http/provider-error";
 import { requestProvider } from "@/server/http/provider-request";
+import { supportsAutomaticModelDiscovery } from "@/lib/provider-catalog";
 import type { ProviderType } from "@/types/app";
 
 export interface DiscoverModelsInput {
@@ -40,21 +41,12 @@ const defaultDependencies: DiscoverModelsDependencies = {
   requestProvider,
 };
 
-const autoDiscoverableProviders = new Set<ProviderType>([
-  "OPENAI_COMPATIBLE",
-  "GEMINI",
-  "GROK",
-  "DOUBAO",
-  "DEEPSEEK",
-  "MODELSCOPE",
-]);
-
 function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 }
 
 function assertAutoDiscoverableProvider(provider: ProviderType) {
-  if (autoDiscoverableProviders.has(provider)) {
+  if (supportsAutomaticModelDiscovery(provider)) {
     return;
   }
 
@@ -145,7 +137,15 @@ export async function discoverProviderModels(
   );
 
   if (models.length === 0) {
-    throw new Error("The provider returned an empty model list.");
+    throw new ApiError(
+      422,
+      "The provider returned an empty model list. This endpoint may not be supported or may require additional account permissions.",
+      {
+        provider: input.provider,
+        baseUrl: normalizeBaseUrl(input.baseUrl),
+        endpoint: `${normalizeBaseUrl(input.baseUrl)}/models`,
+      },
+    );
   }
 
   return models;

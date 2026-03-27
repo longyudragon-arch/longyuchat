@@ -85,6 +85,39 @@ describe("discoverProviderModels", () => {
     ]);
   });
 
+  it("supports Qwen-compatible discovery endpoints", async () => {
+    const requestProvider = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      bodyText: JSON.stringify({
+        data: [
+          {
+            id: "qwen-plus",
+            owned_by: "dashscope",
+          },
+        ],
+      }),
+      transport: "fetch" as const,
+    }));
+
+    const models = await discoverProviderModels(
+      {
+        provider: "QWEN",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        apiKey: "secret-key",
+      },
+      { requestProvider },
+    );
+
+    expect(requestProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://dashscope.aliyuncs.com/compatible-mode/v1/models",
+        method: "GET",
+      }),
+    );
+    expect(models[0]?.id).toBe("qwen-plus");
+  });
+
   it("rejects unsupported providers that do not have discovery yet", async () => {
     await expect(
       discoverProviderModels(

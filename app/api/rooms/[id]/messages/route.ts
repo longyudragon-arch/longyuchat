@@ -60,7 +60,10 @@ export async function POST(request: Request, context: RouteContext) {
         failedModelId: result.failedModelId,
         failedModelName: failedRoomModel?.model.name,
         provider: failedRoomModel?.model.provider,
-        providerErrorKind: inferProviderErrorKindFromMessage(result.error),
+        providerErrorKind: result.providerErrorKind ?? inferProviderErrorKindFromMessage(result.error),
+        providerErrorDetails: result.providerErrorDetails,
+        failedModelPaused: result.failedModelPaused ?? false,
+        failedModelPauseReason: result.failedModelPauseReason,
         error: result.error,
       });
     }

@@ -5,6 +5,7 @@ import {
   formatProviderError,
   inferProviderErrorKind,
   inferProviderErrorKindFromMessage,
+  shouldPauseModelOnProviderErrorKind,
 } from "@/server/http/provider-error";
 
 const geminiInvalidKeyBody = JSON.stringify([
@@ -53,5 +54,23 @@ describe("provider-error helpers", () => {
         "Provider authentication failed with 400: API Key not found. Please pass a valid API key.",
       ),
     ).toBe("authentication");
+  });
+
+  it("does not treat generic API key references as durable authentication failures", () => {
+    const body = JSON.stringify({
+      error: {
+        message: "The request is invalid. Refer to the API key rotation guide for setup instructions.",
+      },
+    });
+
+    expect(inferProviderErrorKind(400, body)).toBe("request");
+  });
+
+  it("only auto-pauses durable provider error kinds", () => {
+    expect(shouldPauseModelOnProviderErrorKind("authentication")).toBe(true);
+    expect(shouldPauseModelOnProviderErrorKind("quota")).toBe(true);
+    expect(shouldPauseModelOnProviderErrorKind("not_found")).toBe(true);
+    expect(shouldPauseModelOnProviderErrorKind("empty_response")).toBe(false);
+    expect(shouldPauseModelOnProviderErrorKind("reasoning_only")).toBe(false);
   });
 });
