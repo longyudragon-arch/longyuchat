@@ -1,6 +1,7 @@
 import type { GenerateReplyInput, ModelAdapter, ModelReply } from "@/server/adapters/model-adapter";
 import { createProviderApiError, createProviderResponseApiError } from "@/server/http/provider-error";
 import { requestProvider } from "@/server/http/provider-request";
+import { getProviderExecutionProfile } from "@/lib/provider-catalog";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
 interface ChatCompletionContentPart {
@@ -48,6 +49,9 @@ interface RequestChatCompletionResult {
   payload: ChatCompletionResponse;
   normalized: NormalizedChatCompletion;
   usage: NormalizedUsage;
+  providerRequestDurationMs: number;
+  providerAttemptCount: number;
+  recoveryRequestDurationMs?: number | null;
   recoveryPayload?: ChatCompletionResponse;
 }
 
@@ -144,6 +148,10 @@ function buildEndpoint(config: ModelRuntimeConfig) {
   return `${normalizeBaseUrl(config.baseUrl)}/chat/completions`;
 }
 
+export function resolveProviderRequestTimeoutMs(config: ModelRuntimeConfig) {
+  return getProviderExecutionProfile(config).requestTimeoutMs;
+}
+
 function getLatestUserMessage(messages: GenerateReplyInput["messages"]) {
   return [...messages].reverse().find((message) => message.role === "user")?.content.trim() ?? "";
 }
@@ -193,16 +201,25 @@ function buildRewriteSystemInstruction(maxCharacters: number) {
   return `请改写下面这段助手草稿，保留原意和语气。除非用户明确要求其他语言，否则默认使用简体中文。最终答案必须控制在 ${maxCharacters} 个可见字符以内（含标点与空格）。只输出改写后的最终答案。`;
 }
 
-function shouldRetryWithoutFinalAnswer(normalized: NormalizedChatCompletion) {
-  return !normalized.content;
+function shouldRetryWithoutFinalAnswer(
+  normalized: NormalizedChatCompletion,
+  executionProfile: ReturnType<typeof getProviderExecutionProfile>,
+) {
+  if (!executionProfile.allowsReasoningOnlyRetry) {
+    return false;
+  }
+
+  return !normalized.content && Boolean(normalized.reasoningContent);
 }
 
 async function performChatCompletionRequest(
   config: ModelRuntimeConfig,
   messages: GenerateReplyInput["messages"],
   maxTokens: number,
+  requestTimeoutMs: number,
 ) {
   const endpoint = buildEndpoint(config);
+  const requestStartedAt = Date.now();
   const response = await requestProvider({
     url: endpoint,
     method: "POST",
@@ -215,6 +232,7 @@ async function performChatCompletionRequest(
       messages,
       max_tokens: maxTokens,
     }),
+    timeoutMs: requestTimeoutMs,
   });
 
   if (!response.ok) {
@@ -239,6 +257,7 @@ async function performChatCompletionRequest(
     payload,
     normalized: normalizeChatCompletion(payload),
     usage: normalizeUsage(payload),
+    durationMs: Date.now() - requestStartedAt,
   };
 }
 
@@ -246,30 +265,52 @@ async function requestChatCompletion(
   config: ModelRuntimeConfig,
   messages: GenerateReplyInput["messages"],
   maxTokens: number,
+  executionProfile: ReturnType<typeof getProviderExecutionProfile>,
 ): Promise<RequestChatCompletionResult> {
-  const initial = await performChatCompletionRequest(config, messages, maxTokens);
+  const initial = await performChatCompletionRequest(config, messages, maxTokens, executionProfile.requestTimeoutMs);
 
-  if (!shouldRetryWithoutFinalAnswer(initial.normalized)) {
+  if (initial.normalized.content) {
     return {
       content: initial.normalized.content,
       payload: initial.payload,
       normalized: initial.normalized,
       usage: initial.usage,
+      providerRequestDurationMs: initial.durationMs,
+      providerAttemptCount: 1,
     };
+  }
+
+  if (!shouldRetryWithoutFinalAnswer(initial.normalized, executionProfile)) {
+    throw createProviderResponseApiError({
+      provider: config.provider,
+      endpoint: initial.endpoint,
+      kind: initial.normalized.reasoningContent ? "reasoning_only" : "empty_response",
+      finishReason: initial.normalized.finishReason,
+      attemptCount: 1,
+      contentLength: initial.normalized.content.length,
+      reasoningLength: initial.normalized.reasoningContent.length,
+      promptTokens: initial.usage.promptTokens,
+      completionTokens: initial.usage.completionTokens,
+      reasoningTokens: initial.usage.reasoningTokens,
+    });
   }
 
   const recovery = await performChatCompletionRequest(
     config,
     buildRecoveryMessages(messages),
     Math.max(maxTokens, estimateRetryMaxTokens(config.defaultReplyLength, messages)),
+    executionProfile.requestTimeoutMs,
   );
 
-  if (!shouldRetryWithoutFinalAnswer(recovery.normalized)) {
+  if (!shouldRetryWithoutFinalAnswer(recovery.normalized, executionProfile)) {
     return {
       content: recovery.normalized.content,
       payload: recovery.payload,
       normalized: recovery.normalized,
       usage: recovery.usage,
+      providerRequestDurationMs: initial.durationMs + recovery.durationMs,
+      providerAttemptCount: 2,
+      recoveryRequestDurationMs: recovery.durationMs,
       recoveryPayload: initial.payload,
     };
   }
@@ -306,25 +347,35 @@ function buildRewriteMessages(content: string, maxCharacters: number): GenerateR
 }
 
 async function postChatCompletion(input: GenerateReplyInput): Promise<ModelReply> {
+  const executionProfile = getProviderExecutionProfile(input.config);
   const initialResult = await requestChatCompletion(
     input.config,
     input.messages,
     estimateMaxTokens(input.config.defaultReplyLength, input.messages),
+    executionProfile,
   );
 
   let content = initialResult.content;
   let rewritePayload: ChatCompletionResponse | null = null;
+  let providerRequestDurationMs = initialResult.providerRequestDurationMs;
+  let providerAttemptCount = initialResult.providerAttemptCount;
+  const recoveryRequestDurationMs = initialResult.recoveryRequestDurationMs ?? null;
+  let rewriteRequestDurationMs: number | null = null;
 
-  if (countVisibleCharacters(content) > input.config.defaultReplyLength) {
+  if (executionProfile.allowsReplyRewritePass && countVisibleCharacters(content) > input.config.defaultReplyLength) {
     try {
       const rewrittenResult = await requestChatCompletion(
         input.config,
         buildRewriteMessages(content, input.config.defaultReplyLength),
         estimateRewriteMaxTokens(input.config.defaultReplyLength),
+        executionProfile,
       );
 
       content = rewrittenResult.content;
       rewritePayload = rewrittenResult.payload;
+      providerRequestDurationMs += rewrittenResult.providerRequestDurationMs;
+      providerAttemptCount += rewrittenResult.providerAttemptCount;
+      rewriteRequestDurationMs = rewrittenResult.providerRequestDurationMs;
     } catch {
       // Fall back to deterministic trimming if the compression pass fails.
     }
@@ -348,6 +399,14 @@ async function postChatCompletion(input: GenerateReplyInput): Promise<ModelReply
             recoveredAttempt: initialResult.payload,
           }
         : initialResult.payload,
+    replyTiming: {
+      queueDurationMs: null,
+      providerRequestDurationMs,
+      providerAttemptCount,
+      recoveryRequestDurationMs,
+      rewriteRequestDurationMs,
+      persistenceDurationMs: null,
+    },
   };
 }
 

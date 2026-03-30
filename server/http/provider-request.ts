@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-const providerRequestTimeoutMs = 60_000;
+import { getProviderRequestTimeoutMs } from "@/lib/runtime";
 
 interface ProviderRequestInput {
   url: string;
@@ -40,7 +40,7 @@ function stripByteOrderMark(value: string) {
 }
 
 function getTimeoutMs(timeoutMs?: number) {
-  return timeoutMs ?? providerRequestTimeoutMs;
+  return timeoutMs ?? getProviderRequestTimeoutMs();
 }
 
 function getPowerShellCommand() {
@@ -70,6 +70,14 @@ function getErrorCause(error: unknown) {
   return (error as Error & { cause?: { code?: string; message?: string } }).cause;
 }
 
+function formatTimeoutLabel(timeoutMs: number) {
+  if (timeoutMs % 1000 === 0) {
+    return `${timeoutMs / 1000}s`;
+  }
+
+  return `${timeoutMs}ms`;
+}
+
 function shouldUsePowerShellFallback(error: unknown) {
   if (process.platform !== "win32") {
     return false;
@@ -89,7 +97,7 @@ function shouldUsePowerShellFallback(error: unknown) {
   );
 }
 
-function toProviderTransportError(url: string, error: unknown, fallbackError?: unknown) {
+function toProviderTransportError(url: string, timeoutMs: number, error: unknown, fallbackError?: unknown) {
   if (!(error instanceof Error)) {
     return new Error(`Could not reach ${url}.`);
   }
@@ -97,10 +105,11 @@ function toProviderTransportError(url: string, error: unknown, fallbackError?: u
   const cause = getErrorCause(error);
   const fallbackDetail =
     fallbackError instanceof Error ? ` PowerShell fallback also failed: ${fallbackError.message}` : "";
+  const timeoutLabel = formatTimeoutLabel(timeoutMs);
 
   if (cause?.code === "UND_ERR_CONNECT_TIMEOUT") {
     return new Error(
-      `Could not reach ${url}. Node network connection timed out before the provider responded.${fallbackDetail}`,
+      `Could not reach ${url}. Provider request timed out after ${timeoutLabel} before the provider responded.${fallbackDetail}`,
     );
   }
 
@@ -217,10 +226,10 @@ export async function requestProvider(input: ProviderRequestInput): Promise<Prov
       try {
         return await requestWithPowerShell(payload);
       } catch (fallbackError) {
-        throw toProviderTransportError(payload.url, error, fallbackError);
+        throw toProviderTransportError(payload.url, payload.timeoutMs, error, fallbackError);
       }
     }
 
-    throw toProviderTransportError(payload.url, error);
+    throw toProviderTransportError(payload.url, payload.timeoutMs, error);
   }
 }

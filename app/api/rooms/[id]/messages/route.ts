@@ -50,22 +50,28 @@ export async function POST(request: Request, context: RouteContext) {
       status: result.status === "completed" ? 201 : 207,
     });
 
-    if (result.status === "partial" && result.failedModelId && result.error) {
+    if (result.status === "partial") {
       const room = await getChatRoomById(id);
-      const failedRoomModel = room?.roomModels.find((roomModel) => roomModel.modelId === result.failedModelId);
+      const failedOutcomes = result.roundOutcomes.filter((outcome) => outcome.outcome === "failed");
 
-      logServerEvent("warn", "room_message_partial", {
-        requestId: response.headers.get(REQUEST_ID_HEADER),
-        roomId: id,
-        failedModelId: result.failedModelId,
-        failedModelName: failedRoomModel?.model.name,
-        provider: failedRoomModel?.model.provider,
-        providerErrorKind: result.providerErrorKind ?? inferProviderErrorKindFromMessage(result.error),
-        providerErrorDetails: result.providerErrorDetails,
-        failedModelPaused: result.failedModelPaused ?? false,
-        failedModelPauseReason: result.failedModelPauseReason,
-        error: result.error,
-      });
+      for (const failedOutcome of failedOutcomes) {
+        const failedRoomModel = room?.roomModels.find((roomModel) => roomModel.modelId === failedOutcome.modelId);
+
+        logServerEvent("warn", "room_message_partial", {
+          requestId: response.headers.get(REQUEST_ID_HEADER),
+          roomId: id,
+          failedModelId: failedOutcome.modelId,
+          failedModelName: failedOutcome.modelName ?? failedRoomModel?.model.name,
+          provider: failedRoomModel?.model.provider,
+          providerErrorKind:
+            failedOutcome.providerErrorKind ??
+            (failedOutcome.error ? inferProviderErrorKindFromMessage(failedOutcome.error) : undefined),
+          providerErrorDetails: failedOutcome.providerErrorDetails,
+          failedModelPaused: failedOutcome.paused ?? false,
+          failedModelPauseReason: failedOutcome.pauseReason,
+          error: failedOutcome.error,
+        });
+      }
     }
 
     return response;

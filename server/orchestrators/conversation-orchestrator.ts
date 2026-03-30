@@ -1,7 +1,17 @@
-import type { ChatMessage, ModelRuntimeConfig, PersistedMessage } from "@/types/chat";
+import type {
+  ChatMessage,
+  ConversationHistoryMessage,
+  ModelRuntimeConfig,
+  PersistedMessage,
+  ReplyTimingDetails,
+} from "@/types/chat";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
 import { ApiError } from "@/server/http/api-error";
 import type { ProviderErrorKind } from "@/server/http/provider-error";
+import {
+  getConversationHistoryContextTokenBudget,
+  getConversationHistoryWindowBeforeLatestUserMessages,
+} from "@/lib/runtime";
 
 export interface ConversationModel {
   modelId: string;
@@ -13,20 +23,21 @@ export interface SaveAssistantMessageInput {
   roomId: string;
   modelId: string;
   content: string;
+  replyDurationMs: number;
+  replyTiming?: ReplyTimingDetails | null;
 }
 
 export interface SequentialConversationInput {
   roomId: string;
-  history: ChatMessage[];
+  history: ConversationHistoryMessage[];
   models: ConversationModel[];
   createAdapter: (config: ModelRuntimeConfig) => ModelAdapter;
   saveAssistantMessage: (input: SaveAssistantMessageInput) => Promise<PersistedMessage>;
 }
 
-export interface SequentialConversationResult {
-  status: "completed" | "partial";
-  messages: PersistedMessage[];
-  failedModelId?: string;
+export interface SequentialConversationModelOutcome {
+  modelId: string;
+  outcome: "replied" | "failed";
   error?: string;
   providerErrorKind?: ProviderErrorKind;
   providerErrorDetails?: {
@@ -42,6 +53,12 @@ export interface SequentialConversationResult {
     initialCompletionTokens?: number | null;
     initialReasoningTokens?: number | null;
   };
+}
+
+export interface SequentialConversationResult {
+  status: "completed" | "partial";
+  messages: PersistedMessage[];
+  roundOutcomes: SequentialConversationModelOutcome[];
 }
 
 function extractProviderErrorKind(error: unknown) {
@@ -105,7 +122,7 @@ function truncateForInstruction(value: string, maxCharacters: number) {
   return `${characters.slice(0, maxCharacters).join("")}…`;
 }
 
-export function buildShortInputStabilityInstruction(history: ChatMessage[]): ChatMessage | null {
+export function buildShortInputStabilityInstruction(history: ConversationHistoryMessage[]): ChatMessage | null {
   const latestUserEntry = [...history]
     .map((message, index) => ({ message, index }))
     .reverse()
@@ -145,8 +162,163 @@ export function buildReplyLengthInstruction(config: ModelRuntimeConfig): ChatMes
 export function buildParticipationInstruction(config: ModelRuntimeConfig): ChatMessage {
   return {
     role: "system",
-    content: `你是 ${config.name}。请基于以上对话继续本轮多模型讨论，从你自己的视角直接回答。上文可能包含其他 AI 模型的回复，但你仍然必须给出自己的最终答案，不要保持沉默，也不要只输出思考过程。`,
+    content: `你当前在房间中的身份是：显示名称「${config.name}」、供应商「${config.provider}」、模型标识「${config.modelName}」。这是一个多模型顺序讨论房间。上文中其他模型的发言只作为参考资料，不代表你的身份、立场或你之前已经说过的话；只有明确属于你自己的历史回复，才可以视为你的既有表态。请始终从你自己的视角直接回答，不要自称为其他模型，不要继承其他模型的身份，也不要只输出思考过程。`,
   };
+}
+
+export function buildParticipantRosterInstruction(models: ConversationModel[], currentModel: ConversationModel): ChatMessage {
+  const participantLines = [...models]
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .map((model) => {
+      const marker = model.modelId === currentModel.modelId ? "（当前轮到你）" : "";
+      return `${model.sortOrder}. ${model.config.name} [${model.config.provider} / ${model.config.modelName}]${marker}`;
+    });
+
+  return {
+    role: "system",
+    content: `当前房间参与模型顺序如下：\n${participantLines.join("\n")}\n请注意区分不同模型的发言归属。除非消息明确标注为你自己的历史回复，否则都只视为参考上下文。`,
+  };
+}
+
+function buildSpeakerLabel(message: ConversationHistoryMessage) {
+  const primary = message.speakerName?.trim() || message.speakerModelName?.trim() || message.modelId?.trim() || "未知模型";
+
+  if (message.speakerModelName && message.speakerName && message.speakerModelName !== message.speakerName) {
+    return `${message.speakerName}（${message.speakerModelName}）`;
+  }
+
+  return primary;
+}
+
+function formatCrossModelReference(message: ConversationHistoryMessage): ChatMessage {
+  const speakerLabel = buildSpeakerLabel(message);
+  const providerLabel = message.speakerProvider ? `，供应商为「${message.speakerProvider}」` : "";
+
+  return {
+    role: "system",
+    content: `以下是房间中其他模型「${speakerLabel}」的参考发言${providerLabel}。这不是你自己的历史回复，也不代表你的身份或既有立场，请仅作为参考：\n${message.content}`,
+  };
+}
+
+function toContextMessage(message: ConversationHistoryMessage, currentModel: ConversationModel): ChatMessage {
+  if (message.role !== "assistant") {
+    return {
+      role: message.role,
+      content: message.content,
+    };
+  }
+
+  if (message.modelId && message.modelId === currentModel.modelId) {
+    return {
+      role: "assistant",
+      content: message.content,
+    };
+  }
+
+  return formatCrossModelReference(message);
+}
+
+function findLatestUserMessageIndex(history: ConversationHistoryMessage[]) {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (history[index]?.role === "user") {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function estimateTextTokens(value: string) {
+  const visibleCharacters = Array.from(value.trim()).length;
+  return Math.max(1, visibleCharacters + 8);
+}
+
+function estimateMessageTokens(message: ChatMessage) {
+  const roleOverhead = message.role === "system" ? 12 : 6;
+  return estimateTextTokens(message.content) + roleOverhead;
+}
+
+function buildContextWindowInstruction(trimmedMessageCount: number): ChatMessage {
+  return {
+    role: "system",
+    content: `为控制上下文长度，更早的 ${trimmedMessageCount} 条历史消息已被省略。请优先依据以下保留下来的最近上下文继续回答。`,
+  };
+}
+
+function buildScopedContextMessages(history: ConversationHistoryMessage[], currentModel: ConversationModel) {
+  const windowBeforeLatestUser = getConversationHistoryWindowBeforeLatestUserMessages();
+  const contextTokenBudget = getConversationHistoryContextTokenBudget();
+  const latestUserIndex = findLatestUserMessageIndex(history);
+
+  if (latestUserIndex === -1) {
+    const recentHistory = history.slice(-windowBeforeLatestUser);
+    const scopedMessages: ChatMessage[] = [];
+    let totalTokens = 0;
+
+    for (let index = recentHistory.length - 1; index >= 0; index -= 1) {
+      const nextMessage = toContextMessage(recentHistory[index], currentModel);
+      const nextTokens = estimateMessageTokens(nextMessage);
+
+      if (scopedMessages.length > 0 && totalTokens + nextTokens > contextTokenBudget) {
+        continue;
+      }
+
+      scopedMessages.unshift(nextMessage);
+      totalTokens += nextTokens;
+    }
+
+    return {
+      messages: scopedMessages,
+      trimmedMessageCount: Math.max(0, history.length - scopedMessages.length),
+    };
+  }
+
+  const recentRoundHistory = history.slice(latestUserIndex);
+  const earlierCandidates = history.slice(0, latestUserIndex).slice(-windowBeforeLatestUser);
+  const recentRoundMessages = recentRoundHistory.map((message) => toContextMessage(message, currentModel));
+  const preservedRecentRoundTokens = recentRoundMessages.reduce(
+    (total, message) => total + estimateMessageTokens(message),
+    0,
+  );
+  const earlierMessages: ChatMessage[] = [];
+  let earlierTokens = 0;
+
+  for (let index = earlierCandidates.length - 1; index >= 0; index -= 1) {
+    const nextMessage = toContextMessage(earlierCandidates[index], currentModel);
+    const nextTokens = estimateMessageTokens(nextMessage);
+
+    if (earlierMessages.length > 0 && preservedRecentRoundTokens + earlierTokens + nextTokens > contextTokenBudget) {
+      continue;
+    }
+
+    earlierMessages.unshift(nextMessage);
+    earlierTokens += nextTokens;
+  }
+
+  const scopedMessages = [...earlierMessages, ...recentRoundMessages];
+
+  return {
+    messages: scopedMessages,
+    trimmedMessageCount: Math.max(0, history.length - scopedMessages.length),
+  };
+}
+
+export function buildConversationMessagesForModel(
+  history: ConversationHistoryMessage[],
+  models: ConversationModel[],
+  currentModel: ConversationModel,
+): ChatMessage[] {
+  const shortInputInstruction = buildShortInputStabilityInstruction(history);
+  const scopedContext = buildScopedContextMessages(history, currentModel);
+
+  return [
+    buildReplyLengthInstruction(currentModel.config),
+    buildParticipantRosterInstruction(models, currentModel),
+    ...(shortInputInstruction ? [shortInputInstruction] : []),
+    ...(scopedContext.trimmedMessageCount > 0 ? [buildContextWindowInstruction(scopedContext.trimmedMessageCount)] : []),
+    ...scopedContext.messages,
+    buildParticipationInstruction(currentModel.config),
+  ];
 }
 
 export async function runSequentialConversation(
@@ -155,48 +327,63 @@ export async function runSequentialConversation(
   const models = [...input.models].sort((left, right) => left.sortOrder - right.sortOrder);
   const history = [...input.history];
   const persistedMessages: PersistedMessage[] = [];
+  const roundOutcomes: SequentialConversationModelOutcome[] = [];
+  const roundStartedAt = Date.now();
 
   for (const model of models) {
+    const replyStartedAt = Date.now();
+    let reply: Awaited<ReturnType<ModelAdapter["generateReply"]>>;
+
     try {
       const adapter = input.createAdapter(model.config);
-      const shortInputInstruction = buildShortInputStabilityInstruction(history);
-      const reply = await adapter.generateReply({
+      reply = await adapter.generateReply({
         config: model.config,
-        messages: [
-          buildReplyLengthInstruction(model.config),
-          ...(shortInputInstruction ? [shortInputInstruction] : []),
-          ...history,
-          buildParticipationInstruction(model.config),
-        ],
-      });
-
-      const savedMessage = await input.saveAssistantMessage({
-        roomId: input.roomId,
-        modelId: model.modelId,
-        content: reply.content,
-      });
-
-      persistedMessages.push(savedMessage);
-      history.push({
-        role: savedMessage.role,
-        content: savedMessage.content,
-        modelId: savedMessage.modelId,
-        sequence: savedMessage.sequence,
+        messages: buildConversationMessagesForModel(history, models, model),
       });
     } catch (error) {
-      return {
-        status: "partial",
-        messages: persistedMessages,
-        failedModelId: model.modelId,
+      roundOutcomes.push({
+        modelId: model.modelId,
+        outcome: "failed",
         error: error instanceof Error ? error.message : "Unknown error",
         providerErrorKind: extractProviderErrorKind(error),
         providerErrorDetails: extractProviderErrorDetails(error),
-      };
+      });
+      continue;
     }
+
+    const savedMessage = await input.saveAssistantMessage({
+      roomId: input.roomId,
+      modelId: model.modelId,
+      content: reply.content,
+      replyDurationMs: Date.now() - replyStartedAt,
+      replyTiming: {
+        ...(reply.replyTiming ?? {}),
+        queueDurationMs: Math.max(0, replyStartedAt - roundStartedAt),
+      },
+    });
+
+    persistedMessages.push(savedMessage);
+    roundOutcomes.push({
+      modelId: model.modelId,
+      outcome: "replied",
+    });
+    history.push({
+      role: "assistant",
+      content: savedMessage.content,
+      modelId: savedMessage.modelId,
+      sequence: savedMessage.sequence,
+      replyDurationMs: savedMessage.replyDurationMs,
+      speakerName: model.config.name,
+      speakerProvider: model.config.provider,
+      speakerModelName: model.config.modelName,
+    });
   }
 
+  const hasFailures = roundOutcomes.some((outcome) => outcome.outcome === "failed");
+
   return {
-    status: "completed",
+    status: hasFailures ? "partial" : "completed",
     messages: persistedMessages,
+    roundOutcomes,
   };
 }

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/server/http/api-error";
 import { sendRoomMessage } from "@/server/services/room-message-service";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
+import { buildParticipantRosterInstruction, buildParticipationInstruction, buildReplyLengthInstruction } from "@/server/orchestrators/conversation-orchestrator";
 import type { ChatMessage, ModelRuntimeConfig } from "@/types/chat";
 
 function buildConfig(id: string, enabled = true) {
@@ -33,6 +34,22 @@ function createHistoryStore() {
     role: "USER" | "ASSISTANT";
     content: string;
     modelId: string | null;
+    replyDurationMs: number | null;
+    providerRequestDurationMs: number | null;
+    providerAttemptCount: number | null;
+    recoveryRequestDurationMs: number | null;
+    rewriteRequestDurationMs: number | null;
+    model?: {
+      id: string;
+      name: string;
+      provider: string;
+      modelName: string;
+    } | null;
+    speakerName: string | null;
+    speakerProvider: string | null;
+    speakerModelName: string | null;
+    speakerAvatarLabel: string | null;
+    speakerAvatarColor: string | null;
     createdAt: Date;
     id: string;
   }> = [];
@@ -47,12 +64,43 @@ function createHistoryStore() {
         role: "USER" as const,
         modelId: null,
         content,
+        replyDurationMs: null,
+        providerRequestDurationMs: null,
+        providerAttemptCount: null,
+        recoveryRequestDurationMs: null,
+        rewriteRequestDurationMs: null,
+        model: null,
+        speakerName: null,
+        speakerProvider: null,
+        speakerModelName: null,
+        speakerAvatarLabel: null,
+        speakerAvatarColor: null,
         createdAt: new Date("2026-03-10T00:00:00.000Z"),
       };
       history.push(message);
       return message;
     },
-    createAssistantMessage: async (roomId: string, modelId: string, content: string) => {
+    createAssistantMessage: async (
+      roomId: string,
+      modelId: string,
+      content: string,
+      replyDurationMs?: number | null,
+      speaker?: {
+        name: string;
+        provider: string;
+        modelName: string;
+        avatarLabel: string;
+        avatarColor: string;
+      },
+      replyTiming?: {
+        queueDurationMs?: number | null;
+        providerRequestDurationMs?: number | null;
+        providerAttemptCount?: number | null;
+        recoveryRequestDurationMs?: number | null;
+        rewriteRequestDurationMs?: number | null;
+        persistenceDurationMs?: number | null;
+      } | null,
+    ) => {
       const message = {
         id: `${modelId}-${history.length + 1}`,
         roomId,
@@ -60,12 +108,40 @@ function createHistoryStore() {
         role: "ASSISTANT" as const,
         modelId,
         content,
+        replyDurationMs: replyDurationMs ?? null,
+        queueDurationMs: replyTiming?.queueDurationMs ?? null,
+        providerRequestDurationMs: replyTiming?.providerRequestDurationMs ?? null,
+        providerAttemptCount: replyTiming?.providerAttemptCount ?? null,
+        recoveryRequestDurationMs: replyTiming?.recoveryRequestDurationMs ?? null,
+        rewriteRequestDurationMs: replyTiming?.rewriteRequestDurationMs ?? null,
+        persistenceDurationMs: replyTiming?.persistenceDurationMs ?? null,
+        model: null,
+        speakerName: speaker?.name ?? null,
+        speakerProvider: speaker?.provider ?? null,
+        speakerModelName: speaker?.modelName ?? null,
+        speakerAvatarLabel: speaker?.avatarLabel ?? null,
+        speakerAvatarColor: speaker?.avatarColor ?? null,
         createdAt: new Date("2026-03-10T00:00:00.000Z"),
       };
       history.push(message);
       return message;
     },
     listMessagesByRoomId: async () => [...history],
+  };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    resolve,
+    reject,
   };
 }
 
@@ -76,20 +152,30 @@ function createRoom(roomId: string, models = [buildConfig("model-a"), buildConfi
     type: "GROUP" as const,
     createdAt: new Date("2026-03-10T00:00:00.000Z"),
     updatedAt: new Date("2026-03-10T00:00:00.000Z"),
-    roomModels: models.map((model, index) => ({
-      id: `rm-${index + 1}`,
-      roomId,
-      modelId: model.id,
-      sortOrder: index + 1,
-      model,
-    })),
-  };
+      roomModels: models.map((model, index) => ({
+        id: `rm-${index + 1}`,
+        roomId,
+        modelId: model.id,
+        sortOrder: index + 1,
+        executionState: "ACTIVE" as const,
+        cooldownUntil: null,
+        consecutiveFailureCount: 0,
+        timeoutCount: 0,
+        lastFailureKind: null,
+        lastFailureMessage: null,
+        lastFailureAt: null,
+        lastSuccessAt: null,
+        lastRecoveryAt: null,
+        model,
+      })),
+    };
 }
 
 describe("sendRoomMessage", () => {
   it("persists the user message and runs sequential assistant replies", async () => {
     const store = createHistoryStore();
     const seenMessages = new Map<string, ChatMessage[]>();
+    const clearRoomModelFailure = vi.fn();
 
     const createAdapter = (config: ModelRuntimeConfig): ModelAdapter => ({
       testConnection: vi.fn(),
@@ -113,43 +199,138 @@ describe("sendRoomMessage", () => {
         createAssistantMessage: store.createAssistantMessage,
         createAdapter,
         pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure,
       },
     );
 
     expect(result.status).toBe("completed");
     expect(result.userMessage.sequence).toBe(1);
     expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-b"]);
+    expect(result.assistantMessages.every((message) => typeof message.replyDurationMs === "number")).toBe(true);
     expect(seenMessages.get("model-a")).toEqual([
-      {
-        role: "system",
-        content:
-          "你必须直接给出可见的最终答案。默认使用简体中文回复；只有当用户明确要求其他语言时，才切换到对应语言。如果本轮用户输入很短、只有数字、符号，或像“1”“继续”“嗯”这样语言信息不足，也要结合更早的用户消息理解意图；如果仍然无法判断，就继续使用简体中文。最终答案必须控制在 300 个可见字符以内（含标点与空格）。如果初稿更长，请先压缩再回答，不要超过限制。",
-      },
-      { role: "user", content: "Start the thread", modelId: null, sequence: 1 },
-      {
-        role: "system",
-        content:
-          "你是 model-a。请基于以上对话继续本轮多模型讨论，从你自己的视角直接回答。上文可能包含其他 AI 模型的回复，但你仍然必须给出自己的最终答案，不要保持沉默，也不要只输出思考过程。",
-      },
+      buildReplyLengthInstruction(buildConfig("model-a")),
+      buildParticipantRosterInstruction(
+        [
+          { modelId: "model-a", sortOrder: 1, config: buildConfig("model-a") },
+          { modelId: "model-b", sortOrder: 2, config: buildConfig("model-b") },
+        ],
+        { modelId: "model-a", sortOrder: 1, config: buildConfig("model-a") },
+      ),
+      { role: "user", content: "Start the thread" },
+      buildParticipationInstruction(buildConfig("model-a")),
     ]);
     expect(seenMessages.get("model-b")).toEqual([
+      buildReplyLengthInstruction(buildConfig("model-b")),
+      buildParticipantRosterInstruction(
+        [
+          { modelId: "model-a", sortOrder: 1, config: buildConfig("model-a") },
+          { modelId: "model-b", sortOrder: 2, config: buildConfig("model-b") },
+        ],
+        { modelId: "model-b", sortOrder: 2, config: buildConfig("model-b") },
+      ),
+      { role: "user", content: "Start the thread" },
       {
         role: "system",
         content:
-          "你必须直接给出可见的最终答案。默认使用简体中文回复；只有当用户明确要求其他语言时，才切换到对应语言。如果本轮用户输入很短、只有数字、符号，或像“1”“继续”“嗯”这样语言信息不足，也要结合更早的用户消息理解意图；如果仍然无法判断，就继续使用简体中文。最终答案必须控制在 300 个可见字符以内（含标点与空格）。如果初稿更长，请先压缩再回答，不要超过限制。",
+          "以下是房间中其他模型「model-a（model-a-model）」的参考发言，供应商为「OPENAI_COMPATIBLE」。这不是你自己的历史回复，也不代表你的身份或既有立场，请仅作为参考：\nFirst response",
       },
-      { role: "user", content: "Start the thread", modelId: null, sequence: 1 },
-      { role: "assistant", content: "First response", modelId: "model-a", sequence: 2 },
-      {
-        role: "system",
-        content:
-          "你是 model-b。请基于以上对话继续本轮多模型讨论，从你自己的视角直接回答。上文可能包含其他 AI 模型的回复，但你仍然必须给出自己的最终答案，不要保持沉默，也不要只输出思考过程。",
-      },
+      buildParticipationInstruction(buildConfig("model-b")),
     ]);
+    expect(clearRoomModelFailure).toHaveBeenCalledWith("room-1", "model-a");
+    expect(clearRoomModelFailure).toHaveBeenCalledWith("room-1", "model-b");
   });
 
-  it("returns partial success after the first adapter failure", async () => {
+  it("prefers persisted speaker snapshots from stored history when building later-model context", async () => {
     const store = createHistoryStore();
+    store.history.push(
+      {
+        id: "user-1",
+        roomId: "room-history",
+        sequence: 1,
+        role: "USER",
+        modelId: null,
+        content: "先继续刚才那个判断",
+        replyDurationMs: null,
+        providerRequestDurationMs: null,
+        providerAttemptCount: null,
+        recoveryRequestDurationMs: null,
+        rewriteRequestDurationMs: null,
+        model: null,
+        speakerName: null,
+        speakerProvider: null,
+        speakerModelName: null,
+        speakerAvatarLabel: null,
+        speakerAvatarColor: null,
+        createdAt: new Date("2026-03-10T00:00:00.000Z"),
+      },
+      {
+        id: "assistant-2",
+        roomId: "room-history",
+        sequence: 2,
+        role: "ASSISTANT",
+        modelId: "model-a",
+        content: "这是 model-a 在上一轮的结论",
+        replyDurationMs: 1800,
+        providerRequestDurationMs: null,
+        providerAttemptCount: null,
+        recoveryRequestDurationMs: null,
+        rewriteRequestDurationMs: null,
+        model: null,
+        speakerName: "历史智谱助手",
+        speakerProvider: "OPENAI_COMPATIBLE",
+        speakerModelName: "glm-4.6",
+        speakerAvatarLabel: "ZP",
+        speakerAvatarColor: "#2563eb",
+        createdAt: new Date("2026-03-10T00:00:00.000Z"),
+      },
+    );
+
+    const seenMessages = new Map<string, ChatMessage[]>();
+
+    await sendRoomMessage(
+      {
+        roomId: "room-history",
+        content: "继续",
+      },
+      {
+        getRoomById: async () => createRoom("room-history"),
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter: (config: ModelRuntimeConfig): ModelAdapter => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async ({ messages }) => {
+            seenMessages.set(config.id, [...messages]);
+            return {
+              content: config.id === "model-a" ? "Model A next" : "Model B next",
+            };
+          }),
+        }),
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(seenMessages.get("model-b")).toEqual(
+      expect.arrayContaining([
+        {
+          role: "system",
+          content:
+            "以下是房间中其他模型「历史智谱助手（glm-4.6）」的参考发言，供应商为「OPENAI_COMPATIBLE」。这不是你自己的历史回复，也不代表你的身份或既有立场，请仅作为参考：\n这是 model-a 在上一轮的结论",
+        },
+      ]),
+    );
+  });
+
+  it("returns partial success while allowing later healthy models to continue", async () => {
+    const store = createHistoryStore();
+    const recordRoomModelTimeout = vi.fn();
+    const recordRoomModelFailure = vi.fn();
+    const markRoomModelInCooldown = vi.fn(async () => new Date("2026-03-30T10:10:00.000Z"));
 
     const result = await sendRoomMessage(
       {
@@ -157,7 +338,7 @@ describe("sendRoomMessage", () => {
         content: "Keep going",
       },
       {
-        getRoomById: async () => createRoom("room-2"),
+        getRoomById: async () => createRoom("room-2", [buildConfig("model-a"), buildConfig("model-b"), buildConfig("model-c")]),
         listMessagesByRoomId: store.listMessagesByRoomId,
         createUserMessage: store.createUserMessage,
         createAssistantMessage: store.createAssistantMessage,
@@ -168,10 +349,14 @@ describe("sendRoomMessage", () => {
               throw new Error("Provider timeout");
             }
 
-            return { content: "First response" };
+            return { content: `${config.id} response` };
           }),
         }),
         pauseModel: vi.fn(),
+        recordRoomModelTimeout,
+        recordRoomModelFailure,
+        markRoomModelInCooldown,
+        clearRoomModelFailure: vi.fn(),
       },
     );
 
@@ -179,14 +364,134 @@ describe("sendRoomMessage", () => {
     expect(result.failedModelId).toBe("model-b");
     expect(result.providerErrorKind).toBe("network");
     expect(result.failedModelPaused).toBe(false);
-    expect(result.assistantMessages).toHaveLength(1);
+    expect(result.assistantMessages).toHaveLength(2);
     expect(result.assistantMessages[0]?.modelId).toBe("model-a");
-    expect(store.history).toHaveLength(2);
+    expect(result.assistantMessages[1]?.modelId).toBe("model-c");
+    expect(result.assistantMessages[0]?.replyDurationMs).toBeTypeOf("number");
+    expect(result.roundOutcomes).toEqual([
+      {
+        modelId: "model-a",
+        modelName: "model-a",
+        outcome: "replied",
+      },
+      {
+        modelId: "model-b",
+        modelName: "model-b",
+        outcome: "failed",
+        error: "Provider timeout",
+        providerErrorKind: "network",
+        providerErrorDetails: undefined,
+        paused: false,
+        pauseReason: undefined,
+        cooldownUntil: "2026-03-30T10:10:00.000Z",
+      },
+      {
+        modelId: "model-c",
+        modelName: "model-c",
+        outcome: "replied",
+      },
+    ]);
+    expect(result.failedModelCooldownUntil).toBe("2026-03-30T10:10:00.000Z");
+    expect(store.history).toHaveLength(3);
+    expect(recordRoomModelTimeout).toHaveBeenCalledWith("room-2", "model-b");
+    expect(markRoomModelInCooldown).toHaveBeenCalledWith(
+      "room-2",
+      "model-b",
+      expect.objectContaining({
+        kind: "network",
+        message: "Provider timeout",
+        occurredAt: expect.any(Date),
+      }),
+    );
+    expect(recordRoomModelFailure).not.toHaveBeenCalled();
+  });
+
+  it("stores reply duration on persisted assistant messages", async () => {
+    const store = createHistoryStore();
+
+    const result = await sendRoomMessage(
+      {
+        roomId: "room-duration",
+        content: "测一下耗时",
+      },
+      {
+        getRoomById: async () => createRoom("room-duration", [buildConfig("model-a")]),
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter: () => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async () => ({ content: "已记录耗时" })),
+        }),
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(store.history[1]?.replyDurationMs).toBeTypeOf("number");
+    expect(result.assistantMessages[0]?.replyDurationMs).toBeTypeOf("number");
+  });
+
+  it("persists provider timing telemetry alongside the assistant reply", async () => {
+    const store = createHistoryStore();
+
+    const result = await sendRoomMessage(
+      {
+        roomId: "room-telemetry",
+        content: "拆一下本次耗时",
+      },
+      {
+        getRoomById: async () => createRoom("room-telemetry", [buildConfig("model-a")]),
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter: () => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async () => ({
+            content: "已附带 timing telemetry",
+            replyTiming: {
+              queueDurationMs: 0,
+              providerRequestDurationMs: 980,
+              providerAttemptCount: 2,
+              recoveryRequestDurationMs: 320,
+              rewriteRequestDurationMs: null,
+              persistenceDurationMs: null,
+            },
+          })),
+        }),
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(store.history[1]).toMatchObject({
+      queueDurationMs: expect.any(Number),
+      providerRequestDurationMs: 980,
+      providerAttemptCount: 2,
+      recoveryRequestDurationMs: 320,
+      rewriteRequestDurationMs: null,
+      persistenceDurationMs: null,
+    });
+    expect(result.assistantMessages[0]?.replyTiming).toEqual({
+      queueDurationMs: expect.any(Number),
+      providerRequestDurationMs: 980,
+      providerAttemptCount: 2,
+      recoveryRequestDurationMs: 320,
+      rewriteRequestDurationMs: null,
+      persistenceDurationMs: null,
+    });
   });
 
   it("automatically pauses the failed model for quota-like provider errors", async () => {
     const store = createHistoryStore();
     const pauseModel = vi.fn(async () => buildConfig("model-b", false));
+    const markRoomModelInCooldown = vi.fn(async () => new Date("2026-03-30T10:10:00.000Z"));
 
     const result = await sendRoomMessage(
       {
@@ -194,7 +499,7 @@ describe("sendRoomMessage", () => {
         content: "继续",
       },
       {
-        getRoomById: async () => createRoom("room-3"),
+        getRoomById: async () => createRoom("room-3", [buildConfig("model-a"), buildConfig("model-b"), buildConfig("model-c")]),
         listMessagesByRoomId: store.listMessagesByRoomId,
         createUserMessage: store.createUserMessage,
         createAssistantMessage: store.createAssistantMessage,
@@ -207,10 +512,14 @@ describe("sendRoomMessage", () => {
               });
             }
 
-            return { content: "First response" };
+            return { content: `${config.id} response` };
           }),
         }),
         pauseModel,
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        markRoomModelInCooldown,
+        clearRoomModelFailure: vi.fn(),
       },
     );
 
@@ -218,10 +527,47 @@ describe("sendRoomMessage", () => {
     expect(result.providerErrorKind).toBe("quota");
     expect(result.failedModelPaused).toBe(true);
     expect(result.failedModelPauseReason).toContain("quota or token exhaustion");
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-c"]);
+    expect(result.roundOutcomes).toEqual([
+      {
+        modelId: "model-a",
+        modelName: "model-a",
+        outcome: "replied",
+      },
+      {
+        modelId: "model-b",
+        modelName: "model-b",
+        outcome: "failed",
+        error: "Provider quota or billing check failed with 429: token is exhausted.",
+        providerErrorKind: "quota",
+        providerErrorDetails: {
+          finishReason: null,
+          attemptCount: null,
+          contentLength: null,
+          reasoningLength: null,
+          promptTokens: null,
+          completionTokens: null,
+          reasoningTokens: null,
+          initialFinishReason: null,
+          initialPromptTokens: null,
+          initialCompletionTokens: null,
+          initialReasoningTokens: null,
+        },
+        paused: true,
+        pauseReason: expect.stringContaining("automatically paused after the provider reported quota or token exhaustion"),
+        cooldownUntil: undefined,
+      },
+      {
+        modelId: "model-c",
+        modelName: "model-c",
+        outcome: "replied",
+      },
+    ]);
     expect(pauseModel).toHaveBeenCalledWith(
       "model-b",
       expect.stringContaining("automatically paused after the provider reported quota or token exhaustion"),
     );
+    expect(markRoomModelInCooldown).not.toHaveBeenCalled();
   });
 
   it("does not auto-pause a model for transient empty-response failures", async () => {
@@ -254,6 +600,9 @@ describe("sendRoomMessage", () => {
           }),
         }),
         pauseModel,
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
       },
     );
 
@@ -283,6 +632,9 @@ describe("sendRoomMessage", () => {
           createAssistantMessage: vi.fn(),
           createAdapter: vi.fn(),
           pauseModel: vi.fn(),
+          recordRoomModelTimeout: vi.fn(),
+          recordRoomModelFailure: vi.fn(),
+          clearRoomModelFailure: vi.fn(),
         },
       ),
     ).rejects.toMatchObject<ApiError>({
@@ -291,7 +643,7 @@ describe("sendRoomMessage", () => {
     });
   });
 
-  it("rejects disabled models before persisting the user message", async () => {
+  it("rejects rooms that do not currently have any runnable models before persisting the user message", async () => {
     const createUserMessage = vi.fn();
     const createAssistantMessage = vi.fn();
 
@@ -308,11 +660,14 @@ describe("sendRoomMessage", () => {
           createAssistantMessage,
           createAdapter: vi.fn(),
           pauseModel: vi.fn(),
+          recordRoomModelTimeout: vi.fn(),
+          recordRoomModelFailure: vi.fn(),
+          clearRoomModelFailure: vi.fn(),
         },
       ),
     ).rejects.toMatchObject<ApiError>({
       status: 409,
-      message: "Model model-a is disabled.",
+      message: "Room room-disabled does not currently have any runnable models. All models are disabled or cooling down.",
     });
 
     expect(createUserMessage).not.toHaveBeenCalled();
@@ -336,11 +691,320 @@ describe("sendRoomMessage", () => {
           createAssistantMessage: vi.fn(),
           createAdapter: vi.fn(),
           pauseModel: vi.fn(),
+          recordRoomModelTimeout: vi.fn(),
+          recordRoomModelFailure: vi.fn(),
+          clearRoomModelFailure: vi.fn(),
         },
       ),
     ).rejects.toMatchObject<ApiError>({
       status: 400,
       message: "Room room-empty does not have any bound models.",
     });
+  });
+
+  it("rejects overlapping sends for the same room while a round is already running", async () => {
+    const store = createHistoryStore();
+    const firstReply = createDeferred<{ content: string }>();
+
+    const dependencies = {
+      getRoomById: async () => createRoom("room-busy", [buildConfig("model-a")]),
+      listMessagesByRoomId: store.listMessagesByRoomId,
+      createUserMessage: store.createUserMessage,
+      createAssistantMessage: store.createAssistantMessage,
+      createAdapter: () => ({
+        testConnection: vi.fn(),
+        generateReply: vi.fn(async () => firstReply.promise),
+      }),
+      pauseModel: vi.fn(),
+      recordRoomModelTimeout: vi.fn(),
+      recordRoomModelFailure: vi.fn(),
+      clearRoomModelFailure: vi.fn(),
+    };
+
+    const firstSend = sendRoomMessage(
+      {
+        roomId: "room-busy",
+        content: "第一条消息",
+      },
+      dependencies,
+    );
+
+    await Promise.resolve();
+
+    await expect(
+      sendRoomMessage(
+        {
+          roomId: "room-busy",
+          content: "第二条消息",
+        },
+        dependencies,
+      ),
+    ).rejects.toMatchObject<ApiError>({
+      status: 409,
+      message: "Room room-busy is already processing another message. Please wait for the current round to finish.",
+    });
+
+    expect(store.history.filter((message) => message.role === "USER")).toHaveLength(1);
+    expect(store.history.some((message) => message.role === "USER" && message.content === "第二条消息")).toBe(false);
+
+    firstReply.resolve({ content: "已完成第一轮回复" });
+
+    const firstResult = await firstSend;
+
+    expect(firstResult.status).toBe("completed");
+
+    const secondRound = await sendRoomMessage(
+      {
+        roomId: "room-busy",
+        content: "第三条消息",
+      },
+      {
+        ...dependencies,
+        createAdapter: () => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async () => ({ content: "第二轮也能继续" })),
+        }),
+      },
+    );
+
+    expect(secondRound.status).toBe("completed");
+  });
+
+  it("releases the room lock after an unexpected service error so the next send can proceed", async () => {
+    const store = createHistoryStore();
+    const listMessagesByRoomId = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("database temporarily unavailable"))
+      .mockImplementation(store.listMessagesByRoomId);
+
+    await expect(
+      sendRoomMessage(
+        {
+          roomId: "room-recoverable-lock",
+          content: "第一条消息",
+        },
+        {
+          getRoomById: async () => createRoom("room-recoverable-lock", [buildConfig("model-a")]),
+          listMessagesByRoomId,
+          createUserMessage: store.createUserMessage,
+          createAssistantMessage: store.createAssistantMessage,
+          createAdapter: () => ({
+            testConnection: vi.fn(),
+            generateReply: vi.fn(async () => ({ content: "恢复后的回复" })),
+          }),
+          pauseModel: vi.fn(),
+          recordRoomModelTimeout: vi.fn(),
+          recordRoomModelFailure: vi.fn(),
+          clearRoomModelFailure: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow("database temporarily unavailable");
+
+    const recoveryResult = await sendRoomMessage(
+      {
+        roomId: "room-recoverable-lock",
+        content: "第二条消息",
+      },
+      {
+        getRoomById: async () => createRoom("room-recoverable-lock", [buildConfig("model-a")]),
+        listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter: () => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async () => ({ content: "恢复后的回复" })),
+        }),
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(recoveryResult.status).toBe("completed");
+    expect(listMessagesByRoomId).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips cooled-down models on later rounds so healthy models can continue replying", async () => {
+    const store = createHistoryStore();
+    const cooledUntil = "2099-03-30T10:20:00.000Z";
+    const createAdapter = vi.fn((config: ModelRuntimeConfig) => ({
+      testConnection: vi.fn(),
+      generateReply: vi.fn(async () => ({ content: `${config.id} still running` })),
+    }));
+
+    const room = createRoom("room-cooldown", [buildConfig("model-a"), buildConfig("model-b"), buildConfig("model-c")]);
+    room.roomModels[1] = {
+      ...room.roomModels[1],
+      executionState: "COOLDOWN",
+      cooldownUntil: new Date(cooledUntil),
+      consecutiveFailureCount: 2,
+      lastFailureKind: "network",
+      lastFailureMessage: "Provider timeout",
+      lastFailureAt: new Date("2026-03-30T10:05:00.000Z"),
+    };
+
+    const result = await sendRoomMessage(
+      {
+        roomId: "room-cooldown",
+        content: "继续聊",
+      },
+      {
+        getRoomById: async () => room,
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter,
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-c"]);
+    expect(result.skippedModels).toEqual([
+      {
+        modelId: "model-b",
+        name: "model-b",
+        reason: "cooldown",
+        availableAt: cooledUntil,
+      },
+    ]);
+    expect(createAdapter).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores half-open probe models to healthy participation after a successful reply", async () => {
+    const store = createHistoryStore();
+    const clearRoomModelFailure = vi.fn();
+    const createAdapter = vi.fn((config: ModelRuntimeConfig) => ({
+      testConnection: vi.fn(),
+      generateReply: vi.fn(async () => ({ content: `${config.id} probe recovered` })),
+    }));
+
+    const room = createRoom("room-half-open-success", [
+      buildConfig("model-a"),
+      buildConfig("model-b"),
+      buildConfig("model-c"),
+    ]);
+    room.roomModels[1] = {
+      ...room.roomModels[1],
+      executionState: "HALF_OPEN",
+      cooldownUntil: null,
+      consecutiveFailureCount: 2,
+      lastFailureKind: "network",
+      lastFailureMessage: "Provider timeout",
+      lastFailureAt: new Date("2026-03-30T09:45:00.000Z"),
+    };
+
+    const result = await sendRoomMessage(
+      {
+        roomId: "room-half-open-success",
+        content: "恢复探测一下",
+      },
+      {
+        getRoomById: async () => room,
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter,
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        markRoomModelInCooldown: vi.fn(async () => new Date("2026-03-30T10:10:00.000Z")),
+        clearRoomModelFailure,
+      },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-b", "model-c"]);
+    expect(result.skippedModels).toEqual([]);
+    expect(clearRoomModelFailure).toHaveBeenCalledWith("room-half-open-success", "model-b");
+    expect(createAdapter).toHaveBeenCalledTimes(3);
+  });
+
+  it("re-cools half-open models when the recovery probe fails while later healthy models continue", async () => {
+    const store = createHistoryStore();
+    const markRoomModelInCooldown = vi.fn(async () => new Date("2026-03-30T10:30:00.000Z"));
+
+    const room = createRoom("room-half-open-failure", [
+      buildConfig("model-a"),
+      buildConfig("model-b"),
+      buildConfig("model-c"),
+    ]);
+    room.roomModels[1] = {
+      ...room.roomModels[1],
+      executionState: "HALF_OPEN",
+      cooldownUntil: null,
+      consecutiveFailureCount: 2,
+      lastFailureKind: "network",
+      lastFailureMessage: "Provider timeout",
+      lastFailureAt: new Date("2026-03-30T09:45:00.000Z"),
+    };
+
+    const result = await sendRoomMessage(
+      {
+        roomId: "room-half-open-failure",
+        content: "看看恢复成功没有",
+      },
+      {
+        getRoomById: async () => room,
+        listMessagesByRoomId: store.listMessagesByRoomId,
+        createUserMessage: store.createUserMessage,
+        createAssistantMessage: store.createAssistantMessage,
+        createAdapter: (config: ModelRuntimeConfig) => ({
+          testConnection: vi.fn(),
+          generateReply: vi.fn(async () => {
+            if (config.id === "model-b") {
+              throw new Error("Provider timeout");
+            }
+
+            return { content: `${config.id} still healthy` };
+          }),
+        }),
+        pauseModel: vi.fn(),
+        recordRoomModelTimeout: vi.fn(),
+        recordRoomModelFailure: vi.fn(),
+        markRoomModelInCooldown,
+        clearRoomModelFailure: vi.fn(),
+      },
+    );
+
+    expect(result.status).toBe("partial");
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-c"]);
+    expect(result.skippedModels).toEqual([]);
+    expect(result.roundOutcomes).toEqual([
+      {
+        modelId: "model-a",
+        modelName: "model-a",
+        outcome: "replied",
+      },
+      {
+        modelId: "model-b",
+        modelName: "model-b",
+        outcome: "failed",
+        error: "Provider timeout",
+        providerErrorKind: "network",
+        providerErrorDetails: undefined,
+        paused: false,
+        pauseReason: undefined,
+        cooldownUntil: "2026-03-30T10:30:00.000Z",
+      },
+      {
+        modelId: "model-c",
+        modelName: "model-c",
+        outcome: "replied",
+      },
+    ]);
+    expect(markRoomModelInCooldown).toHaveBeenCalledWith(
+      "room-half-open-failure",
+      "model-b",
+      expect.objectContaining({
+        kind: "network",
+        message: "Provider timeout",
+        occurredAt: expect.any(Date),
+      }),
+    );
   });
 });

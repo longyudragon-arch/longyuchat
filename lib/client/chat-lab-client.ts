@@ -204,6 +204,48 @@ function inferModelIssueKind(message: string) {
   return null;
 }
 
+function extractUnsupportedProviderName(message: string) {
+  const match = message.match(/provider\s+([a-z_]+)\s+is not supported in the mvp yet/i);
+  return match?.[1]?.trim().toUpperCase() ?? null;
+}
+
+function getProviderProtocolLabel(provider: string | null) {
+  switch (provider) {
+    case "CLAUDE":
+      return "Claude 原生接口";
+    case "GEMINI":
+      return "Gemini 原生接口";
+    case "GROK":
+      return "Grok 原生接口";
+    case "OPENAI_COMPATIBLE":
+      return "OpenAI 兼容接口";
+    case "DOUBAO":
+      return "豆包接口";
+    case "DEEPSEEK":
+      return "DeepSeek 接口";
+    case "MODELSCOPE":
+      return "ModelScope 接口";
+    case "HUNYUAN":
+      return "混元接口";
+    case "QWEN":
+      return "通义千问接口";
+    default:
+      return provider ? `${provider} 接口` : "当前 Provider 接口";
+  }
+}
+
+function isTimeoutLikeMessage(message: string) {
+  const normalized = message.trim().toLowerCase();
+
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("timeout") ||
+    normalized.includes("before the provider responded") ||
+    normalized.includes("taskcanceledexception") ||
+    normalized.includes("已取消一个任务")
+  );
+}
+
 export function formatModelTestMessage(state: ModelTestResultView | null) {
   if (!state) {
     return "还没有执行过连接测试。";
@@ -243,6 +285,10 @@ export function formatModelTestMessage(state: ModelTestResultView | null) {
 
   if (issueKind === "empty_response") {
     return "模型返回为空，未提供可展示的最终答案。";
+  }
+
+  if (issueKind === "network" && isTimeoutLikeMessage(state.message)) {
+    return "模型请求超时。";
   }
 
   if (normalized === "connection test failed." || normalized === "connection test failed") {
@@ -333,6 +379,16 @@ export function getModelOperationalInsight(model: Pick<ModelView, "enabled" | "l
     };
   }
 
+  if (state.status === "error" && issueKind === "network" && isTimeoutLikeMessage(state.message)) {
+    return {
+      shortLabel: "请求超时",
+      title: "最近一次测试响应超时",
+      description: "该模型最近一次请求在等待上游平台完成响应时超时了，通常说明平台响应过慢、当前网络不稳，或这个模型在当前接口上稳定性不足。",
+      suggestion: "如果连续出现超时，建议先停用这个模型，或切换到更稳定/更快的模型后再继续加入房间。",
+      tone: "error",
+    };
+  }
+
   return !model.enabled && autoPaused
     ? {
         shortLabel: "已自动暂停",
@@ -367,6 +423,22 @@ export function supportsAutomaticModelDiscovery(provider: ProviderType) {
 
 export function formatReplyLength(value: number) {
   return `最多 ${value} 字`;
+}
+
+export function formatReplyDurationMs(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value) || value < 0) {
+    return null;
+  }
+
+  if (value < 1000) {
+    return `${value}ms`;
+  }
+
+  if (value < 10_000) {
+    return `${(value / 1000).toFixed(1)}s`;
+  }
+
+  return `${Math.round(value / 1000)}s`;
 }
 
 export function toRoomLabel(type: RoomView["type"]) {
@@ -417,6 +489,7 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
   const message = getErrorMessage(error);
   const normalized = message.toLowerCase();
   const status = error instanceof ClientRequestError ? error.status : undefined;
+  const unsupportedProvider = extractUnsupportedProviderName(message);
   const details =
     error instanceof ClientRequestError && typeof error.details === "object" && error.details !== null
       ? (error.details as {
@@ -438,11 +511,32 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     };
   }
 
+  if (normalized.includes("cooling down") || normalized.includes("runnable models")) {
+    return {
+      title: "当前房间暂时没有可运行的模型",
+      description: message,
+      suggestion: "房间里的模型目前都在冷却中或已停用。请等待冷却结束，或先恢复至少一个健康模型后再继续发送。",
+      tone: "warning",
+    };
+  }
+
   if (normalized.includes("disabled")) {
     return {
       title: "房间里存在已停用的模型",
       description: message,
       suggestion: "请先在模型管理里重新启用对应模型，或把它们从房间成员中移除后再继续发送。",
+      tone: "warning",
+    };
+  }
+
+  if (normalized.includes("is not supported in the mvp yet")) {
+    const providerLabel = getProviderProtocolLabel(unsupportedProvider);
+
+    return {
+      title: "当前 Provider 模板暂未接入",
+      description: `系统检测到当前模型配置走的是 ${providerLabel}，但当前 MVP 还没有接入这条原生调用链。`,
+      suggestion:
+        "如果这本来应该是谷歌、OpenAI 兼容或其他已支持模型，请回到模型页检查 Provider 模板和 Base URL 是否选错；如果你确实要用这条原生接口，需要等后端适配接入后再启用。",
       tone: "warning",
     };
   }
@@ -564,9 +658,11 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     normalized.includes("network")
   ) {
     return {
-      title: "模型请求超时或网络连接失败",
+      title: isTimeoutLikeMessage(message) ? "模型请求超时" : "模型请求超时或网络连接失败",
       description: message,
-      suggestion: "请检查 Base URL、当前网络、服务器到上游模型接口的连通性，以及模型服务本身是否可用。",
+      suggestion: isTimeoutLikeMessage(message)
+        ? "这通常说明上游模型响应过慢，或当前网络到模型接口的链路不稳定。请先重试一次；如果连续超时，建议先停用这个模型，或切换到更快、更稳定的模型。"
+        : "请检查 Base URL、当前网络、服务器到上游模型接口的连通性，以及模型服务本身是否可用。",
       tone: "error",
     };
   }
@@ -616,58 +712,111 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
   };
 }
 
-export function describePartialSendResult(
-  result: SendRoomMessageResult,
-  failedModelName: string,
-): ClientErrorFeedback | null {
+function formatRoundOutcomeModelNames(
+  outcomes: Array<Pick<SendRoomMessageResult["roundOutcomes"][number], "modelName">>,
+) {
+  return `${outcomes.slice(0, 3).map((outcome) => outcome.modelName).join("、")}${outcomes.length > 3 ? " 等模型" : ""}`;
+}
+
+export function describePartialSendResult(result: SendRoomMessageResult): ClientErrorFeedback | null {
   if (result.status !== "partial") {
     return null;
   }
 
-  const errorMessage = result.error ?? "本轮顺序回复在中途停止。";
-  const fallbackFeedback = describeClientError(new Error(errorMessage));
+  const failedOutcomes = result.roundOutcomes.filter((outcome) => outcome.outcome === "failed");
+  const successfulCount = result.roundOutcomes.filter((outcome) => outcome.outcome === "replied").length;
 
-  if (result.failedModelPaused) {
-    if (result.providerErrorKind === "quota") {
+  if (failedOutcomes.length === 0) {
+    return {
+      title: "本轮顺序回复没有完整成功",
+      description: "这一轮里有模型未能成功完成回复，但没有返回完整的失败详情。",
+      suggestion: "请先重试一次；如果持续出现，建议查看右侧模型执行链和最近失败信息。",
+      tone: "warning",
+    };
+  }
+
+  if (failedOutcomes.length > 1) {
+    const pausedCount = failedOutcomes.filter((outcome) => outcome.paused).length;
+    const coolingCount = failedOutcomes.filter((outcome) => outcome.cooldownUntil).length;
+    const failedModelLabel = formatRoundOutcomeModelNames(failedOutcomes);
+
+    return {
+      title: `本轮已降级完成，${failedOutcomes.length} 个模型失败`,
+      description:
+        successfulCount > 0
+          ? `这一轮里，${successfulCount} 个健康模型已继续完成回复；失败的模型有 ${failedModelLabel}。`
+          : `这一轮里没有模型成功回复；失败的模型有 ${failedModelLabel}。`,
+      suggestion:
+        pausedCount > 0
+          ? `其中 ${pausedCount} 个模型已被自动暂停${coolingCount > 0 ? `，另有 ${coolingCount} 个模型已进入冷却` : ""}。建议优先检查这些模型的鉴权、额度和接口可用性，再决定是否重新启用。`
+          : coolingCount > 0
+            ? `失败模型已进入冷却，后续轮次会先跳过它们，剩余健康模型会继续降级运行。建议先观察右侧执行链，再决定是否停用或替换。`
+            : "建议优先查看右侧执行链中的最近失败信息，再决定是否停用或替换这些模型。",
+      tone: "warning",
+    };
+  }
+
+  const failedOutcome = failedOutcomes[0];
+  const failedModelName = failedOutcome.modelName;
+  const errorMessage = failedOutcome.error ?? "本轮顺序回复在中途停止。";
+  const fallbackFeedback = describeClientError(new Error(errorMessage));
+  const continuedReplySuffix = successfulCount > 0 ? " 其他健康模型已经继续完成本轮回复。" : "";
+  const unsupportedProvider = extractUnsupportedProviderName(errorMessage);
+
+  if (unsupportedProvider || errorMessage.toLowerCase().includes("is not supported in the mvp yet")) {
+    const providerLabel = getProviderProtocolLabel(unsupportedProvider);
+
+    return {
+      title: `${failedModelName} 当前配置暂未接入`,
+      description: `系统检测到这个模型本轮走的是 ${providerLabel}，而当前 MVP 还没有接入这条原生调用链。${continuedReplySuffix}`,
+      suggestion:
+        "如果它本来应该是谷歌、OpenAI 兼容或其他已支持模型，请回到模型页检查 Provider 模板和 Base URL 是否选错；如果你确实要用这条原生接口，需要等对应适配接入后再启用。",
+      tone: "warning",
+    };
+  }
+
+  if (failedOutcome.paused) {
+    if (failedOutcome.providerErrorKind === "quota") {
       return {
         title: `${failedModelName} 已自动暂停`,
-        description: result.failedModelPauseReason ?? errorMessage,
-        suggestion: "该模型很可能已经用完 token、额度或账单余额。请先到对应平台检查配额/充值，再回到模型页重新启用。",
+        description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
+        suggestion:
+          "该模型很可能已经用完 token、额度或账单余额。请先到对应平台检查配额/充值，再回到模型页重新启用。",
         tone: "warning",
       };
     }
 
-    if (result.providerErrorKind === "authentication") {
+    if (failedOutcome.providerErrorKind === "authentication") {
       return {
         title: `${failedModelName} 已自动暂停`,
-        description: result.failedModelPauseReason ?? errorMessage,
+        description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
         suggestion: "请先修正 API Key 或鉴权配置，再回到模型页重新启用该模型。",
         tone: "warning",
       };
     }
 
-    if (result.providerErrorKind === "not_found") {
+    if (failedOutcome.providerErrorKind === "not_found") {
       return {
         title: `${failedModelName} 已自动暂停`,
-        description: result.failedModelPauseReason ?? errorMessage,
+        description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
         suggestion: "请检查模型 ID、Base URL 和 Provider 模板是否匹配，确认无误后再重新启用。",
         tone: "warning",
       };
     }
 
-    if (result.providerErrorKind === "reasoning_only") {
+    if (failedOutcome.providerErrorKind === "reasoning_only") {
       return {
         title: `${failedModelName} 已自动暂停`,
-        description: result.failedModelPauseReason ?? errorMessage,
+        description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
         suggestion: "该模型连续只返回推理内容，没有给出最终答案。像“1”“继续”这类超短输入更容易触发。建议改成更完整的问题，确认兼容后再重新启用。",
         tone: "warning",
       };
     }
 
-    if (result.providerErrorKind === "empty_response") {
+    if (failedOutcome.providerErrorKind === "empty_response") {
       return {
         title: `${failedModelName} 已自动暂停`,
-        description: result.failedModelPauseReason ?? errorMessage,
+        description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
         suggestion: "该模型连续返回空答案，系统已先暂停它。请检查平台状态、模型兼容性，确认恢复后再重新启用。",
         tone: "warning",
       };
@@ -675,28 +824,28 @@ export function describePartialSendResult(
 
     return {
       title: `${failedModelName} 已自动暂停`,
-      description: result.failedModelPauseReason ?? errorMessage,
+      description: `${failedOutcome.pauseReason ?? errorMessage}${continuedReplySuffix}`,
       suggestion: "该模型当前返回异常或不稳定，系统已先暂停它，避免继续影响房间回复。请检查平台状态、模型兼容性，确认恢复后再重新启用。",
       tone: "warning",
     };
   }
 
-  if (result.providerErrorKind === "reasoning_only") {
+  if (failedOutcome.providerErrorKind === "reasoning_only") {
     return {
       title: `${failedModelName} 只返回了推理内容`,
-      description: errorMessage,
+      description: `${errorMessage}${continuedReplySuffix}`,
       suggestion: "这种情况在“1”“继续”“嗯”等超短输入时更容易出现。请优先改成更完整的问题，或重试一次。",
       tone: "warning",
     };
   }
 
-  if (result.providerErrorKind === "empty_response") {
-    const diagnosticSuffix = formatProviderResponseDetails(result.providerErrorDetails);
+  if (failedOutcome.providerErrorKind === "empty_response") {
+    const diagnosticSuffix = formatProviderResponseDetails(failedOutcome.providerErrorDetails);
     const detailDescription =
-      typeof result.providerErrorDetails?.completionTokens === "number" &&
-      result.providerErrorDetails.completionTokens === 0
-        ? `上游接口已响应，但没有生成任何正文内容${diagnosticSuffix}。`
-        : errorMessage;
+      typeof failedOutcome.providerErrorDetails?.completionTokens === "number" &&
+      failedOutcome.providerErrorDetails.completionTokens === 0
+        ? `上游接口已响应，但没有生成任何正文内容${diagnosticSuffix}。${continuedReplySuffix}`
+        : `${errorMessage}${continuedReplySuffix}`;
 
     return {
       title: `${failedModelName} 未返回可用答案`,
@@ -707,10 +856,61 @@ export function describePartialSendResult(
     };
   }
 
+  if (failedOutcome.providerErrorKind === "network" && isTimeoutLikeMessage(errorMessage)) {
+    const cooldownSuffix = failedOutcome.cooldownUntil
+      ? ` 系统已先把它冷却到 ${formatDate(failedOutcome.cooldownUntil)}，后续轮次会暂时跳过它。`
+      : "";
+
+    return {
+      title: `${failedModelName} 本轮请求超时`,
+      description: `${errorMessage}${continuedReplySuffix}`,
+      suggestion: `该模型在本轮等待上游响应时超时了。可以先重试一次；如果连续出现，建议在模型页先停用它，或换成更快、更稳定的模型。${cooldownSuffix}`,
+      tone: "warning",
+    };
+  }
+
   return {
     title: `${failedModelName} 未完成本轮回复`,
-    description: errorMessage,
+    description: `${errorMessage}${continuedReplySuffix}`,
     suggestion: fallbackFeedback.suggestion,
+    tone: "warning",
+  };
+}
+
+function formatSkippedModelsLabel(result: SendRoomMessageResult) {
+  if (!result.skippedModels || result.skippedModels.length === 0) {
+    return null;
+  }
+
+  const labels = result.skippedModels.slice(0, 3).map((model) => {
+    if (model.reason === "cooldown") {
+      return model.availableAt ? `${model.name}（冷却至 ${formatDate(model.availableAt)}）` : `${model.name}（冷却中）`;
+    }
+
+    return `${model.name}（已停用）`;
+  });
+
+  return `${labels.join("、")}${result.skippedModels.length > 3 ? " 等模型" : ""}`;
+}
+
+export function describeSkippedModelsResult(result: SendRoomMessageResult): ClientErrorFeedback | null {
+  if (!result.skippedModels || result.skippedModels.length === 0) {
+    return null;
+  }
+
+  const skippedLabel = formatSkippedModelsLabel(result);
+  const cooldownCount = result.skippedModels.filter((model) => model.reason === "cooldown").length;
+  const disabledCount = result.skippedModels.length - cooldownCount;
+
+  return {
+    title: cooldownCount > 0 ? "本轮已跳过冷却中的模型" : "本轮已跳过不可用模型",
+    description: skippedLabel
+      ? `为了让健康模型继续回复，这一轮暂时跳过了 ${skippedLabel}。`
+      : "为了让健康模型继续回复，这一轮暂时跳过了部分不可用模型。",
+    suggestion:
+      cooldownCount > 0
+        ? `当前有 ${cooldownCount} 个模型处于冷却中${disabledCount > 0 ? `，另有 ${disabledCount} 个模型已停用` : ""}。它们恢复前，房间会继续以剩余健康模型降级运行。`
+        : "当前有模型已停用。你可以去模型页重新启用，或继续让剩余健康模型参与当前房间。",
     tone: "warning",
   };
 }
@@ -811,14 +1011,22 @@ export function findNextUserMessageAfterSequence(messages: MessageView[], baseli
   return messages.find((message) => message.role === "USER" && message.sequence > baselineSequence) ?? null;
 }
 
-export function countAssistantRepliesForUserMessage(messages: MessageView[], userSequence: number) {
+export function listAssistantRepliesForUserMessage(messages: MessageView[], userSequence: number) {
   const nextUserMessage = messages.find((message) => message.role === "USER" && message.sequence > userSequence);
   const nextUserSequence = nextUserMessage?.sequence ?? Number.POSITIVE_INFINITY;
 
   return messages.filter(
     (message) =>
       message.role === "ASSISTANT" && message.sequence > userSequence && message.sequence < nextUserSequence,
-  ).length;
+  );
+}
+
+export function countAssistantRepliesForUserMessage(messages: MessageView[], userSequence: number) {
+  return listAssistantRepliesForUserMessage(messages, userSequence).length;
+}
+
+export function listAssistantReplyModelIdsForUserMessage(messages: MessageView[], userSequence: number) {
+  return [...new Set(listAssistantRepliesForUserMessage(messages, userSequence).map((message) => message.modelId).filter((modelId): modelId is string => Boolean(modelId)))];
 }
 
 export type UserMessageRoundStatus = "sent" | "awaiting" | "in-progress" | "partial" | "completed";

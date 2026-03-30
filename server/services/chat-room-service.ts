@@ -1,5 +1,11 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { RoomType } from "@/generated/prisma/enums";
+import { MessageRole, RoomModelExecutionState, RoomType } from "@/generated/prisma/enums";
+import {
+  getRoomModelCooldownBackoffMaxMultiplier,
+  getRoomModelCooldownSeconds,
+  getRoomModelNetworkCooldownSeconds,
+} from "@/lib/runtime";
 import { ApiError } from "@/server/http/api-error";
 
 export interface CreateChatRoomInput {
@@ -39,6 +45,56 @@ const roomInclude = {
     },
   },
 };
+
+interface RoomModelReplyMetrics {
+  replyCount: number;
+  totalReplyDurationMs: number;
+  averageReplyDurationMs: number | null;
+  totalQueueDurationMs: number;
+  averageQueueDurationMs: number | null;
+  totalProviderRequestDurationMs: number;
+  averageProviderRequestDurationMs: number | null;
+  timeoutCount: number;
+}
+
+type RoomRecord = Prisma.ChatRoomGetPayload<{
+  include: typeof roomInclude;
+}> & {
+  roomModelReplyMetrics?: Record<string, RoomModelReplyMetrics>;
+};
+
+function buildExpiredCooldownRoomModelWhereInput(now: Date, roomIds?: string[]) {
+  const where: Prisma.ChatRoomModelWhereInput = {
+    executionState: RoomModelExecutionState.COOLDOWN,
+    cooldownUntil: {
+      lte: now,
+    },
+  };
+
+  if (roomIds && roomIds.length > 0) {
+    where.roomId = {
+      in: roomIds,
+    };
+  }
+
+  return where;
+}
+
+export function resolveRoomModelExecutionState(
+  executionState: `${RoomModelExecutionState}`,
+  cooldownUntil: Date | null,
+  now = new Date(),
+) {
+  if (
+    executionState === RoomModelExecutionState.COOLDOWN &&
+    cooldownUntil instanceof Date &&
+    cooldownUntil.getTime() <= now.getTime()
+  ) {
+    return RoomModelExecutionState.HALF_OPEN;
+  }
+
+  return executionState;
+}
 
 export function buildReorderSortPlan(modelIds: string[]) {
   const offset = modelIds.length;
@@ -101,6 +157,70 @@ export function normalizeRoomSelection(type: keyof typeof RoomType, modelIds: st
   return uniqueIds;
 }
 
+type RoomReplyMetricsSourceMessage = {
+  roomId: string;
+  modelId: string | null;
+  replyDurationMs: number | null;
+  queueDurationMs?: number | null;
+  providerRequestDurationMs?: number | null;
+};
+
+export function buildRoomReplyMetricsMapFromMessages(messages: RoomReplyMetricsSourceMessage[]) {
+  const metricsByRoom = new Map<string, Record<string, RoomModelReplyMetrics>>();
+  const queueCountsByRoomModel = new Map<string, number>();
+  const providerCountsByRoomModel = new Map<string, number>();
+
+  for (const message of messages) {
+    if (!message.modelId || typeof message.replyDurationMs !== "number") {
+      continue;
+    }
+
+    const roomMetrics = metricsByRoom.get(message.roomId) ?? {};
+    const existingMetrics = roomMetrics[message.modelId] ?? {
+      replyCount: 0,
+      totalReplyDurationMs: 0,
+      averageReplyDurationMs: null,
+      totalQueueDurationMs: 0,
+      averageQueueDurationMs: null,
+      totalProviderRequestDurationMs: 0,
+      averageProviderRequestDurationMs: null,
+      timeoutCount: 0,
+    };
+    const replyCount = existingMetrics.replyCount + 1;
+    const totalReplyDurationMs = existingMetrics.totalReplyDurationMs + message.replyDurationMs;
+    const roomModelKey = `${message.roomId}:${message.modelId}`;
+    const nextTotalQueueDurationMs =
+      existingMetrics.totalQueueDurationMs + (typeof message.queueDurationMs === "number" ? message.queueDurationMs : 0);
+    const nextTotalProviderRequestDurationMs =
+      existingMetrics.totalProviderRequestDurationMs +
+      (typeof message.providerRequestDurationMs === "number" ? message.providerRequestDurationMs : 0);
+    const queueCount =
+      (queueCountsByRoomModel.get(roomModelKey) ?? 0) + (typeof message.queueDurationMs === "number" ? 1 : 0);
+    const providerCount =
+      (providerCountsByRoomModel.get(roomModelKey) ?? 0) +
+      (typeof message.providerRequestDurationMs === "number" ? 1 : 0);
+
+    queueCountsByRoomModel.set(roomModelKey, queueCount);
+    providerCountsByRoomModel.set(roomModelKey, providerCount);
+
+    roomMetrics[message.modelId] = {
+      replyCount,
+      totalReplyDurationMs,
+      averageReplyDurationMs: totalReplyDurationMs / replyCount,
+      totalQueueDurationMs: nextTotalQueueDurationMs,
+      averageQueueDurationMs: queueCount > 0 ? nextTotalQueueDurationMs / queueCount : null,
+      totalProviderRequestDurationMs: nextTotalProviderRequestDurationMs,
+      averageProviderRequestDurationMs:
+        providerCount > 0 ? nextTotalProviderRequestDurationMs / providerCount : null,
+      timeoutCount: existingMetrics.timeoutCount,
+    };
+
+    metricsByRoom.set(message.roomId, roomMetrics);
+  }
+
+  return metricsByRoom;
+}
+
 async function requireEnabledModels(modelIds: string[]) {
   const models = await prisma.modelConfig.findMany({
     where: {
@@ -121,13 +241,79 @@ async function requireEnabledModels(modelIds: string[]) {
   return models;
 }
 
+async function buildRoomReplyMetricsMap(roomIds: string[]) {
+  if (roomIds.length === 0) {
+    return new Map<string, Record<string, RoomModelReplyMetrics>>();
+  }
+
+  const messages = await prisma.message.findMany({
+    where: {
+      roomId: {
+        in: roomIds,
+      },
+      role: MessageRole.ASSISTANT,
+      modelId: {
+        not: null,
+      },
+      replyDurationMs: {
+        not: null,
+      },
+    },
+    select: {
+      roomId: true,
+      modelId: true,
+      replyDurationMs: true,
+      queueDurationMs: true,
+      providerRequestDurationMs: true,
+    },
+  });
+
+  return buildRoomReplyMetricsMapFromMessages(messages);
+}
+
+async function attachReplyMetricsToRooms(rooms: RoomRecord[]) {
+  const metricsByRoom = await buildRoomReplyMetricsMap(rooms.map((room) => room.id));
+
+  return rooms.map((room) => ({
+    ...room,
+    roomModelReplyMetrics: metricsByRoom.get(room.id) ?? {},
+  }));
+}
+
+async function attachReplyMetricsToRoom(room: RoomRecord) {
+  const [nextRoom] = await attachReplyMetricsToRooms([room]);
+  return nextRoom;
+}
+
+async function attachReplyMetricsToOptionalRoom(room: RoomRecord | null) {
+  if (!room) {
+    return null;
+  }
+
+  return attachReplyMetricsToRoom(room);
+}
+
+async function normalizeExpiredRoomModelCooldownStates(roomIds?: string[], now = new Date()) {
+  await prisma.chatRoomModel.updateMany({
+    where: buildExpiredCooldownRoomModelWhereInput(now, roomIds),
+    data: {
+      executionState: RoomModelExecutionState.HALF_OPEN,
+      cooldownUntil: null,
+    },
+  });
+}
+
 export async function listChatRooms() {
-  return prisma.chatRoom.findMany({
+  await normalizeExpiredRoomModelCooldownStates();
+
+  const rooms = await prisma.chatRoom.findMany({
     include: roomInclude,
     orderBy: {
       updatedAt: "desc",
     },
   });
+
+  return attachReplyMetricsToRooms(rooms);
 }
 
 export async function createChatRoom(input: CreateChatRoomInput) {
@@ -151,17 +337,151 @@ export async function createChatRoom(input: CreateChatRoomInput) {
       })),
     });
 
-    return transaction.chatRoom.findUniqueOrThrow({
+    const nextRoom = await transaction.chatRoom.findUniqueOrThrow({
       where: { id: room.id },
       include: roomInclude,
     });
+
+    return attachReplyMetricsToRoom(nextRoom);
   });
 }
 
 export async function getChatRoomById(roomId: string) {
-  return prisma.chatRoom.findUnique({
+  await normalizeExpiredRoomModelCooldownStates([roomId]);
+
+  const room = await prisma.chatRoom.findUnique({
     where: { id: roomId },
     include: roomInclude,
+  });
+
+  return attachReplyMetricsToOptionalRoom(room);
+}
+
+export async function incrementRoomModelTimeoutCount(roomId: string, modelId: string) {
+  await prisma.chatRoomModel.updateMany({
+    where: {
+      roomId,
+      modelId,
+    },
+    data: {
+      timeoutCount: {
+        increment: 1,
+      },
+    },
+  });
+}
+
+export async function recordRoomModelFailure(
+  roomId: string,
+  modelId: string,
+  failure: {
+    kind: string;
+    message: string;
+    occurredAt: Date;
+  },
+) {
+  await prisma.chatRoomModel.updateMany({
+    where: {
+      roomId,
+      modelId,
+    },
+    data: {
+      lastFailureKind: failure.kind,
+      lastFailureMessage: failure.message,
+      lastFailureAt: failure.occurredAt,
+    },
+  });
+}
+
+function getRoomModelCooldownBackoffMultiplier(consecutiveFailureCount: number) {
+  const normalizedCount = Math.max(1, consecutiveFailureCount);
+  return Math.min(2 ** (normalizedCount - 1), getRoomModelCooldownBackoffMaxMultiplier());
+}
+
+function getCooldownDurationSecondsForFailureKind(kind: string, consecutiveFailureCount: number) {
+  const baseCooldownSeconds = kind === "network" ? getRoomModelNetworkCooldownSeconds() : getRoomModelCooldownSeconds();
+  return baseCooldownSeconds * getRoomModelCooldownBackoffMultiplier(consecutiveFailureCount);
+}
+
+export function buildRoomModelCooldownUntil(kind: string, occurredAt: Date, consecutiveFailureCount = 1) {
+  return new Date(occurredAt.getTime() + getCooldownDurationSecondsForFailureKind(kind, consecutiveFailureCount) * 1000);
+}
+
+export async function markRoomModelInCooldown(
+  roomId: string,
+  modelId: string,
+  failure: {
+    kind: string;
+    message: string;
+    occurredAt: Date;
+  },
+) {
+  return prisma.$transaction(async (transaction) => {
+    const roomModel = await transaction.chatRoomModel.findFirst({
+      where: {
+        roomId,
+        modelId,
+      },
+      select: {
+        consecutiveFailureCount: true,
+      },
+    });
+    const nextConsecutiveFailureCount = (roomModel?.consecutiveFailureCount ?? 0) + 1;
+    const cooldownUntil = buildRoomModelCooldownUntil(failure.kind, failure.occurredAt, nextConsecutiveFailureCount);
+
+    await transaction.chatRoomModel.updateMany({
+      where: {
+        roomId,
+        modelId,
+      },
+      data: {
+        executionState: RoomModelExecutionState.COOLDOWN,
+        cooldownUntil,
+        consecutiveFailureCount: nextConsecutiveFailureCount,
+        lastFailureKind: failure.kind,
+        lastFailureMessage: failure.message,
+        lastFailureAt: failure.occurredAt,
+      },
+    });
+
+    return cooldownUntil;
+  });
+}
+
+export async function clearRoomModelFailure(roomId: string, modelId: string) {
+  await prisma.$transaction(async (transaction) => {
+    const roomModel = await transaction.chatRoomModel.findFirst({
+      where: {
+        roomId,
+        modelId,
+      },
+      select: {
+        executionState: true,
+        consecutiveFailureCount: true,
+      },
+    });
+    const now = new Date();
+    const shouldRecordRecovery =
+      roomModel?.executionState === RoomModelExecutionState.HALF_OPEN ||
+      roomModel?.executionState === RoomModelExecutionState.COOLDOWN ||
+      (roomModel?.consecutiveFailureCount ?? 0) > 0;
+
+    await transaction.chatRoomModel.updateMany({
+      where: {
+        roomId,
+        modelId,
+      },
+      data: {
+        executionState: RoomModelExecutionState.ACTIVE,
+        cooldownUntil: null,
+        consecutiveFailureCount: 0,
+        lastFailureKind: null,
+        lastFailureMessage: null,
+        lastFailureAt: null,
+        lastSuccessAt: now,
+        ...(shouldRecordRecovery ? { lastRecoveryAt: now } : {}),
+      },
+    });
   });
 }
 
@@ -175,13 +495,15 @@ export async function updateChatRoom(roomId: string, input: UpdateChatRoomInput)
     throw new ApiError(404, `Room ${roomId} was not found.`);
   }
 
-  return prisma.chatRoom.update({
+  const room = await prisma.chatRoom.update({
     where: { id: roomId },
     data: {
       title: input.title ? requireTitle(input.title) : undefined,
     },
     include: roomInclude,
   });
+
+  return attachReplyMetricsToRoom(room);
 }
 
 export async function deleteChatRoom(roomId: string) {
@@ -224,10 +546,12 @@ export async function reconfigureChatRoom(roomId: string, input: ReconfigureChat
       })),
     });
 
-    return transaction.chatRoom.findUniqueOrThrow({
+    const nextRoom = await transaction.chatRoom.findUniqueOrThrow({
       where: { id: roomId },
       include: roomInclude,
     });
+
+    return attachReplyMetricsToRoom(nextRoom);
   });
 }
 
@@ -284,9 +608,11 @@ export async function reorderChatRoomModels(roomId: string, modelIds: string[]) 
       },
     });
 
-    return transaction.chatRoom.findUniqueOrThrow({
+    const nextRoom = await transaction.chatRoom.findUniqueOrThrow({
       where: { id: roomId },
       include: roomInclude,
     });
+
+    return attachReplyMetricsToRoom(nextRoom);
   });
 }

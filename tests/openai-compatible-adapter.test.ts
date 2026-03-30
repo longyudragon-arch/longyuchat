@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { OpenAiCompatibleAdapter, createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
+import { OpenAiCompatibleAdapter, createModelAdapter, resolveProviderRequestTimeoutMs } from "@/server/adapters/openai-compatible-adapter";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
 const runtimeConfig: ModelRuntimeConfig = {
@@ -25,6 +25,10 @@ describe("OpenAiCompatibleAdapter", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    delete process.env.ENABLE_REPLY_REWRITE_PASS;
+    delete process.env.ENABLE_REASONING_ONLY_RESPONSE_RETRY;
+    delete process.env.PROVIDER_REQUEST_TIMEOUT_MS;
+    delete process.env.BIGMODEL_REQUEST_TIMEOUT_MS;
   });
 
   it("tests connectivity through the OpenAI-compatible chat completions endpoint", async () => {
@@ -83,9 +87,60 @@ describe("OpenAiCompatibleAdapter", () => {
     });
 
     expect(result.content).toBe("Hello world");
+    expect(result.replyTiming).toEqual({
+      queueDurationMs: null,
+      providerRequestDurationMs: expect.any(Number),
+      providerAttemptCount: 1,
+      recoveryRequestDurationMs: null,
+      rewriteRequestDurationMs: null,
+      persistenceDurationMs: null,
+    });
   });
 
-  it("rewrites overly long replies with the Chinese default-language instruction", async () => {
+  it("deterministically trims overly long replies by default without a second upstream rewrite request", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createSuccessResponse({
+          choices: [
+            {
+              message: {
+                content: "这是一段明显超过限制的回复，需要再次压缩。".repeat(30),
+              },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createSuccessResponse({
+          choices: [
+            {
+              message: {
+                content: "压缩后的中文回复",
+              },
+            },
+          ],
+        }),
+      );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OpenAiCompatibleAdapter();
+    const result = await adapter.generateReply({
+      config: {
+        ...runtimeConfig,
+        defaultReplyLength: 20,
+      },
+      messages: [{ role: "user", content: "请简短回答" }],
+    });
+
+    expect(result.content).toHaveLength(20);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("can still rewrite overly long replies when the rewrite pass is explicitly enabled", async () => {
+    process.env.ENABLE_REPLY_REWRITE_PASS = "true";
+
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -124,7 +179,14 @@ describe("OpenAiCompatibleAdapter", () => {
 
     expect(result.content).toBe("压缩后的中文回复");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-
+    expect(result.replyTiming).toEqual({
+      queueDurationMs: null,
+      providerRequestDurationMs: expect.any(Number),
+      providerAttemptCount: 2,
+      recoveryRequestDurationMs: null,
+      rewriteRequestDurationMs: expect.any(Number),
+      persistenceDurationMs: null,
+    });
     const rewritePayload = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
     expect(rewritePayload.messages[0]?.content).toContain("默认使用简体中文");
     expect(rewritePayload.messages[1]?.content).toContain("待改写草稿");
@@ -188,6 +250,14 @@ describe("OpenAiCompatibleAdapter", () => {
 
     expect(result.content).toBe("Recovered final answer");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.replyTiming).toEqual({
+      queueDurationMs: null,
+      providerRequestDurationMs: expect.any(Number),
+      providerAttemptCount: 2,
+      recoveryRequestDurationMs: expect.any(Number),
+      rewriteRequestDurationMs: null,
+      persistenceDurationMs: null,
+    });
 
     const retryPayload = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
     expect(retryPayload.max_tokens).toBeGreaterThan(360);
@@ -261,6 +331,44 @@ describe("OpenAiCompatibleAdapter", () => {
     });
   });
 
+  it("fails fast for empty responses without reasoning instead of spending a second upstream retry", async () => {
+    const fetchMock = vi.fn(async () =>
+      createSuccessResponse({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: "",
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 80,
+          completion_tokens: 0,
+        },
+      }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const adapter = new OpenAiCompatibleAdapter();
+
+    await expect(
+      adapter.generateReply({
+        config: runtimeConfig,
+        messages: [{ role: "user", content: "Hello" }],
+      }),
+    ).rejects.toMatchObject({
+      status: 502,
+      details: expect.objectContaining({
+        providerErrorKind: "empty_response",
+        attemptCount: 1,
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("reuses the OpenAI-compatible adapter for compatible providers", () => {
     const providerConfigs = [
       {
@@ -295,6 +403,17 @@ describe("OpenAiCompatibleAdapter", () => {
 
       expect(adapter).toBeInstanceOf(OpenAiCompatibleAdapter);
     }
+  });
+
+  it("uses a longer timeout budget for BigModel-compatible endpoints", () => {
+    expect(
+      resolveProviderRequestTimeoutMs({
+        ...runtimeConfig,
+        baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+      }),
+    ).toBe(150_000);
+
+    expect(resolveProviderRequestTimeoutMs(runtimeConfig)).toBe(120_000);
   });
 
   it("surfaces upstream API key failures as authentication errors", async () => {

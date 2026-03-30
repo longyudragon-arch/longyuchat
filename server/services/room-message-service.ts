@@ -1,13 +1,25 @@
 import type { ChatRoom, ChatRoomModel, Message, ModelConfig } from "@/generated/prisma/client";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
-import { inferProviderErrorKindFromMessage, shouldPauseModelOnProviderErrorKind } from "@/server/http/provider-error";
+import {
+  inferProviderErrorKindFromMessage,
+  isProviderTimeoutLikeMessage,
+  shouldPauseModelOnProviderErrorKind,
+} from "@/server/http/provider-error";
 import { logServerEvent } from "@/server/observability/server-logger";
 import { runSequentialConversation } from "@/server/orchestrators/conversation-orchestrator";
-import { getChatRoomById } from "@/server/services/chat-room-service";
+import {
+  buildRoomModelCooldownUntil,
+  clearRoomModelFailure,
+  getChatRoomById,
+  incrementRoomModelTimeoutCount,
+  markRoomModelInCooldown,
+  recordRoomModelFailure,
+  resolveRoomModelExecutionState,
+} from "@/server/services/chat-room-service";
 import { createAssistantMessage, createUserMessage, listMessagesByRoomId } from "@/server/services/message-service";
 import { pauseModelConfig, toModelRuntimeConfig } from "@/server/services/model-config-service";
-import type { ChatMessage } from "@/types/chat";
+import type { ChatMessage, ConversationHistoryMessage, ReplyTimingDetails } from "@/types/chat";
 
 type RoomWithModels = ChatRoom & {
   roomModels: Array<ChatRoomModel & { model: ModelConfig }>;
@@ -15,11 +27,44 @@ type RoomWithModels = ChatRoom & {
 
 interface SendRoomMessageDependencies {
   getRoomById: (roomId: string) => Promise<RoomWithModels | null>;
-  listMessagesByRoomId: (roomId: string) => Promise<Message[]>;
+  listMessagesByRoomId: (roomId: string) => Promise<Array<Message & { model?: ModelConfig | null }>>;
   createUserMessage: (roomId: string, content: string) => Promise<Message>;
-  createAssistantMessage: (roomId: string, modelId: string, content: string) => Promise<Message>;
+  createAssistantMessage: (
+    roomId: string,
+    modelId: string,
+    content: string,
+    replyDurationMs?: number | null,
+    speaker?: {
+      name: string;
+      provider: ModelConfig["provider"];
+      modelName: string;
+      avatarLabel: string;
+      avatarColor: string;
+    },
+    replyTiming?: ReplyTimingDetails | null,
+  ) => Promise<Message>;
   createAdapter: typeof createModelAdapter;
   pauseModel: (modelId: string, reason: string) => Promise<ModelConfig>;
+  recordRoomModelTimeout: (roomId: string, modelId: string) => Promise<void>;
+  recordRoomModelFailure: (
+    roomId: string,
+    modelId: string,
+    failure: {
+      kind: string;
+      message: string;
+      occurredAt: Date;
+    },
+  ) => Promise<void>;
+  markRoomModelInCooldown?: (
+    roomId: string,
+    modelId: string,
+    failure: {
+      kind: string;
+      message: string;
+      occurredAt: Date;
+    },
+  ) => Promise<Date>;
+  clearRoomModelFailure: (roomId: string, modelId: string) => Promise<void>;
 }
 
 const defaultDependencies: SendRoomMessageDependencies = {
@@ -29,14 +74,35 @@ const defaultDependencies: SendRoomMessageDependencies = {
   createAssistantMessage,
   createAdapter: createModelAdapter,
   pauseModel: pauseModelConfig,
+  recordRoomModelTimeout: incrementRoomModelTimeoutCount,
+  recordRoomModelFailure,
+  markRoomModelInCooldown,
+  clearRoomModelFailure,
 };
 
-function toHistoryMessage(message: Message): ChatMessage {
+const activeRoomSends = new Set<string>();
+
+function acquireRoomSendLock(roomId: string) {
+  if (activeRoomSends.has(roomId)) {
+    throw new ApiError(409, `Room ${roomId} is already processing another message. Please wait for the current round to finish.`);
+  }
+
+  activeRoomSends.add(roomId);
+
+  return () => {
+    activeRoomSends.delete(roomId);
+  };
+}
+
+function toHistoryMessage(message: Message & { model?: ModelConfig | null }): ConversationHistoryMessage {
   return {
-    role: message.role.toLowerCase() as ChatMessage["role"],
+    role: message.role.toLowerCase() as ConversationHistoryMessage["role"],
     content: message.content,
     modelId: message.modelId,
     sequence: message.sequence,
+    speakerName: message.speakerName ?? message.model?.name ?? null,
+    speakerProvider: message.speakerProvider ?? message.model?.provider ?? null,
+    speakerModelName: message.speakerModelName ?? message.model?.modelName ?? null,
   };
 }
 
@@ -49,13 +115,49 @@ function assertRunnableRoom(room: RoomWithModels | null, roomId: string) {
     throw new ApiError(400, `Room ${roomId} does not have any bound models.`);
   }
 
-  const disabledModel = room.roomModels.find((roomModel) => !roomModel.model.enabled);
-
-  if (disabledModel) {
-    throw new ApiError(409, `Model ${disabledModel.model.name} is disabled.`);
-  }
-
   return room;
+}
+
+function isRoomModelCoolingDown(roomModel: RoomWithModels["roomModels"][number], now: Date) {
+  return resolveRoomModelExecutionState(roomModel.executionState, roomModel.cooldownUntil, now) === "COOLDOWN";
+}
+
+function buildRunnableRoomSelection(room: RoomWithModels, now = new Date()) {
+  const normalizedRoomModels = room.roomModels.map((roomModel) => {
+    const effectiveExecutionState = resolveRoomModelExecutionState(roomModel.executionState, roomModel.cooldownUntil, now);
+
+    if (effectiveExecutionState === roomModel.executionState) {
+      return roomModel;
+    }
+
+    return {
+      ...roomModel,
+      executionState: effectiveExecutionState,
+      cooldownUntil: effectiveExecutionState === "COOLDOWN" ? roomModel.cooldownUntil : null,
+    };
+  });
+  const runnableRoomModels = normalizedRoomModels.filter(
+    (roomModel) => roomModel.model.enabled && !isRoomModelCoolingDown(roomModel, now),
+  );
+  const skippedRoomModels = room.roomModels
+    .filter((roomModel) => !runnableRoomModels.some((candidate) => candidate.id === roomModel.id))
+    .map((roomModel) => ({
+      modelId: roomModel.modelId,
+      name: roomModel.model.name,
+      reason: roomModel.model.enabled ? ("cooldown" as const) : ("disabled" as const),
+      availableAt:
+        roomModel.model.enabled && roomModel.cooldownUntil instanceof Date ? roomModel.cooldownUntil.toISOString() : null,
+    }));
+
+  return {
+    runnableRoomModels,
+    skippedRoomModels,
+    normalizedRoomModels,
+  };
+}
+
+function isTransientProviderFailure(kind: string) {
+  return kind === "network" || kind === "empty_response" || kind === "reasoning_only" || kind === "request";
 }
 
 function buildPauseReason(modelName: string, error: string, providerErrorKind: string) {
@@ -83,70 +185,228 @@ export async function sendRoomMessage(
   input: SendRoomMessageInput,
   dependencies: SendRoomMessageDependencies = defaultDependencies,
 ) {
-  const room = assertRunnableRoom(await dependencies.getRoomById(input.roomId), input.roomId);
-  const userMessage = await dependencies.createUserMessage(input.roomId, input.content);
-  const history = await dependencies.listMessagesByRoomId(input.roomId);
+  const releaseRoomSendLock = acquireRoomSendLock(input.roomId);
 
-  const result = await runSequentialConversation({
-    roomId: input.roomId,
-    history: history.map(toHistoryMessage),
-    models: room.roomModels.map((roomModel) => ({
-      modelId: roomModel.modelId,
-      sortOrder: roomModel.sortOrder,
-      config: toModelRuntimeConfig(roomModel.model),
-    })),
-    createAdapter: dependencies.createAdapter,
-    saveAssistantMessage: async ({ roomId, modelId, content }) => {
-      const message = await dependencies.createAssistantMessage(roomId, modelId, content);
+  try {
+    const room = assertRunnableRoom(await dependencies.getRoomById(input.roomId), input.roomId);
+    const { runnableRoomModels, skippedRoomModels, normalizedRoomModels } = buildRunnableRoomSelection(room);
 
-      return {
-        roomId: message.roomId,
-        role: message.role.toLowerCase() as ChatMessage["role"],
-        content: message.content,
-        modelId: message.modelId,
-        sequence: message.sequence,
-      };
-    },
-  });
-
-  const providerErrorKind = result.error
-    ? (result.providerErrorKind ?? inferProviderErrorKindFromMessage(result.error))
-    : undefined;
-
-  let failedModelPaused = false;
-  let failedModelPauseReason: string | undefined;
-
-  if (result.status === "partial" && result.failedModelId && result.error && providerErrorKind) {
-    const failedRoomModel = room.roomModels.find((roomModel) => roomModel.modelId === result.failedModelId);
-
-    if (failedRoomModel && shouldPauseModelOnProviderErrorKind(providerErrorKind)) {
-      failedModelPauseReason = buildPauseReason(failedRoomModel.model.name, result.error, providerErrorKind);
-
-      try {
-        await dependencies.pauseModel(result.failedModelId, failedModelPauseReason);
-        failedModelPaused = true;
-      } catch (pauseError) {
-        logServerEvent("error", "room_message_pause_failed", {
-          roomId: input.roomId,
-          failedModelId: result.failedModelId,
-          providerErrorKind,
-          pauseReason: failedModelPauseReason,
-          error: pauseError instanceof Error ? pauseError.message : "Unknown pause failure",
-        });
-      }
+    if (runnableRoomModels.length === 0) {
+      throw new ApiError(
+        409,
+        `Room ${input.roomId} does not currently have any runnable models. All models are disabled or cooling down.`,
+      );
     }
-  }
 
-  return {
-    roomId: input.roomId,
-    status: result.status,
-    userMessage,
-    assistantMessages: result.messages,
-    failedModelId: result.failedModelId,
-    error: result.error,
-    providerErrorKind,
-    providerErrorDetails: result.providerErrorDetails,
-    failedModelPaused,
-    failedModelPauseReason,
-  };
+    const userMessage = await dependencies.createUserMessage(input.roomId, input.content);
+    const history = await dependencies.listMessagesByRoomId(input.roomId);
+
+    const result = await runSequentialConversation({
+      roomId: input.roomId,
+      history: history.map(toHistoryMessage),
+      models: runnableRoomModels.map((roomModel) => ({
+        modelId: roomModel.modelId,
+        sortOrder: roomModel.sortOrder,
+        config: toModelRuntimeConfig(roomModel.model),
+      })),
+      createAdapter: dependencies.createAdapter,
+      saveAssistantMessage: async ({ roomId, modelId, content, replyDurationMs, replyTiming }) => {
+        const roomModel = normalizedRoomModels.find((entry) => entry.modelId === modelId);
+        const message = await dependencies.createAssistantMessage(
+          roomId,
+          modelId,
+          content,
+          replyDurationMs,
+          roomModel
+            ? {
+                name: roomModel.model.name,
+                provider: roomModel.model.provider,
+                modelName: roomModel.model.modelName,
+                avatarLabel: roomModel.model.avatarLabel,
+                avatarColor: roomModel.model.avatarColor,
+              }
+            : undefined,
+          replyTiming,
+        );
+
+        try {
+          await dependencies.clearRoomModelFailure(roomId, modelId);
+        } catch (clearFailureError) {
+          logServerEvent("warn", "room_message_failure_snapshot_clear_failed", {
+            roomId,
+            modelId,
+            error:
+              clearFailureError instanceof Error
+                ? clearFailureError.message
+                : "Unknown room model failure snapshot clear failure",
+          });
+        }
+
+        return {
+          roomId: message.roomId,
+          role: message.role.toLowerCase() as ChatMessage["role"],
+          content: message.content,
+          modelId: message.modelId,
+          sequence: message.sequence,
+          replyDurationMs: message.replyDurationMs,
+          replyTiming:
+            typeof message.queueDurationMs === "number" ||
+            typeof message.providerRequestDurationMs === "number" ||
+            typeof message.providerAttemptCount === "number" ||
+            typeof message.recoveryRequestDurationMs === "number" ||
+            typeof message.rewriteRequestDurationMs === "number" ||
+            typeof message.persistenceDurationMs === "number"
+              ? {
+                  queueDurationMs: message.queueDurationMs,
+                  providerRequestDurationMs: message.providerRequestDurationMs,
+                  providerAttemptCount: message.providerAttemptCount,
+                  recoveryRequestDurationMs: message.recoveryRequestDurationMs,
+                  rewriteRequestDurationMs: message.rewriteRequestDurationMs,
+                  persistenceDurationMs: message.persistenceDurationMs,
+                }
+              : null,
+          speakerName: message.speakerName ?? roomModel?.model.name ?? null,
+          speakerProvider: message.speakerProvider ?? roomModel?.model.provider ?? null,
+          speakerModelName: message.speakerModelName ?? roomModel?.model.modelName ?? null,
+        };
+      },
+    });
+
+    const markRoomModelInCooldownWithFallback =
+      dependencies.markRoomModelInCooldown ??
+      (async (
+        _roomId: string,
+        _modelId: string,
+        failure: {
+          kind: string;
+          message: string;
+          occurredAt: Date;
+        },
+      ) => buildRoomModelCooldownUntil(failure.kind, failure.occurredAt));
+    const roundOutcomes: Array<{
+      modelId: string;
+      modelName: string;
+      outcome: "replied" | "failed";
+      error?: string;
+      providerErrorKind?: string;
+      providerErrorDetails?: typeof result.roundOutcomes[number]["providerErrorDetails"];
+      paused?: boolean;
+      pauseReason?: string;
+      cooldownUntil?: string;
+    }> = [];
+
+    for (const outcome of result.roundOutcomes) {
+      const roomModel = normalizedRoomModels.find((entry) => entry.modelId === outcome.modelId);
+      const modelName = roomModel?.model.name ?? outcome.modelId;
+
+      if (outcome.outcome === "replied") {
+      roundOutcomes.push({
+        modelId: outcome.modelId,
+        modelName,
+        outcome: "replied",
+      });
+        continue;
+      }
+
+      const providerErrorKind =
+        outcome.providerErrorKind ?? (outcome.error ? inferProviderErrorKindFromMessage(outcome.error) : undefined);
+      let paused = false;
+      let pauseReason: string | undefined;
+      let cooldownUntil: string | undefined;
+
+      if (roomModel && outcome.error && providerErrorKind) {
+        const failureSnapshot = {
+          kind: providerErrorKind,
+          message: outcome.error,
+          occurredAt: new Date(),
+        };
+
+        try {
+          if (isTransientProviderFailure(providerErrorKind)) {
+            const nextCooldownUntil = await markRoomModelInCooldownWithFallback(
+              input.roomId,
+              outcome.modelId,
+              failureSnapshot,
+            );
+            cooldownUntil = nextCooldownUntil.toISOString();
+          } else {
+            await dependencies.recordRoomModelFailure(input.roomId, outcome.modelId, failureSnapshot);
+          }
+        } catch (recordFailureError) {
+          logServerEvent("warn", "room_message_failure_snapshot_record_failed", {
+            roomId: input.roomId,
+            failedModelId: outcome.modelId,
+            providerErrorKind,
+            error:
+              recordFailureError instanceof Error
+                ? recordFailureError.message
+                : "Unknown room model failure snapshot record failure",
+          });
+        }
+
+        if (providerErrorKind === "network" && isProviderTimeoutLikeMessage(outcome.error)) {
+          try {
+            await dependencies.recordRoomModelTimeout(input.roomId, outcome.modelId);
+          } catch (timeoutMetricError) {
+            logServerEvent("error", "room_message_timeout_metric_failed", {
+              roomId: input.roomId,
+              failedModelId: outcome.modelId,
+              error:
+                timeoutMetricError instanceof Error ? timeoutMetricError.message : "Unknown timeout metric failure",
+            });
+          }
+        }
+
+        if (shouldPauseModelOnProviderErrorKind(providerErrorKind)) {
+          pauseReason = buildPauseReason(roomModel.model.name, outcome.error, providerErrorKind);
+
+          try {
+            await dependencies.pauseModel(outcome.modelId, pauseReason);
+            paused = true;
+          } catch (pauseError) {
+            logServerEvent("error", "room_message_pause_failed", {
+              roomId: input.roomId,
+              failedModelId: outcome.modelId,
+              providerErrorKind,
+              pauseReason,
+              error: pauseError instanceof Error ? pauseError.message : "Unknown pause failure",
+            });
+          }
+        }
+      }
+
+      roundOutcomes.push({
+        modelId: outcome.modelId,
+        modelName,
+        outcome: "failed",
+        error: outcome.error,
+        providerErrorKind,
+        providerErrorDetails: outcome.providerErrorDetails,
+        paused,
+        pauseReason,
+        cooldownUntil,
+      });
+    }
+
+    const firstFailedOutcome = roundOutcomes.find((outcome) => outcome.outcome === "failed");
+    const firstFailureProviderErrorKind = firstFailedOutcome?.providerErrorKind;
+
+    return {
+      roomId: input.roomId,
+      status: result.status,
+      userMessage,
+      assistantMessages: result.messages,
+      roundOutcomes,
+      skippedModels: skippedRoomModels,
+      failedModelId: firstFailedOutcome?.modelId,
+      error: firstFailedOutcome?.error,
+      providerErrorKind: firstFailureProviderErrorKind,
+      providerErrorDetails: firstFailedOutcome?.providerErrorDetails,
+      failedModelPaused: firstFailedOutcome?.paused ?? false,
+      failedModelPauseReason: firstFailedOutcome?.pauseReason,
+      failedModelCooldownUntil: firstFailedOutcome?.cooldownUntil,
+    };
+  } finally {
+    releaseRoomSendLock();
+  }
 }

@@ -154,7 +154,7 @@ describe("requestProvider", () => {
         }),
       }),
     ).rejects.toThrow(
-      "Could not reach https://api.openai.com/v1/chat/completions. Node network connection timed out before the provider responded. PowerShell fallback also failed: PowerShell HttpClient timed out.",
+      "Could not reach https://api.openai.com/v1/chat/completions. Provider request timed out after 120s before the provider responded. PowerShell fallback also failed: PowerShell HttpClient timed out.",
     );
   });
 });

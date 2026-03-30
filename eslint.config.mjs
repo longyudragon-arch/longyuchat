@@ -5,8 +5,18 @@ import nextTypescript from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTypescript,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "generated/**"]),
+  globalIgnores([
+    ".next/**",
+    "**/.next/**",
+    ".worktrees/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "generated/**",
+    "stitch_handoff/**",
+    "stitch_new_project/**",
+    "_stitch_export/**",
+  ]),
 ]);
 
 export default eslintConfig;
-

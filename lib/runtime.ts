@@ -152,3 +152,49 @@ export function areDevMocksEnabledForClient(
 
   return nodeEnv !== "production";
 }
+
+export function getProviderRequestTimeoutMs(explicitValue = process.env.PROVIDER_REQUEST_TIMEOUT_MS) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 120_000;
+}
+
+export function getBigModelRequestTimeoutMs(explicitValue = process.env.BIGMODEL_REQUEST_TIMEOUT_MS) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 150_000;
+}
+
+export function isReplyRewritePassEnabled(explicitValue = process.env.ENABLE_REPLY_REWRITE_PASS) {
+  return parseBooleanEnv(explicitValue) ?? false;
+}
+
+export function shouldRetryReasoningOnlyResponses(
+  explicitValue = process.env.ENABLE_REASONING_ONLY_RESPONSE_RETRY,
+) {
+  return parseBooleanEnv(explicitValue) ?? true;
+}
+
+export function getConversationHistoryWindowBeforeLatestUserMessages(
+  explicitValue = process.env.CONVERSATION_HISTORY_WINDOW_BEFORE_LATEST_USER_MESSAGES,
+) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 8;
+}
+
+export function getConversationHistoryContextTokenBudget(
+  explicitValue = process.env.CONVERSATION_HISTORY_CONTEXT_TOKEN_BUDGET,
+) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 2400;
+}
+
+export function getRoomModelCooldownSeconds(explicitValue = process.env.ROOM_MODEL_COOLDOWN_SECONDS) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 600;
+}
+
+export function getRoomModelNetworkCooldownSeconds(
+  explicitValue = process.env.ROOM_MODEL_NETWORK_COOLDOWN_SECONDS,
+) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 900;
+}
+
+export function getRoomModelCooldownBackoffMaxMultiplier(
+  explicitValue = process.env.ROOM_MODEL_COOLDOWN_BACKOFF_MAX_MULTIPLIER,
+) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 4;
+}

@@ -45,8 +45,23 @@ type SafeProviderConnection = Omit<
   } | null;
 };
 
-type SafeRoomModel = Omit<ChatRoomModel, "model"> & {
+type SafeRoomModel = Omit<ChatRoomModel, "model" | "lastFailureKind" | "lastFailureMessage" | "lastFailureAt"> & {
   model: SafeModelConfig;
+  lastFailure: {
+    kind: string;
+    message: string;
+    occurredAt: Date;
+  } | null;
+  replyMetrics: {
+    replyCount: number;
+    totalReplyDurationMs: number;
+    averageReplyDurationMs: number | null;
+    totalQueueDurationMs: number;
+    averageQueueDurationMs: number | null;
+    totalProviderRequestDurationMs: number;
+    averageProviderRequestDurationMs: number | null;
+    timeoutCount: number;
+  };
 };
 
 type RoomWithModels = ChatRoom & {
@@ -55,9 +70,35 @@ type RoomWithModels = ChatRoom & {
   _count: {
     messages: number;
   };
+  roomModelReplyMetrics?: Record<
+    string,
+    {
+      replyCount: number;
+      totalReplyDurationMs: number;
+      averageReplyDurationMs: number | null;
+      totalQueueDurationMs: number;
+      averageQueueDurationMs: number | null;
+      totalProviderRequestDurationMs: number;
+      averageProviderRequestDurationMs: number | null;
+      timeoutCount: number;
+    }
+  >;
 };
 
 type MessageWithModel = Message & {
+  model: ModelConfig | null;
+};
+
+type MessageSnapshotSource = Pick<
+  Message,
+  | "id"
+  | "modelId"
+  | "speakerName"
+  | "speakerProvider"
+  | "speakerModelName"
+  | "speakerAvatarLabel"
+  | "speakerAvatarColor"
+> & {
   model: ModelConfig | null;
 };
 
@@ -162,6 +203,29 @@ export function presentRoom(room: RoomWithModels) {
     roomModels: room.roomModels.map<SafeRoomModel>((roomModel) => ({
       ...roomModel,
       model: presentModelConfig(roomModel.model),
+      lastSuccessAt: roomModel.lastSuccessAt,
+      lastRecoveryAt: roomModel.lastRecoveryAt,
+      lastFailure:
+        roomModel.lastFailureKind && roomModel.lastFailureMessage && roomModel.lastFailureAt
+          ? {
+              kind: roomModel.lastFailureKind,
+              message: roomModel.lastFailureMessage,
+              occurredAt: roomModel.lastFailureAt,
+            }
+          : null,
+      replyMetrics: {
+        ...(room.roomModelReplyMetrics?.[roomModel.modelId] ?? {
+          replyCount: 0,
+          totalReplyDurationMs: 0,
+          averageReplyDurationMs: null,
+          totalQueueDurationMs: 0,
+          averageQueueDurationMs: null,
+          totalProviderRequestDurationMs: 0,
+          averageProviderRequestDurationMs: null,
+          timeoutCount: 0,
+        }),
+        timeoutCount: roomModel.timeoutCount,
+      },
     })),
   };
 }
@@ -170,26 +234,54 @@ export function presentRoomList(rooms: RoomWithModels[]) {
   return rooms.map(presentRoom);
 }
 
-function presentMessageModelSnapshot(model: ModelConfig | null) {
-  if (!model) {
+function presentMessageModelSnapshot(message: MessageSnapshotSource) {
+  const provider = message.speakerProvider ?? message.model?.provider ?? null;
+  const name = message.speakerName ?? message.model?.name ?? null;
+  const modelName = message.speakerModelName ?? message.model?.modelName ?? null;
+  const avatarLabel = message.speakerAvatarLabel ?? message.model?.avatarLabel ?? null;
+  const avatarColor = message.speakerAvatarColor ?? message.model?.avatarColor ?? null;
+
+  if (!provider || !name || !modelName || !avatarLabel || !avatarColor) {
     return null;
   }
 
   return {
-    id: model.id,
-    name: model.name,
-    provider: model.provider,
-    modelName: model.modelName,
-    avatarLabel: model.avatarLabel,
-    avatarColor: model.avatarColor,
-    defaultReplyLength: model.defaultReplyLength,
-
+    id: message.modelId ?? message.model?.id ?? `snapshot:${message.id}`,
+    name,
+    provider,
+    modelName,
+    avatarLabel,
+    avatarColor,
+    defaultReplyLength: message.model?.defaultReplyLength ?? 300,
   };
 }
 
 export function presentMessages(messages: MessageWithModel[]) {
   return messages.map((message) => ({
-    ...message,
-    model: presentMessageModelSnapshot(message.model),
+    id: message.id,
+    roomId: message.roomId,
+    sequence: message.sequence,
+    role: message.role,
+    modelId: message.modelId,
+    content: message.content,
+    replyDurationMs: message.replyDurationMs,
+    replyTiming:
+      typeof message.queueDurationMs === "number" ||
+      typeof message.providerRequestDurationMs === "number" ||
+      typeof message.providerAttemptCount === "number" ||
+      typeof message.recoveryRequestDurationMs === "number" ||
+      typeof message.rewriteRequestDurationMs === "number" ||
+      typeof message.persistenceDurationMs === "number"
+        ? {
+            queueDurationMs: message.queueDurationMs,
+            providerRequestDurationMs: message.providerRequestDurationMs,
+            providerAttemptCount: message.providerAttemptCount,
+            recoveryRequestDurationMs: message.recoveryRequestDurationMs,
+            rewriteRequestDurationMs: message.rewriteRequestDurationMs,
+            persistenceDurationMs: message.persistenceDurationMs,
+          }
+        : null,
+    createdAt: message.createdAt,
+    model: presentMessageModelSnapshot(message),
   }));
 }

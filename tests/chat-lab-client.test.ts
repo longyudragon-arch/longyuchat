@@ -7,6 +7,7 @@ import {
   deleteProviderConnectionRequest,
   describeClientError,
   describePartialSendResult,
+  describeSkippedModelsResult,
   discoverProviderModelsByConnectionRequest,
   discoverProviderModelsBySavedModelRequest,
   findMatchingProviderTemplate,
@@ -88,14 +89,33 @@ describe("describeClientError", () => {
   it("returns network guidance for timeout-like failures", () => {
     const feedback = describeClientError(new Error("Provider timeout"));
 
-    expect(feedback.title).toBe("模型请求超时或网络连接失败");
-    expect(feedback.suggestion).toContain("Base URL");
+    expect(feedback.title).toBe("模型请求超时");
+    expect(feedback.suggestion).toContain("停用这个模型");
   });
 
   it("returns disabled-model guidance for disabled room models", () => {
     const feedback = describeClientError(new Error("Model Alpha is disabled."));
 
     expect(feedback.title).toBe("房间里存在已停用的模型");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("returns provider-template guidance for unsupported native provider protocols", () => {
+    const feedback = describeClientError(new Error("Provider CLAUDE is not supported in the MVP yet."));
+
+    expect(feedback.title).toBe("当前 Provider 模板暂未接入");
+    expect(feedback.description).toContain("Claude 原生接口");
+    expect(feedback.suggestion).toContain("Provider 模板");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("returns cooldown guidance when a room has no runnable models left", () => {
+    const feedback = describeClientError(
+      new Error("Room room-1 does not currently have any runnable models. All models are disabled or cooling down."),
+    );
+
+    expect(feedback.title).toBe("当前房间暂时没有可运行的模型");
+    expect(feedback.suggestion).toContain("冷却结束");
     expect(feedback.tone).toBe("warning");
   });
 
@@ -147,18 +167,32 @@ describe("describePartialSendResult", () => {
       {
         roomId: "room-1",
         status: "partial",
+        roundOutcomes: [
+          {
+            modelId: "model-a",
+            modelName: "Mock Alpha",
+            outcome: "replied",
+          },
+          {
+            modelId: "model-b",
+            modelName: "Mock Beta",
+            outcome: "failed",
+            error: "Provider timeout",
+            providerErrorKind: "network",
+          },
+        ],
         failedModelId: "model-b",
         error: "Provider timeout",
         providerErrorKind: "network",
       },
-      "Mock Beta",
     );
 
     expect(feedback).toMatchObject({
-      title: "Mock Beta 未完成本轮回复",
+      title: "Mock Beta 本轮请求超时",
       tone: "warning",
     });
-    expect(feedback?.suggestion).toContain("Base URL");
+    expect(feedback?.description).toContain("其他健康模型已经继续完成本轮回复");
+    expect(feedback?.suggestion).toContain("停用它");
   });
 
   it("surfaces upstream zero-token diagnostics for empty responses", () => {
@@ -166,6 +200,21 @@ describe("describePartialSendResult", () => {
       {
         roomId: "room-1",
         status: "partial",
+        roundOutcomes: [
+          {
+            modelId: "model-b",
+            modelName: "Mock Beta",
+            outcome: "failed",
+            error:
+              "The provider returned an empty response without a usable final answer. finish_reason=stop. completion_tokens=0.",
+            providerErrorKind: "empty_response",
+            providerErrorDetails: {
+              finishReason: "stop",
+              attemptCount: 2,
+              completionTokens: 0,
+            },
+          },
+        ],
         failedModelId: "model-b",
         error: "The provider returned an empty response without a usable final answer. finish_reason=stop. completion_tokens=0.",
         providerErrorKind: "empty_response",
@@ -175,7 +224,6 @@ describe("describePartialSendResult", () => {
           completionTokens: 0,
         },
       },
-      "Mock Beta",
     );
 
     expect(feedback).toMatchObject({
@@ -191,13 +239,25 @@ describe("describePartialSendResult", () => {
       {
         roomId: "room-1",
         status: "partial",
+        roundOutcomes: [
+          {
+            modelId: "model-b",
+            modelName: "Mock Beta",
+            outcome: "failed",
+            error: "Provider quota or billing check failed with 429: token is exhausted.",
+            providerErrorKind: "quota",
+            paused: true,
+            pauseReason:
+              "Model Mock Beta was automatically paused after the provider reported quota or token exhaustion.",
+          },
+        ],
         failedModelId: "model-b",
         error: "Provider quota or billing check failed with 429: token is exhausted.",
         providerErrorKind: "quota",
         failedModelPaused: true,
-        failedModelPauseReason: "Model Mock Beta was automatically paused after the provider reported quota or token exhaustion.",
+        failedModelPauseReason:
+          "Model Mock Beta was automatically paused after the provider reported quota or token exhaustion.",
       },
-      "Mock Beta",
     );
 
     expect(feedback).toMatchObject({
@@ -213,11 +273,19 @@ describe("describePartialSendResult", () => {
       {
         roomId: "room-1",
         status: "partial",
+        roundOutcomes: [
+          {
+            modelId: "model-b",
+            modelName: "Mock Beta",
+            outcome: "failed",
+            error: "Provider returned reasoning content but no final answer after 2 attempts.",
+            providerErrorKind: "reasoning_only",
+          },
+        ],
         failedModelId: "model-b",
         error: "Provider returned reasoning content but no final answer after 2 attempts.",
         providerErrorKind: "reasoning_only",
       },
-      "Mock Beta",
     );
 
     expect(feedback).toMatchObject({
@@ -225,6 +293,133 @@ describe("describePartialSendResult", () => {
       tone: "warning",
     });
     expect(feedback?.suggestion).toContain("超短输入");
+  });
+
+  it("surfaces timeout-specific guidance for partial model failures", () => {
+    const feedback = describePartialSendResult(
+      {
+        roomId: "room-1",
+        status: "partial",
+        roundOutcomes: [
+          {
+            modelId: "model-b",
+            modelName: "Mock Beta",
+            outcome: "failed",
+            error:
+              "Could not reach https://open.bigmodel.cn/api/paas/v4/chat/completions. Provider request timed out after 120s before the provider responded.",
+            providerErrorKind: "network",
+            cooldownUntil: "2026-03-30T10:15:00.000Z",
+          },
+        ],
+        failedModelId: "model-b",
+        error:
+          "Could not reach https://open.bigmodel.cn/api/paas/v4/chat/completions. Provider request timed out after 120s before the provider responded.",
+        providerErrorKind: "network",
+        failedModelCooldownUntil: "2026-03-30T10:15:00.000Z",
+      },
+    );
+
+    expect(feedback).toMatchObject({
+      title: "Mock Beta 本轮请求超时",
+      tone: "warning",
+    });
+    expect(feedback?.suggestion).toContain("停用它");
+    expect(feedback?.suggestion).toContain("更快、更稳定的模型");
+    expect(feedback?.suggestion).toContain("冷却到");
+  });
+
+  it("summarizes mixed rounds when multiple models fail but others still reply", () => {
+    const feedback = describePartialSendResult({
+      roomId: "room-1",
+      status: "partial",
+      roundOutcomes: [
+        {
+          modelId: "model-a",
+          modelName: "Mock Alpha",
+          outcome: "replied",
+        },
+        {
+          modelId: "model-b",
+          modelName: "Mock Beta",
+          outcome: "failed",
+          error: "Provider timeout",
+          providerErrorKind: "network",
+          cooldownUntil: "2026-03-30T10:15:00.000Z",
+        },
+        {
+          modelId: "model-c",
+          modelName: "Mock Gamma",
+          outcome: "failed",
+          error: "Provider quota exceeded",
+          providerErrorKind: "quota",
+          paused: true,
+          pauseReason: "Model Mock Gamma was automatically paused after quota exhaustion.",
+        },
+      ],
+    });
+
+    expect(feedback).toMatchObject({
+      title: "本轮已降级完成，2 个模型失败",
+      tone: "warning",
+    });
+    expect(feedback?.description).toContain("1 个健康模型已继续完成回复");
+    expect(feedback?.description).toContain("Mock Beta");
+    expect(feedback?.description).toContain("Mock Gamma");
+    expect(feedback?.suggestion).toContain("自动暂停");
+  });
+
+  it("explains unsupported provider failures with template guidance", () => {
+    const feedback = describePartialSendResult({
+      roomId: "room-1",
+      status: "partial",
+      roundOutcomes: [
+        {
+          modelId: "model-a",
+          modelName: "谷歌",
+          outcome: "failed",
+          error: "Provider CLAUDE is not supported in the MVP yet.",
+          providerErrorKind: "request",
+        },
+        {
+          modelId: "model-b",
+          modelName: "Mock Beta",
+          outcome: "replied",
+        },
+      ],
+    });
+
+    expect(feedback).toMatchObject({
+      title: "谷歌 当前配置暂未接入",
+      tone: "warning",
+    });
+    expect(feedback?.description).toContain("Claude 原生接口");
+    expect(feedback?.description).toContain("其他健康模型已经继续完成本轮回复");
+    expect(feedback?.suggestion).toContain("Provider 模板");
+  });
+});
+
+describe("describeSkippedModelsResult", () => {
+  it("tells the user when cooled-down models were skipped so healthy models could continue", () => {
+    const feedback = describeSkippedModelsResult({
+      roomId: "room-1",
+      status: "completed",
+      roundOutcomes: [],
+      skippedModels: [
+        {
+          modelId: "model-b",
+          name: "Mock Beta",
+          reason: "cooldown",
+          availableAt: "2026-03-30T10:15:00.000Z",
+        },
+      ],
+    });
+
+    expect(feedback).toMatchObject({
+      title: "本轮已跳过冷却中的模型",
+      tone: "warning",
+    });
+    expect(feedback?.description).toContain("Mock Beta");
+    expect(feedback?.suggestion).toContain("降级运行");
   });
 });
 

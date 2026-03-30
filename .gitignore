@@ -6,6 +6,8 @@ coverage/
 .turbo/
 .agents/
 .codex/
+.golutra/
+.worktrees/
 _stitch_export/
 backup_snapshots/
 stitch_handoff/
@@ -20,5 +22,7 @@ tsconfig.tsbuildinfo
 generated/
 prisma/dev.db
 prisma/dev.db-journal
+prisma/dev.db.backup-*
+prisma/test.db
 .codex/dev-server.log
 .codex/dev-server.err.log

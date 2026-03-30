@@ -18,6 +18,7 @@ export type ProviderConnectionDiscoveryStrategy =
 export type ProviderConnectionCheckResultStatus = "success" | "error";
 export type AccessProtectionMode = "app" | "basic" | "none";
 export type ProviderConnectionTemplateCategory = "DOMESTIC" | "GLOBAL";
+export type RoomModelExecutionState = "ACTIVE" | "COOLDOWN" | "HALF_OPEN";
 
 export interface ModelTestResultView {
   status: ModelTestResultStatus;
@@ -114,7 +115,27 @@ export interface RoomModelView {
   roomId: string;
   modelId: string;
   sortOrder: number;
+  executionState: RoomModelExecutionState;
+  cooldownUntil: string | null;
+  consecutiveFailureCount: number;
+  lastSuccessAt: string | null;
+  lastRecoveryAt: string | null;
   model: ModelView;
+  lastFailure: {
+    kind: SendRoomMessageFailureKind;
+    message: string;
+    occurredAt: string;
+  } | null;
+  replyMetrics: {
+    replyCount: number;
+    totalReplyDurationMs: number;
+    averageReplyDurationMs: number | null;
+    totalQueueDurationMs: number;
+    averageQueueDurationMs: number | null;
+    totalProviderRequestDurationMs: number;
+    averageProviderRequestDurationMs: number | null;
+    timeoutCount: number;
+  };
 }
 
 export interface RoomLastMessagePreviewView {
@@ -142,7 +163,18 @@ export interface MessageView {
   modelId: string | null;
   model: MessageModelSnapshotView | null;
   content: string;
+  replyDurationMs: number | null;
+  replyTiming: MessageReplyTimingView | null;
   createdAt: string;
+}
+
+export interface MessageReplyTimingView {
+  queueDurationMs: number | null;
+  providerRequestDurationMs: number | null;
+  providerAttemptCount: number | null;
+  recoveryRequestDurationMs: number | null;
+  rewriteRequestDurationMs: number | null;
+  persistenceDurationMs: number | null;
 }
 
 export interface MessageModelSnapshotView {
@@ -179,15 +211,35 @@ export interface ProviderErrorDetailsView {
   initialReasoningTokens?: number | null;
 }
 
+export interface SendRoomMessageRoundOutcomeView {
+  modelId: string;
+  modelName: string;
+  outcome: "replied" | "failed";
+  error?: string;
+  providerErrorKind?: SendRoomMessageFailureKind;
+  providerErrorDetails?: ProviderErrorDetailsView;
+  paused?: boolean;
+  pauseReason?: string;
+  cooldownUntil?: string;
+}
+
 export interface SendRoomMessageResult {
   roomId: string;
   status: "completed" | "partial";
+  roundOutcomes: SendRoomMessageRoundOutcomeView[];
+  skippedModels?: Array<{
+    modelId: string;
+    name: string;
+    reason: "disabled" | "cooldown";
+    availableAt: string | null;
+  }>;
   failedModelId?: string;
   error?: string;
   providerErrorKind?: SendRoomMessageFailureKind;
   providerErrorDetails?: ProviderErrorDetailsView;
   failedModelPaused?: boolean;
   failedModelPauseReason?: string;
+  failedModelCooldownUntil?: string;
 }
 
 

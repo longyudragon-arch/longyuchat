@@ -5,24 +5,27 @@ import { useRouter } from "next/navigation";
 import { startTransition, type KeyboardEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import {
-  countAssistantRepliesForUserMessage,
   describeClientError,
   describePartialSendResult,
+  describeSkippedModelsResult,
   fetchJson,
   findNextUserMessageAfterSequence,
   formatDate,
+  formatReplyDurationMs,
   formatReplyLength,
   getModelOperationalInsight,
   getProviderBadgeClassName,
   getProviderSoftClassName,
   getProviderShortName,
+  listAssistantRepliesForUserMessage,
+  listAssistantReplyModelIdsForUserMessage,
   reorderIds,
   sendRoomMessageRequest,
   toRoomLabel,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
 import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
-import type { MessageView, ProviderType, RoomView } from "@/types/app";
+import type { MessageView, ProviderType, RoomView, SendRoomMessageResult } from "@/types/app";
 
 interface RoomChatPageProps {
   roomId: string;
@@ -35,6 +38,7 @@ type PendingRoundState = {
   userSequence: number | null;
   completedAssistantCount: number;
   expectedAssistantCount: number;
+  repliedModelIds: string[];
 };
 
 function getProviderMessageSurfaceClassName(provider?: ProviderType) {
@@ -85,6 +89,37 @@ function getProviderAccentClassName(provider?: ProviderType) {
     default:
       return "bg-stone-400";
   }
+}
+
+function formatFailureKindLabel(kind: string) {
+  switch (kind) {
+    case "authentication":
+      return "鉴权失败";
+    case "quota":
+      return "额度不足";
+    case "network":
+      return "网络或超时";
+    case "not_found":
+      return "模型或接口不存在";
+    case "empty_response":
+      return "空回复";
+    case "reasoning_only":
+      return "仅推理无正文";
+    default:
+      return "调用失败";
+  }
+}
+
+function isRoomModelCoolingDown(roomModel: RoomView["roomModels"][number], now = new Date()) {
+  if (roomModel.executionState !== "COOLDOWN" || !roomModel.cooldownUntil) {
+    return false;
+  }
+
+  return new Date(roomModel.cooldownUntil).getTime() > now.getTime();
+}
+
+function isRoomModelHalfOpen(roomModel: RoomView["roomModels"][number]) {
+  return roomModel.executionState === "HALF_OPEN";
 }
 
 /* ─── Small sub-components ─── */
@@ -186,6 +221,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const [feedback, setFeedback] = useState<ClientErrorFeedback | null>(null);
   const [activeAction, setActiveAction] = useState<RoomAction>("loading");
   const [pendingRound, setPendingRound] = useState<PendingRoundState | null>(null);
+  const [lastRoundResult, setLastRoundResult] = useState<SendRoomMessageResult | null>(null);
   const [draftModelIds, setDraftModelIds] = useState<string[]>([]);
   const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
   const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
@@ -218,15 +254,19 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   function syncPendingRound(nextMessages: MessageView[], baselineSequence: number, expectedAssistantCount: number) {
     const persistedUserMessage = findNextUserMessageAfterSequence(nextMessages, baselineSequence);
-    const completedAssistantCount = persistedUserMessage
-      ? countAssistantRepliesForUserMessage(nextMessages, persistedUserMessage.sequence)
-      : 0;
+    const completedAssistantReplies = persistedUserMessage
+      ? listAssistantRepliesForUserMessage(nextMessages, persistedUserMessage.sequence)
+      : [];
+    const repliedModelIds = persistedUserMessage
+      ? listAssistantReplyModelIdsForUserMessage(nextMessages, persistedUserMessage.sequence)
+      : [];
 
     setPendingRound({
       baselineSequence,
       userSequence: persistedUserMessage?.sequence ?? null,
-      completedAssistantCount,
+      completedAssistantCount: completedAssistantReplies.length,
       expectedAssistantCount,
+      repliedModelIds,
     });
 
     if (persistedUserMessage) setPendingUserContent("");
@@ -250,7 +290,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       } catch {}
 
       if (!settled) {
-        await new Promise((resolve) => setTimeout(resolve, 900));
+        await new Promise((resolve) => setTimeout(resolve, 450));
       }
     }
   }
@@ -272,6 +312,16 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     });
   }, [roomId]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.innerWidth >= 1024) {
+      setShowSidePanel(true);
+    }
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (messageListRef.current && isNearBottomRef.current) {
@@ -291,6 +341,21 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       .filter((roomModel): roomModel is RoomView["roomModels"][number] => Boolean(roomModel));
   }, [draftModelIds, room]);
 
+  const runnableRoomModels = useMemo(
+    () => orderedRoomModels.filter((roomModel) => roomModel.model.enabled && !isRoomModelCoolingDown(roomModel)),
+    [orderedRoomModels],
+  );
+
+  const coolingDownRoomModels = useMemo(
+    () => orderedRoomModels.filter((roomModel) => isRoomModelCoolingDown(roomModel)),
+    [orderedRoomModels],
+  );
+
+  const halfOpenRoomModels = useMemo(
+    () => orderedRoomModels.filter((roomModel) => isRoomModelHalfOpen(roomModel)),
+    [orderedRoomModels],
+  );
+
   const orderDirty = useMemo(() => {
     if (!room) return false;
     return room.roomModels.map((item) => item.modelId).join(",") !== draftModelIds.join(",");
@@ -298,11 +363,23 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   const activeTimelineModel = useMemo(() => {
     if (!pendingRound || !isSending) return null;
-    const total = Math.min(pendingRound.expectedAssistantCount, orderedRoomModels.length);
+    const total = Math.min(pendingRound.expectedAssistantCount, runnableRoomModels.length);
     const activeIndex = pendingRound.completedAssistantCount;
     if (activeIndex >= total) return null;
-    return orderedRoomModels[activeIndex]?.model ?? null;
-  }, [isSending, orderedRoomModels, pendingRound]);
+    return runnableRoomModels[activeIndex]?.model ?? null;
+  }, [isSending, pendingRound, runnableRoomModels]);
+
+  const completedRunnableModelIds = useMemo(() => {
+    if (!pendingRound || !isSending) {
+      return new Set<string>();
+    }
+
+    return new Set(pendingRound.repliedModelIds);
+  }, [isSending, pendingRound]);
+
+  const lastRoundOutcomeByModelId = useMemo(() => {
+    return new Map((lastRoundResult?.roundOutcomes ?? []).map((outcome) => [outcome.modelId, outcome]));
+  }, [lastRoundResult]);
 
   const roomModelAlerts = useMemo(
     () =>
@@ -314,6 +391,38 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         .filter((item): item is { modelName: string; insight: NonNullable<ReturnType<typeof getModelOperationalInsight>> } => Boolean(item)),
     [orderedRoomModels],
   );
+
+  const sidebarHeadline = useMemo(() => {
+    if (isSending && activeTimelineModel) {
+      return {
+        label: "当前轮到",
+        name: activeTimelineModel.name,
+        tone: "active" as const,
+      };
+    }
+
+    const failedOutcome = lastRoundResult?.roundOutcomes.find((outcome) => outcome.outcome === "failed");
+
+    if (failedOutcome) {
+      return {
+        label: "最近失败",
+        name: failedOutcome.modelName,
+        tone: "failed" as const,
+      };
+    }
+
+    const latestReplyOutcome = [...(lastRoundResult?.roundOutcomes ?? [])].reverse().find((outcome) => outcome.outcome === "replied");
+
+    if (latestReplyOutcome) {
+      return {
+        label: "最近完成",
+        name: latestReplyOutcome.modelName,
+        tone: "idle" as const,
+      };
+    }
+
+    return null;
+  }, [activeTimelineModel, isSending, lastRoundResult]);
 
   /* ─── Actions ─── */
 
@@ -402,28 +511,49 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     setPendingUserContent(content);
     isNearBottomRef.current = true;
     const baselineSequence = messages.at(-1)?.sequence ?? 0;
-    const expectedAssistantCount = room.roomModels.length;
+    const expectedAssistantCount = runnableRoomModels.length;
+
+    if (expectedAssistantCount === 0) {
+      setPendingUserContent("");
+      setFeedback({
+        title: "当前没有可运行的模型",
+        description: "这个房间里的模型目前都处于冷却中或已停用，所以本轮无法继续发起顺序回复。",
+        suggestion: "请等待冷却结束，或先在模型页恢复/启用至少一个健康模型后再继续。",
+        tone: "warning",
+      });
+      return;
+    }
 
     setActiveAction("sending");
     setFeedback(null);
-    setPendingRound({ baselineSequence, userSequence: null, completedAssistantCount: 0, expectedAssistantCount });
+    setLastRoundResult(null);
+    setPendingRound({
+      baselineSequence,
+      userSequence: null,
+      completedAssistantCount: 0,
+      expectedAssistantCount,
+      repliedModelIds: [],
+    });
 
     try {
       const requestPromise = sendRoomMessageRequest(room.id, content);
       await watchSequentialReplies(baselineSequence, expectedAssistantCount, requestPromise);
       const result = await requestPromise;
+      setLastRoundResult(result);
       await Promise.all([loadMessages(), loadRoom()]);
       setPendingRound(null);
       setPendingUserContent("");
 
       if (result.status === "partial") {
-        const failedModel = room.roomModels.find((item) => item.modelId === result.failedModelId)?.model.name ?? "未知模型";
-        setFeedback(describePartialSendResult(result, failedModel));
+        setFeedback(describePartialSendResult(result));
+      } else {
+        setFeedback(describeSkippedModelsResult(result));
       }
     } catch (error: unknown) {
       setInput(content);
       setPendingUserContent("");
       setPendingRound(null);
+      setLastRoundResult(null);
       setFeedback(describeClientError(error));
     } finally {
       setActiveAction(null);
@@ -473,7 +603,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   const statusText = isSending
     ? `正在回复 ${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? 0}`
-    : `${room?.roomModels.length ?? 0} 个模型 · ${toRoomLabel(room?.type ?? "SINGLE")}`;
+    : `${room?.roomModels.length ?? 0} 个模型 · ${toRoomLabel(room?.type ?? "SINGLE")}${
+        coolingDownRoomModels.length > 0 ? ` · ${coolingDownRoomModels.length} 个冷却中` : ""
+      }${halfOpenRoomModels.length > 0 ? ` · ${halfOpenRoomModels.length} 个试探恢复中` : ""}`;
 
   /* ─── Render ─── */
 
@@ -500,6 +632,21 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[#DC75A5]" />
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShowSidePanel((current) => !current)}
+              className={`hidden items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-bold transition lg:inline-flex ${
+                showSidePanel
+                  ? "border-[#DC75A5]/40 bg-[#FF8DA1]/12 text-[#DC75A5]"
+                  : "border-white/40 bg-white/45 text-stone-600 hover:bg-white/60"
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+              {showSidePanel ? "隐藏执行链" : "显示执行链"}
+            </button>
 
             <div className="relative block">
               <button
@@ -604,9 +751,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                       <svg className="w-8 h-8 text-[#DC75A5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                    </div>
                    <h2 className="text-2xl font-extrabold text-[#2f2e33] tracking-tight">开始多模型排演</h2>
-                   <p className="mt-3 max-w-sm text-sm text-stone-500 leading-relaxed font-medium">
-                     发送消息，配置的 {orderedRoomModels.length} 个模型将依次分析并回复。
-                   </p>
+                    <p className="mt-3 max-w-sm text-sm text-stone-500 leading-relaxed font-medium">
+                      发送消息，当前可运行的 {runnableRoomModels.length} 个模型将依次分析并回复。
+                      {coolingDownRoomModels.length > 0 ? ` 另有 ${coolingDownRoomModels.length} 个模型处于冷却中，会在后续轮次自动跳过。` : ""}
+                      {halfOpenRoomModels.length > 0
+                        ? ` 当前还有 ${halfOpenRoomModels.length} 个模型处于试探恢复状态，会先通过一次成功回复来恢复正常参与。`
+                        : ""}
+                    </p>
                  </div>
                )}
 
@@ -633,6 +784,29 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                   const providerBadgeClassName = provider
                     ? getProviderBadgeClassName(provider)
                     : "border-stone-200 bg-stone-50 text-stone-600";
+                  const replyDurationLabel = formatReplyDurationMs(message.replyDurationMs);
+                  const queueDurationLabel = formatReplyDurationMs(message.replyTiming?.queueDurationMs ?? null);
+                  const providerRequestDurationLabel = formatReplyDurationMs(
+                    message.replyTiming?.providerRequestDurationMs ?? null,
+                  );
+                  const recoveryRequestDurationLabel = formatReplyDurationMs(
+                    message.replyTiming?.recoveryRequestDurationMs ?? null,
+                  );
+                  const rewriteRequestDurationLabel = formatReplyDurationMs(
+                    message.replyTiming?.rewriteRequestDurationMs ?? null,
+                  );
+                  const persistenceDurationLabel = formatReplyDurationMs(
+                    message.replyTiming?.persistenceDurationMs ?? null,
+                  );
+                  const providerAttemptCount = message.replyTiming?.providerAttemptCount ?? null;
+                  const replyTimingSegments = [
+                    queueDurationLabel ? `排队 ${queueDurationLabel}` : null,
+                    providerRequestDurationLabel ? `上游 ${providerRequestDurationLabel}` : null,
+                    providerAttemptCount && providerAttemptCount > 1 ? `${providerAttemptCount} 次请求` : null,
+                    recoveryRequestDurationLabel ? `补救 ${recoveryRequestDurationLabel}` : null,
+                    rewriteRequestDurationLabel ? `改写 ${rewriteRequestDurationLabel}` : null,
+                    persistenceDurationLabel ? `保存 ${persistenceDurationLabel}` : null,
+                  ].filter((segment): segment is string => Boolean(segment));
                   const avatarPalette = provider
                     ? getModelAvatarPalette(provider, messageModel?.avatarColor ?? roomModel?.model.avatarColor)
                     : null;
@@ -667,6 +841,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             {messageModel?.name ?? "AI 助手"}
                           </span>
                           <span className="text-[10px] text-stone-400 font-bold tracking-widest uppercase">{formatDate(message.createdAt)}</span>
+                          {replyDurationLabel && (
+                            <span className="rounded-full border border-white/60 bg-white/65 px-2 py-0.5 text-[10px] font-bold text-stone-500">
+                              本次 {replyDurationLabel}
+                            </span>
+                          )}
                         </div>
                         <div className={`rounded-3xl rounded-tl-md border p-4 text-[#2f2e33] sm:p-6 ${providerSoftClassName} ${providerSurfaceClassName}`}>
                           <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/50 pb-3">
@@ -691,9 +870,17 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                 <p className="truncate text-[12px] font-bold tracking-tight text-[#2f2e33]">
                                   {messageModel?.name ?? "AI 助手"}
                                 </p>
-                                <p className="truncate text-[10px] font-medium text-stone-500">
-                                  {provider ? formatReplyLength(messageModel?.defaultReplyLength ?? roomModel?.model.defaultReplyLength ?? 0) : "模型回复"}
-                                </p>
+                                <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium text-stone-500">
+                                  <span>{provider ? formatReplyLength(messageModel?.defaultReplyLength ?? roomModel?.model.defaultReplyLength ?? 0) : "模型回复"}</span>
+                                  {replyDurationLabel && <span>• 本次 {replyDurationLabel}</span>}
+                                </div>
+                                {replyTimingSegments.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-medium text-stone-400">
+                                    {replyTimingSegments.map((segment) => (
+                                      <span key={`${message.id}-${segment}`}>• {segment}</span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             {provider && (
@@ -804,10 +991,38 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
              
               <aside className="ly-glass absolute inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-white/45 shadow-2xl md:static md:z-10 md:shadow-none animate-slide-in">
                 <div className="ly-soft-card m-4 mb-0 flex shrink-0 items-center justify-between p-4 sm:p-5">
-                  <h2 className="font-extrabold text-[#2f2e33] flex items-center gap-2 text-[14px] tracking-widest uppercase">
-                    <svg className="w-5 h-5 text-[#DC75A5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                    当前激活模型
-                  </h2>
+                  <div className="min-w-0">
+                    <h2 className="font-extrabold text-[#2f2e33] flex items-center gap-2 text-[14px] tracking-widest uppercase">
+                      <svg className="w-5 h-5 text-[#DC75A5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                      当前执行模型
+                    </h2>
+                    {sidebarHeadline && (
+                      <>
+                        <p
+                          className={`mt-1 text-[10px] font-bold tracking-[0.24em] uppercase ${
+                            sidebarHeadline.tone === "failed"
+                              ? "text-rose-500"
+                              : sidebarHeadline.tone === "active"
+                                ? "text-[#DC75A5]"
+                                : "text-stone-400"
+                          }`}
+                        >
+                          {sidebarHeadline.label}
+                        </p>
+                        <p
+                          className={`truncate text-[14px] font-extrabold ${
+                            sidebarHeadline.tone === "failed"
+                              ? "text-rose-700"
+                              : sidebarHeadline.tone === "active"
+                                ? "text-[#2f2e33]"
+                                : "text-stone-600"
+                          }`}
+                        >
+                          {sidebarHeadline.name}
+                        </p>
+                      </>
+                    )}
+                  </div>
                   <button type="button" onClick={() => setShowSidePanel(false)} className="md:hidden p-1.5 bg-stone-100 rounded-full text-stone-500 hover:bg-stone-200">
                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -831,8 +1046,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                    <div className="space-y-4 relative ml-3 border-l-2 border-stone-200 pl-6 pb-2">
                      {orderedRoomModels.map((roomModel, index) => {
-                       const isCurrent = isSending && index === pendingRound?.completedAssistantCount;
-                       const isDone = isSending && index < (pendingRound?.completedAssistantCount ?? 0);
+                       const isCurrent = isSending && activeTimelineModel?.id === roomModel.model.id;
+                       const isDone = isSending && completedRunnableModelIds.has(roomModel.modelId);
                        const provider = roomModel.model.provider;
                        const providerSoftClassName = getProviderSoftClassName(provider);
                        const providerSurfaceClassName = getProviderMessageSurfaceClassName(provider);
@@ -844,7 +1059,85 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                          roomModel.model.avatarColor,
                        );
                        const avatarPalette = getModelAvatarPalette(provider, resolvedRoomAvatar.avatarColor);
-                       const modelInsight = getModelOperationalInsight(roomModel.model);
+                      const modelInsight = getModelOperationalInsight(roomModel.model);
+                      const totalReplyDurationLabel = formatReplyDurationMs(roomModel.replyMetrics.totalReplyDurationMs);
+                      const averageReplyDurationLabel = formatReplyDurationMs(roomModel.replyMetrics.averageReplyDurationMs);
+                      const averageQueueDurationLabel = formatReplyDurationMs(roomModel.replyMetrics.averageQueueDurationMs);
+                      const averageProviderRequestDurationLabel = formatReplyDurationMs(
+                        roomModel.replyMetrics.averageProviderRequestDurationMs,
+                      );
+                      const timeoutCount = roomModel.replyMetrics.timeoutCount;
+                      const lastFailureLabel = roomModel.lastFailure
+                        ? `${formatFailureKindLabel(roomModel.lastFailure.kind)} · ${formatDate(roomModel.lastFailure.occurredAt)}`
+                        : null;
+                      const lastSuccessLabel = roomModel.lastSuccessAt ? formatDate(roomModel.lastSuccessAt) : null;
+                      const lastRecoveryLabel = roomModel.lastRecoveryAt ? formatDate(roomModel.lastRecoveryAt) : null;
+                      const isCoolingDown = isRoomModelCoolingDown(roomModel);
+                      const isHalfOpen = isRoomModelHalfOpen(roomModel);
+                      const cooldownLabel = roomModel.cooldownUntil ? formatDate(roomModel.cooldownUntil) : null;
+                      const lastRoundOutcome = lastRoundOutcomeByModelId.get(roomModel.modelId);
+                      const hasPersistentFailure = Boolean(roomModel.lastFailure) && !isCoolingDown && !isHalfOpen;
+                      const failedThisRound = lastRoundOutcome?.outcome === "failed";
+                      const wasRepliedLastRound = !isSending && lastRoundOutcome?.outcome === "replied";
+                      const effectiveCooldownUntilLabel = lastRoundOutcome?.cooldownUntil
+                        ? formatDate(lastRoundOutcome.cooldownUntil)
+                        : cooldownLabel;
+                      const failureDetail = lastRoundOutcome?.outcome === "failed"
+                        ? lastRoundOutcome.error ?? roomModel.lastFailure?.message ?? "该模型本轮未能成功完成回复。"
+                        : roomModel.lastFailure?.message ?? null;
+                      const showFailureOverlay =
+                        !isCurrent && (failedThisRound || hasPersistentFailure || Boolean(lastRoundOutcome?.paused));
+                      const statusToneClass = isCurrent
+                        ? `${providerAccentClassName} text-white`
+                        : lastRoundOutcome?.paused
+                          ? "bg-rose-100 text-rose-700"
+                        : isCoolingDown
+                          ? "bg-amber-100 text-amber-700"
+                        : lastRoundOutcome?.cooldownUntil
+                          ? "bg-amber-100 text-amber-700"
+                        : isHalfOpen
+                            ? "bg-sky-100 text-sky-700"
+                            : !roomModel.model.enabled
+                                  ? "bg-stone-200 text-stone-500"
+                                  : failedThisRound || hasPersistentFailure
+                                    ? "bg-red-100 text-red-700"
+                                  : isDone || wasRepliedLastRound
+                                    ? "bg-[#FF8DA1]/20 text-[#DC75A5]"
+                                    : "bg-stone-100 text-stone-500";
+                      const statusLabel = isCurrent
+                        ? "正在思考"
+                        : lastRoundOutcome?.paused
+                          ? "已暂停"
+                        : isCoolingDown
+                          ? "冷却中"
+                        : lastRoundOutcome?.cooldownUntil
+                          ? "冷却中"
+                        : isHalfOpen
+                          ? "试探恢复"
+                              : !roomModel.model.enabled
+                                  ? "已停用"
+                                  : failedThisRound || hasPersistentFailure
+                                    ? "失败"
+                                  : isDone || wasRepliedLastRound
+                                    ? "完成"
+                                    : "待命";
+                      const timelineDotClass = isCurrent
+                        ? `${providerAccentClassName} scale-125 shadow-[0_0_0_2px_rgba(255,255,255,0.55)]`
+                        : lastRoundOutcome?.paused
+                          ? "bg-rose-500"
+                        : isCoolingDown
+                          ? "bg-amber-400"
+                        : lastRoundOutcome?.cooldownUntil
+                          ? "bg-amber-400"
+                        : isHalfOpen
+                          ? "bg-sky-400"
+                              : !roomModel.model.enabled
+                                ? "bg-stone-400"
+                                : failedThisRound || hasPersistentFailure
+                                  ? "bg-red-400"
+                                  : isDone || wasRepliedLastRound
+                                  ? providerAccentClassName
+                                  : "bg-stone-300";
 
                        return (
                         <div
@@ -871,22 +1164,28 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           }`}
                         >
                           {/* Node circle on the vertical line */}
-                          <div className={`absolute -left-[33px] top-[18px] w-3.5 h-3.5 rounded-full border-[3px] z-10 box-border border-[#f9f5fc] transition-colors duration-500 ${isCurrent ? `${providerAccentClassName} scale-125 shadow-[0_0_0_2px_rgba(255,255,255,0.55)]` : isDone ? providerAccentClassName : 'bg-stone-300'}`}></div>
+                          <div className={`absolute -left-[33px] top-[18px] w-3.5 h-3.5 rounded-full border-[3px] z-10 box-border border-[#f9f5fc] transition-colors duration-500 ${timelineDotClass}`}></div>
                           
-                          <div className={`p-4 rounded-2xl border transition-all duration-300 ${
+                          <div className={`relative p-4 rounded-2xl border transition-all duration-300 ${
                             dragOverModelId === roomModel.modelId && draggedModelId !== roomModel.modelId
                               ? "border-[#DC75A5] bg-white/50 scale-[1.02]"
                               : isCurrent 
                               ? `${providerSoftClassName} ${providerSurfaceClassName} ring-1 ring-white/40`
+                              : showFailureOverlay
+                                ? "border-red-200/80 bg-red-50/75 shadow-[0_10px_30px_rgba(239,68,68,0.10)]"
                               : `${providerSoftClassName} ${providerSurfaceClassName} hover:shadow-md`
                             }`}
                           >
+                            {showFailureOverlay && !isCurrent && (
+                              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-red-100/65 via-red-50/45 to-transparent" />
+                            )}
+                            <div className="relative">
                             <div className="flex items-start justify-between mb-2">
                                <h4 className="text-[12px] font-extrabold uppercase tracking-tighter text-[#2f2e33]">
                                   {index + 1}. {roomModel.model.name}
                                </h4>
-                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isCurrent ? `${providerAccentClassName} text-white` : isDone ? 'bg-[#FF8DA1]/20 text-[#DC75A5]' : 'bg-stone-100 text-stone-500'}`}>
-                                 {isCurrent ? '正在思考' : isDone ? '完成' : '待命'}
+                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusToneClass}`}>
+                                 {statusLabel}
                                </span>
                             </div>
                             <div className="flex items-center gap-2 text-[10px] text-stone-500 font-medium tracking-wide border-t border-stone-100 pt-2 mt-1">
@@ -901,6 +1200,78 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                </span>
                                <span>预设字数: {formatReplyLength(roomModel.model.defaultReplyLength)}</span>
                             </div>
+                            <div className="mt-2 rounded-xl border border-white/45 bg-white/55 px-3 py-2 text-[10px] font-medium text-stone-500">
+                              {roomModel.replyMetrics.replyCount > 0 || timeoutCount > 0 ? (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                  <span>累计 {totalReplyDurationLabel ?? "—"}</span>
+                                  <span>平均 {averageReplyDurationLabel ?? "—"}</span>
+                                  <span>平均排队 {averageQueueDurationLabel ?? "—"}</span>
+                                  <span>平均上游 {averageProviderRequestDurationLabel ?? "—"}</span>
+                                  <span>{roomModel.replyMetrics.replyCount} 次回复</span>
+                                  {lastSuccessLabel && <span>最近成功 {lastSuccessLabel}</span>}
+                                  {timeoutCount > 0 && <span className="font-bold text-amber-600">超时 {timeoutCount} 次</span>}
+                                </div>
+                              ) : (
+                                <span>{room?.messageCount ? "历史消息未记录耗时，后续回复会开始统计" : "暂无线程内回复耗时统计"}</span>
+                              )}
+                            </div>
+                            {(failedThisRound || hasPersistentFailure) && failureDetail && (
+                              <div className="mt-2 rounded-xl border border-red-200/70 bg-red-50/80 px-3 py-2 text-[10px] font-medium text-red-800">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-bold">本轮状态</span>
+                                  <span>{lastRoundOutcome?.paused ? "已暂停" : lastRoundOutcome?.cooldownUntil ? "失败并冷却" : "回复失败"}</span>
+                                  {lastRoundOutcome?.cooldownUntil && <span>恢复于 {effectiveCooldownUntilLabel}</span>}
+                                </div>
+                                <p className="mt-1 line-clamp-3 leading-relaxed text-red-900/85">{failureDetail}</p>
+                              </div>
+                            )}
+                            {(isCoolingDown || Boolean(lastRoundOutcome?.cooldownUntil)) && (
+                              <div className="mt-2 rounded-xl border border-amber-200/70 bg-amber-50/80 px-3 py-2 text-[10px] font-medium text-amber-800">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-bold">当前状态</span>
+                                  <span>冷却中</span>
+                                  {effectiveCooldownUntilLabel && <span>恢复于 {effectiveCooldownUntilLabel}</span>}
+                                  <span>连续失败 {roomModel.consecutiveFailureCount} 次</span>
+                                </div>
+                                <p className="mt-1 leading-relaxed text-amber-900/80">
+                                  这个模型在当前房间最近连续失败，后续轮次会先跳过它，避免继续卡住其他健康模型。
+                                </p>
+                              </div>
+                            )}
+                            {isHalfOpen && (
+                              <div className="mt-2 rounded-xl border border-sky-200/70 bg-sky-50/80 px-3 py-2 text-[10px] font-medium text-sky-800">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-bold">当前状态</span>
+                                  <span>试探恢复中</span>
+                                  <span>连续失败 {roomModel.consecutiveFailureCount} 次后恢复试探</span>
+                                </div>
+                                <p className="mt-1 leading-relaxed text-sky-900/80">
+                                  这个模型的冷却窗口已经结束，本轮会先用一次试探性回复来验证是否恢复稳定。成功后会恢复正常参与。
+                                </p>
+                              </div>
+                            )}
+                            {lastRecoveryLabel && !isCoolingDown && !isHalfOpen && (
+                              <div className="mt-2 rounded-xl border border-emerald-200/70 bg-emerald-50/80 px-3 py-2 text-[10px] font-medium text-emerald-800">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-bold">最近恢复</span>
+                                  <span>{lastRecoveryLabel}</span>
+                                </div>
+                                <p className="mt-1 leading-relaxed text-emerald-900/80">
+                                  这个模型已经通过最近一次成功回复恢复正常参与，可以继续观察它后续是否保持稳定。
+                                </p>
+                              </div>
+                            )}
+                            {roomModel.lastFailure && (
+                              <div className="mt-2 rounded-xl border border-rose-200/60 bg-rose-50/70 px-3 py-2 text-[10px] font-medium text-rose-700">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="font-bold">最近失败</span>
+                                  <span>{lastFailureLabel}</span>
+                                </div>
+                                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-rose-800/85">
+                                  {roomModel.lastFailure.message}
+                                </p>
+                              </div>
+                            )}
                             {modelInsight && (
                               <div
                                 className={`mt-3 rounded-xl border px-3 py-2 text-[11px] leading-5 ${
@@ -920,6 +1291,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                 </div>
                               </div>
                             )}
+                            </div>
                           </div>
                         </div>
                       );

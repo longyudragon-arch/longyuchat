@@ -24,6 +24,12 @@ enum RoomType {
   GROUP
 }
 
+enum RoomModelExecutionState {
+  ACTIVE
+  COOLDOWN
+  HALF_OPEN
+}
+
 enum MessageRole {
   USER
   ASSISTANT
@@ -97,6 +103,7 @@ model ChatRoom {
   id         String          @id @default(cuid())
   title      String
   type       RoomType
+  nextMessageSequence Int    @default(1) @map("next_message_sequence")
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @updatedAt @map("updated_at")
   roomModels ChatRoomModel[]
@@ -110,6 +117,15 @@ model ChatRoomModel {
   roomId    String      @map("room_id")
   modelId   String      @map("model_id")
   sortOrder Int         @map("sort_order")
+  executionState RoomModelExecutionState @default(ACTIVE) @map("execution_state")
+  cooldownUntil DateTime? @map("cooldown_until")
+  consecutiveFailureCount Int @default(0) @map("consecutive_failure_count")
+  timeoutCount Int      @default(0) @map("timeout_count")
+  lastFailureKind String? @map("last_failure_kind")
+  lastFailureMessage String? @map("last_failure_message")
+  lastFailureAt DateTime? @map("last_failure_at")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastRecoveryAt DateTime? @map("last_recovery_at")
   room      ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
   model     ModelConfig @relation(fields: [modelId], references: [id], onDelete: Restrict)
 
@@ -120,15 +136,27 @@ model ChatRoomModel {
 }
 
 model Message {
-  id        String       @id @default(cuid())
-  roomId    String       @map("room_id")
-  sequence  Int
-  role      MessageRole
-  modelId   String?      @map("model_id")
-  content   String
-  createdAt DateTime     @default(now()) @map("created_at")
-  room      ChatRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  model     ModelConfig? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  id                String       @id @default(cuid())
+  roomId            String       @map("room_id")
+  sequence          Int
+  role              MessageRole
+  modelId           String?      @map("model_id")
+  content           String
+  replyDurationMs   Int?         @map("reply_duration_ms")
+  queueDurationMs   Int?         @map("queue_duration_ms")
+  providerRequestDurationMs Int? @map("provider_request_duration_ms")
+  providerAttemptCount Int?      @map("provider_attempt_count")
+  recoveryRequestDurationMs Int? @map("recovery_request_duration_ms")
+  rewriteRequestDurationMs Int?  @map("rewrite_request_duration_ms")
+  persistenceDurationMs Int?     @map("persistence_duration_ms")
+  speakerName       String?      @map("speaker_name")
+  speakerProvider   ProviderType? @map("speaker_provider")
+  speakerModelName  String?      @map("speaker_model_name")
+  speakerAvatarLabel String?     @map("speaker_avatar_label")
+  speakerAvatarColor String?     @map("speaker_avatar_color")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  room              ChatRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  model             ModelConfig? @relation(fields: [modelId], references: [id], onDelete: SetNull)
 
   @@unique([roomId, sequence])
   @@index([roomId, createdAt])

@@ -1,4 +1,5 @@
 import { ApiError } from "@/server/http/api-error";
+import { isProviderTimeoutLikeMessage } from "@/lib/provider-timeout";
 
 export type ProviderErrorKind =
   | "authentication"
@@ -124,6 +125,8 @@ function isNetworkFailure(normalized: string) {
     normalized.includes("network")
   );
 }
+
+export { isProviderTimeoutLikeMessage };
 
 export function inferProviderErrorKind(status: number, bodyText: string): ProviderErrorKind {
   const summary = extractProviderErrorSummary(bodyText);

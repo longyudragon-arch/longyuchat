@@ -1,8 +1,9 @@
-import type { ChatMessage, ModelRuntimeConfig } from "@/types/chat";
+import type { ChatMessage, ModelRuntimeConfig, ReplyTimingDetails } from "@/types/chat";
 
 export interface ModelReply {
   content: string;
   raw?: unknown;
+  replyTiming?: ReplyTimingDetails | null;
 }
 
 export interface GenerateReplyInput {
@@ -14,4 +15,3 @@ export interface ModelAdapter {
   testConnection(config: ModelRuntimeConfig): Promise<void>;
   generateReply(input: GenerateReplyInput): Promise<ModelReply>;
 }
-

@@ -1,0 +1,3 @@
+-- SQLite stores Prisma enums as TEXT in this schema, so adding the
+-- HALF_OPEN room-model execution state is a Prisma schema-level change
+-- without a physical table alteration.

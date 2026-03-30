@@ -3,6 +3,12 @@ import type {
   ProviderConnectionTemplateView,
   ProviderType,
 } from "@/types/app";
+import {
+  getBigModelRequestTimeoutMs,
+  getProviderRequestTimeoutMs,
+  isReplyRewritePassEnabled,
+  shouldRetryReasoningOnlyResponses,
+} from "@/lib/runtime";
 
 export const providerOptions = [
   "OPENAI_COMPATIBLE",
@@ -32,6 +38,23 @@ export interface ProviderPreset {
 interface ProviderTemplateVisualPreset {
   avatarLabel: string;
   avatarColor: string;
+}
+
+export type ProviderEndpointCompatibility = "STANDARD_OPENAI" | "BIGMODEL_V4";
+
+export interface ProviderExecutionProfile {
+  matchedTemplateId: string | null;
+  requestTimeoutMs: number;
+  allowsReasoningOnlyRetry: boolean;
+  allowsReplyRewritePass: boolean;
+  supportsAutomaticDiscovery: boolean;
+  endpointCompatibility: ProviderEndpointCompatibility;
+}
+
+interface ProviderExecutionProfileOverride {
+  matchedTemplateId: string;
+  endpointCompatibility: ProviderEndpointCompatibility;
+  getRequestTimeoutMs: () => number;
 }
 
 export const providerPresets: Record<ProviderType, ProviderPreset> = {
@@ -187,6 +210,14 @@ const providerTemplateVisualPresets: Record<string, ProviderTemplateVisualPreset
   sambanova: { avatarLabel: "SV", avatarColor: "#dc2626" },
   zenmux: { avatarLabel: "ZM", avatarColor: "#7c3aed" },
 };
+
+const providerExecutionProfileOverrides: ProviderExecutionProfileOverride[] = [
+  {
+    matchedTemplateId: "zhipu-bigmodel",
+    endpointCompatibility: "BIGMODEL_V4",
+    getRequestTimeoutMs: getBigModelRequestTimeoutMs,
+  },
+];
 
 function getTemplateVisualPreset(templateId: string, provider: ProviderType): ProviderTemplateVisualPreset {
   return (
@@ -450,6 +481,10 @@ export function getProviderTemplateById(templateId: string) {
   return providerConnectionTemplates.find((template) => template.id === templateId) ?? null;
 }
 
+function isKnownProviderType(value: string): value is ProviderType {
+  return (providerOptions as readonly string[]).includes(value);
+}
+
 function normalizeUrlForMatch(value: string) {
   return value.trim().replace(/\/+$/, "").toLowerCase();
 }
@@ -470,4 +505,36 @@ export function findMatchingProviderTemplate(provider: ProviderType, baseUrl: st
       return normalizeUrlForMatch(template.suggestedBaseUrl) === normalizedBaseUrl;
     }) ?? null
   );
+}
+
+function findProviderExecutionProfileOverride(provider: string, baseUrl: string) {
+  if (!isKnownProviderType(provider)) {
+    return null;
+  }
+
+  const matchedTemplate = findMatchingProviderTemplate(provider, baseUrl);
+
+  if (!matchedTemplate) {
+    return null;
+  }
+
+  return (
+    providerExecutionProfileOverrides.find((override) => override.matchedTemplateId === matchedTemplate.id) ?? null
+  );
+}
+
+export function getProviderExecutionProfile(input: { provider: string; baseUrl: string }): ProviderExecutionProfile {
+  const override = findProviderExecutionProfileOverride(input.provider, input.baseUrl);
+  const supportsAutomaticDiscovery = isKnownProviderType(input.provider)
+    ? supportsAutomaticModelDiscovery(input.provider)
+    : false;
+
+  return {
+    matchedTemplateId: override?.matchedTemplateId ?? null,
+    requestTimeoutMs: override?.getRequestTimeoutMs() ?? getProviderRequestTimeoutMs(),
+    allowsReasoningOnlyRetry: shouldRetryReasoningOnlyResponses(),
+    allowsReplyRewritePass: isReplyRewritePassEnabled(),
+    supportsAutomaticDiscovery,
+    endpointCompatibility: override?.endpointCompatibility ?? "STANDARD_OPENAI",
+  };
 }
