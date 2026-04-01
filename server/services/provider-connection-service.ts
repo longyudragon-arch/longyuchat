@@ -3,7 +3,7 @@ import { ProviderConnectionCheckStatus, ProviderType } from "@/generated/prisma/
 import { prisma } from "@/lib/prisma";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
-import { getDefaultDiscoveryStrategy, supportsAutomaticModelDiscovery } from "@/lib/provider-catalog";
+import { getDefaultDiscoveryStrategy, getProviderProbeModelName, supportsAutomaticModelDiscovery } from "@/lib/provider-catalog";
 import { discoverProviderModels } from "@/server/services/model-discovery-service";
 import {
   decryptModelSecretOrPlaintext,
@@ -185,7 +185,12 @@ function requireNonEmpty(value: string, label: string) {
 
 function assertProvider(provider: string) {
   if (!(provider in ProviderType)) {
-    throw new ApiError(400, `Unsupported provider: ${provider}`);
+    throw new ApiError(400, `Unsupported provider: ${provider}`, {
+      reasonCode: "unsupported_provider",
+      retryable: false,
+      fieldHints: ["providerTemplate"],
+      provider,
+    });
   }
 }
 
@@ -224,6 +229,13 @@ export function resolveProviderConnectionDiscoveryStrategy(
     throw new ApiError(
       400,
       `Provider ${provider} does not support automatic model discovery yet. Please use MANUAL_ONLY.`,
+      {
+        reasonCode: "provider_discovery_unsupported",
+        retryable: false,
+        fieldHints: ["providerTemplate", "discoveryStrategy"],
+        provider,
+        discoveryStrategy: nextStrategy,
+      },
     );
   }
 
@@ -307,6 +319,16 @@ function toProbeRuntimeConfig(connection: ProviderConnection, modelName: string)
   };
 }
 
+function resolveConnectionProbeModelName(connection: ProviderConnection, modelName?: string) {
+  const explicitModelName = modelName?.trim();
+
+  if (explicitModelName) {
+    return explicitModelName;
+  }
+
+  return getProviderProbeModelName(connection.provider, connection.baseUrl);
+}
+
 export async function listProviderConnections() {
   return prisma.providerConnection.findMany({
     orderBy: [{ enabled: "desc" }, { updatedAt: "desc" }],
@@ -365,7 +387,12 @@ export async function updateProviderConnection(
   const existingConnection = await dependencies.getConnectionById(id);
 
   if (!existingConnection) {
-    throw new ApiError(404, `Provider connection ${id} was not found.`);
+    throw new ApiError(404, `Provider connection ${id} was not found.`, {
+      reasonCode: "provider_connection_not_found",
+      retryable: false,
+      fieldHints: ["connectionId"],
+      connectionId: id,
+    });
   }
 
   const nextProvider = (input.provider ?? existingConnection.provider) as keyof typeof ProviderType;
@@ -409,7 +436,12 @@ export async function deleteProviderConnection(
   const connection = await dependencies.getConnectionById(id);
 
   if (!connection) {
-    throw new ApiError(404, `Provider connection ${id} was not found.`);
+    throw new ApiError(404, `Provider connection ${id} was not found.`, {
+      reasonCode: "provider_connection_not_found",
+      retryable: false,
+      fieldHints: ["connectionId"],
+      connectionId: id,
+    });
   }
 
   const referencingModels = await dependencies.getReferencingModels(id);
@@ -419,6 +451,9 @@ export async function deleteProviderConnection(
       409,
       `Provider connection ${connection.name} is still used by ${referencingModels.length} model(s).`,
       {
+        reasonCode: "provider_connection_in_use",
+        retryable: false,
+        fieldHints: ["connectionId"],
         connectionId: id,
         connectionName: connection.name,
         modelCount: referencingModels.length,
@@ -466,36 +501,38 @@ export async function testProviderConnectionById(
   const connection = await dependencies.getConnectionById(id);
 
   if (!connection) {
-    throw new ApiError(404, `Provider connection ${id} was not found.`);
+    throw new ApiError(404, `Provider connection ${id} was not found.`, {
+      reasonCode: "provider_connection_not_found",
+      retryable: false,
+      fieldHints: ["connectionId"],
+      connectionId: id,
+    });
   }
 
   try {
-    const probeModelName = input.modelName?.trim();
+    const probeModelName = resolveConnectionProbeModelName(connection, input.modelName);
 
-    if (probeModelName) {
-      const runtimeConfig = toProbeRuntimeConfig(connection, probeModelName);
-      const adapter = dependencies.createAdapter(runtimeConfig);
-      await adapter.testConnection(runtimeConfig);
-    } else if (
-      supportsAutomaticModelDiscovery(connection.provider) &&
-      connection.discoveryStrategy !== "MANUAL_ONLY"
-    ) {
-      const runtimeConnection = toProviderConnectionRuntime(connection);
-      await dependencies.discoverProviderModels({
-        provider: runtimeConnection.provider,
-        baseUrl: runtimeConnection.baseUrl,
-        apiKey: runtimeConnection.apiKey,
-      });
-    } else {
+    if (!probeModelName) {
       throw new ApiError(
         400,
         `Provider ${connection.provider} requires a model ID to test the connection. Please provide a probe model name.`,
+        {
+          reasonCode: "provider_connection_probe_model_required",
+          retryable: false,
+          fieldHints: ["modelName", "providerTemplate"],
+          connectionId: id,
+          provider: connection.provider,
+        },
       );
     }
 
+    const runtimeConfig = toProbeRuntimeConfig(connection, probeModelName);
+    const adapter = dependencies.createAdapter(runtimeConfig);
+    await adapter.testConnection(runtimeConfig);
+
     return dependencies.persistAuthResult(id, {
       status: "SUCCESS",
-      message: "Connection test succeeded.",
+      message: `Connection test succeeded with probe model ${probeModelName}.`,
     });
   } catch (error) {
     await dependencies.persistAuthResult(id, {
@@ -514,7 +551,12 @@ export async function discoverModelsByConnectionId(
   const connection = await dependencies.getConnectionById(id);
 
   if (!connection) {
-    throw new ApiError(404, `Provider connection ${id} was not found.`);
+    throw new ApiError(404, `Provider connection ${id} was not found.`, {
+      reasonCode: "provider_connection_not_found",
+      retryable: false,
+      fieldHints: ["connectionId"],
+      connectionId: id,
+    });
   }
 
   if (connection.discoveryStrategy === "MANUAL_ONLY") {
@@ -522,6 +564,9 @@ export async function discoverModelsByConnectionId(
       400,
       `Provider connection ${connection.name} is configured for manual model entry only.`,
       {
+        reasonCode: "provider_connection_manual_only",
+        retryable: false,
+        fieldHints: ["discoveryStrategy", "modelName"],
         connectionId: id,
         connectionName: connection.name,
         discoveryStrategy: connection.discoveryStrategy,

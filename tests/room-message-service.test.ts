@@ -699,6 +699,10 @@ describe("sendRoomMessage", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 400,
       message: "Room room-empty does not have any bound models.",
+      details: expect.objectContaining({
+        reasonCode: "room_has_no_models",
+        roomId: "room-empty",
+      }),
     });
   });
 
@@ -742,6 +746,11 @@ describe("sendRoomMessage", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 409,
       message: "Room room-busy is already processing another message. Please wait for the current round to finish.",
+      details: expect.objectContaining({
+        reasonCode: "room_message_in_flight",
+        roomId: "room-busy",
+        retryable: true,
+      }),
     });
 
     expect(store.history.filter((message) => message.role === "USER")).toHaveLength(1);

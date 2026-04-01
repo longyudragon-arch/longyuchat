@@ -249,7 +249,12 @@ function requireProtectedApiKey(apiKey: string) {
 
 function assertProvider(provider: string) {
   if (!(provider in ProviderType)) {
-    throw new ApiError(400, `Unsupported provider: ${provider}`);
+    throw new ApiError(400, `Unsupported provider: ${provider}`, {
+      reasonCode: "unsupported_provider",
+      retryable: false,
+      fieldHints: ["providerTemplate"],
+      provider,
+    });
   }
 }
 
@@ -260,7 +265,12 @@ async function requireProviderConnection(
   const connection = await getConnectionById(connectionId);
 
   if (!connection) {
-    throw new ApiError(404, `Provider connection ${connectionId} was not found.`);
+    throw new ApiError(404, `Provider connection ${connectionId} was not found.`, {
+      reasonCode: "provider_connection_not_found",
+      retryable: false,
+      fieldHints: ["connectionId"],
+      connectionId,
+    });
   }
 
   return connection;
@@ -411,6 +421,11 @@ export async function createModelConfigWithDependencies(
     throw new ApiError(
       400,
       "Provider, Base URL, and API key are required when the model is not linked to a provider connection.",
+      {
+        reasonCode: "model_direct_config_incomplete",
+        retryable: false,
+        fieldHints: ["provider", "baseUrl", "apiKey"],
+      },
     );
   }
 
@@ -443,7 +458,12 @@ export async function updateModelConfigWithDependencies(
   const existingModel = await dependencies.getModelById(id);
 
   if (!existingModel) {
-    throw new ApiError(404, `Model ${id} was not found.`);
+    throw new ApiError(404, `Model ${id} was not found.`, {
+      reasonCode: "model_not_found",
+      retryable: false,
+      fieldHints: ["modelId"],
+      modelId: id,
+    });
   }
 
   if (
@@ -454,6 +474,14 @@ export async function updateModelConfigWithDependencies(
     throw new ApiError(
       400,
       `Model ${existingModel.name} is linked to a provider connection. Please update the connection or switch the model to another connection first.`,
+      {
+        reasonCode: "model_linked_to_connection",
+        retryable: false,
+        fieldHints: ["connectionId", "providerTemplate", "baseUrl"],
+        modelId: id,
+        modelName: existingModel.name,
+        connectionId: existingModel.connectionId,
+      },
     );
   }
 
@@ -473,6 +501,10 @@ export async function updateModelConfigWithDependencies(
       avatarLabel:
         input.avatarLabel !== undefined
           ? normalizeAvatarLabelForProvider(connection.provider, input.avatarLabel)
+          : undefined,
+      avatarColor:
+        input.avatarColor !== undefined
+          ? normalizeAvatarColorForProvider(connection.provider, input.avatarColor)
           : undefined,
       apiKey: connection.apiKey,
       defaultReplyLength:
@@ -512,7 +544,12 @@ export async function deleteModelConfig(
   const model = await dependencies.getModelById(id);
 
   if (!model) {
-    throw new ApiError(404, `Model ${id} was not found.`);
+    throw new ApiError(404, `Model ${id} was not found.`, {
+      reasonCode: "model_not_found",
+      retryable: false,
+      fieldHints: ["modelId"],
+      modelId: id,
+    });
   }
 
   const referencingRooms = await dependencies.getReferencingRooms(id);
@@ -522,6 +559,9 @@ export async function deleteModelConfig(
       409,
       `Model ${model.name} is still used by ${referencingRooms.length} chat room(s).`,
       {
+        reasonCode: "model_in_use_by_rooms",
+        retryable: false,
+        fieldHints: ["modelId"],
         modelId: id,
         modelName: model.name,
         roomCount: referencingRooms.length,
@@ -540,7 +580,12 @@ export async function discoverModelsForSavedModel(
   const model = await dependencies.getModelById(id);
 
   if (!model) {
-    throw new ApiError(404, `Model ${id} was not found.`);
+    throw new ApiError(404, `Model ${id} was not found.`, {
+      reasonCode: "model_not_found",
+      retryable: false,
+      fieldHints: ["modelId"],
+      modelId: id,
+    });
   }
 
   const runtimeConfig = toModelRuntimeConfig(model);
@@ -604,7 +649,12 @@ export async function testModelConnectionById(
   const model = await dependencies.getModelById(id);
 
   if (!model) {
-    throw new ApiError(404, `Model ${id} was not found.`);
+    throw new ApiError(404, `Model ${id} was not found.`, {
+      reasonCode: "model_not_found",
+      retryable: false,
+      fieldHints: ["modelId"],
+      modelId: id,
+    });
   }
 
   const runtimeConfig = toModelRuntimeConfig(model);

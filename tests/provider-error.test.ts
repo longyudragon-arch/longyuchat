@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createProviderApiError,
+  createProviderResponseApiError,
   formatProviderError,
   inferProviderErrorKind,
   inferProviderErrorKindFromMessage,
@@ -45,6 +46,52 @@ describe("provider-error helpers", () => {
       provider: "GEMINI",
       providerErrorKind: "authentication",
       upstreamStatus: 400,
+      reasonCode: "provider_authentication_failed",
+      retryable: false,
+      fieldHints: ["apiKey", "baseUrl", "providerTemplate"],
+    });
+  });
+
+  it("adds structured retry and field-hint metadata for timeout-like provider failures", () => {
+    const error = createProviderApiError({
+      status: 504,
+      bodyText: JSON.stringify({
+        error: {
+          message: "Upstream request timed out before the provider responded.",
+        },
+      }),
+      provider: "OPENAI_COMPATIBLE",
+      endpoint: "https://api.example.com/v1/chat/completions",
+    });
+
+    expect(error.details).toMatchObject({
+      providerErrorKind: "network",
+      reasonCode: "provider_timeout",
+      retryable: true,
+      fieldHints: ["baseUrl", "network", "providerStatus"],
+    });
+  });
+
+  it("adds structured reason codes for unusable provider responses", () => {
+    const error = createProviderResponseApiError({
+      provider: "OPENAI_COMPATIBLE",
+      endpoint: "https://api.example.com/v1/chat/completions",
+      kind: "reasoning_only",
+      finishReason: "stop",
+      attemptCount: 2,
+      contentLength: 0,
+      reasoningLength: 128,
+      completionTokens: 0,
+    });
+
+    expect(error.status).toBe(502);
+    expect(error.details).toMatchObject({
+      providerErrorKind: "reasoning_only",
+      reasonCode: "provider_reasoning_only",
+      retryable: true,
+      fieldHints: ["modelName", "providerCompatibility", "inputPrompt"],
+      finishReason: "stop",
+      attemptCount: 2,
     });
   });
 

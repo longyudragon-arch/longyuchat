@@ -84,7 +84,12 @@ const activeRoomSends = new Set<string>();
 
 function acquireRoomSendLock(roomId: string) {
   if (activeRoomSends.has(roomId)) {
-    throw new ApiError(409, `Room ${roomId} is already processing another message. Please wait for the current round to finish.`);
+    throw new ApiError(409, `Room ${roomId} is already processing another message. Please wait for the current round to finish.`, {
+      reasonCode: "room_message_in_flight",
+      retryable: true,
+      fieldHints: ["roomId"],
+      roomId,
+    });
   }
 
   activeRoomSends.add(roomId);
@@ -108,11 +113,21 @@ function toHistoryMessage(message: Message & { model?: ModelConfig | null }): Co
 
 function assertRunnableRoom(room: RoomWithModels | null, roomId: string) {
   if (!room) {
-    throw new ApiError(404, `Room ${roomId} was not found.`);
+    throw new ApiError(404, `Room ${roomId} was not found.`, {
+      reasonCode: "room_not_found",
+      retryable: false,
+      fieldHints: ["roomId"],
+      roomId,
+    });
   }
 
   if (room.roomModels.length === 0) {
-    throw new ApiError(400, `Room ${roomId} does not have any bound models.`);
+    throw new ApiError(400, `Room ${roomId} does not have any bound models.`, {
+      reasonCode: "room_has_no_models",
+      retryable: false,
+      fieldHints: ["roomId", "modelId"],
+      roomId,
+    });
   }
 
   return room;
@@ -195,6 +210,12 @@ export async function sendRoomMessage(
       throw new ApiError(
         409,
         `Room ${input.roomId} does not currently have any runnable models. All models are disabled or cooling down.`,
+        {
+          reasonCode: "room_has_no_runnable_models",
+          retryable: true,
+          fieldHints: ["roomId", "modelId"],
+          roomId: input.roomId,
+        },
       );
     }
 

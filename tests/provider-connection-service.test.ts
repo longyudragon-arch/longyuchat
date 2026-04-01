@@ -55,11 +55,12 @@ describe("resolveProviderConnectionDiscoveryStrategy", () => {
 });
 
 describe("testProviderConnectionById", () => {
-  it("uses model discovery as the default probe for auto-discoverable providers", async () => {
+  it("uses an auth probe model instead of discovery for auto-discoverable providers", async () => {
     const persistAuthResult = vi.fn(async () => buildConnection("conn-1"));
-    const discoverModels = vi.fn(async () => [
-      { id: "gpt-4.1-mini", label: "gpt-4.1-mini", description: null },
-    ]);
+    const discoverProviderModels = vi.fn(async () => {
+      throw new Error("discovery should not run during auth testing");
+    });
+    const testConnection = vi.fn(async () => undefined);
 
     const result = await testProviderConnectionById(
       "conn-1",
@@ -67,27 +68,31 @@ describe("testProviderConnectionById", () => {
       {
         getConnectionById: async () => buildConnection("conn-1", { provider: "GEMINI" }),
         persistAuthResult,
-        discoverProviderModels: discoverModels,
-        createAdapter: vi.fn(),
+        discoverProviderModels,
+        createAdapter: (config: ModelRuntimeConfig): ModelAdapter => {
+          expect(config.modelName).toBe("gemini-2.5-flash");
+
+          return {
+            testConnection,
+            generateReply: vi.fn(),
+          };
+        },
       },
     );
 
-    expect(discoverModels).toHaveBeenCalledWith({
-      provider: "GEMINI",
-      baseUrl: "https://api.openai.com/v1",
-      apiKey: "secret-key",
-    });
+    expect(testConnection).toHaveBeenCalledTimes(1);
+    expect(discoverProviderModels).not.toHaveBeenCalled();
     expect(persistAuthResult).toHaveBeenCalledWith(
       "conn-1",
       expect.objectContaining({
         status: "SUCCESS",
-        message: "Connection test succeeded.",
+        message: "Connection test succeeded with probe model gemini-2.5-flash.",
       }),
     );
     expect(result.id).toBe("conn-1");
   });
 
-  it("requires a probe model name for manual-only providers", async () => {
+  it("requires a probe model name when neither template nor provider supplies a default probe", async () => {
     const persistAuthResult = vi.fn(async () => buildConnection("conn-2"));
 
     await expect(
@@ -97,7 +102,8 @@ describe("testProviderConnectionById", () => {
         {
           getConnectionById: async () =>
             buildConnection("conn-2", {
-              provider: "HUNYUAN",
+              provider: "CLAUDE",
+              baseUrl: "https://api.anthropic.com/v1",
               discoveryStrategy: "MANUAL_ONLY",
             }),
           persistAuthResult,
@@ -108,7 +114,11 @@ describe("testProviderConnectionById", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 400,
       message:
-        "Provider HUNYUAN requires a model ID to test the connection. Please provide a probe model name.",
+        "Provider CLAUDE requires a model ID to test the connection. Please provide a probe model name.",
+      details: expect.objectContaining({
+        reasonCode: "provider_connection_probe_model_required",
+        fieldHints: ["modelName", "providerTemplate"],
+      }),
     });
 
     expect(persistAuthResult).toHaveBeenCalledWith(
@@ -171,6 +181,10 @@ describe("discoverModelsByConnectionId", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 400,
       message: "Provider connection Connection conn-4 is configured for manual model entry only.",
+      details: expect.objectContaining({
+        reasonCode: "provider_connection_manual_only",
+        fieldHints: ["discoveryStrategy", "modelName"],
+      }),
     });
   });
 });
@@ -189,11 +203,12 @@ describe("deleteProviderConnection", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 409,
       message: "Provider connection Gemini 主连接 is still used by 2 model(s).",
-      details: {
+      details: expect.objectContaining({
+        reasonCode: "provider_connection_in_use",
         connectionId: "conn-5",
         connectionName: "Gemini 主连接",
         modelCount: 2,
-      },
+      }),
     });
   });
 });

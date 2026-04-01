@@ -13,27 +13,18 @@ import {
   reorderIds,
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
+import { resolveRoomConfigFieldErrors, type RoomConfigFieldKey } from "@/components/edit-room-page-error-resolver";
+import {
+  FeedbackPanel,
+  FieldErrorHint,
+  getInputErrorClass,
+} from "@/components/models-page/shared-ui";
 import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
 
 import type { ModelView, ProviderType, RoomType, RoomView } from "@/types/app";
 
 interface EditRoomPageProps {
   roomId: string;
-}
-
-function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback }) {
-  const tone =
-    feedback.tone === "warning"
-      ? "border-amber-200/50 bg-amber-50/80 text-amber-900"
-      : "border-red-200/50 bg-red-50/80 text-red-900";
-
-  return (
-    <div className={`rounded-xl border px-4 py-3 ${tone}`}>
-      <p className="text-[13px] font-bold">{feedback.title}</p>
-      <p className="mt-1 text-[12px] leading-relaxed opacity-90">{feedback.description}</p>
-      <p className="mt-1 text-[12px] leading-relaxed opacity-75">建议：{feedback.suggestion}</p>
-    </div>
-  );
 }
 
 export function EditRoomPage({ roomId }: EditRoomPageProps) {
@@ -43,6 +34,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
   const [activeAction, setActiveAction] = useState<"loading" | "saving" | null>(null);
   const [notice, setNotice] = useState("");
   const [feedback, setFeedback] = useState<ClientErrorFeedback | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RoomConfigFieldKey, string>>>({});
   const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
   const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,6 +63,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
   const handleInitialLoad = useEffectEvent(async () => {
     setActiveAction("loading");
     setFeedback(null);
+    setFieldErrors({});
     try {
       await Promise.all([loadModels(), loadRoom()]);
     } catch (error: unknown) {
@@ -134,6 +127,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
     });
     clearDragState();
     setFeedback(null);
+    setFieldErrors({});
   }
 
   function toggleModel(modelId: string) {
@@ -147,6 +141,10 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         suggestion: "请先去模型管理页重新启用它，或者改选别的可用模型。",
         tone: "warning",
       });
+      setFieldErrors((current) => ({
+        ...current,
+        modelIds: "当前选中了不可用模型，请先更换为启用中的模型成员。",
+      }));
       return;
     }
 
@@ -160,11 +158,13 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         modelIds: exists ? current.modelIds.filter((id) => id !== modelId) : [...current.modelIds, modelId],
       };
     });
+    setFieldErrors((current) => ({ ...current, modelIds: undefined }));
   }
 
   function removeSelectedModel(modelId: string) {
     setForm((current) => ({ ...current, modelIds: current.modelIds.filter((id) => id !== modelId) }));
     clearDragState();
+    setFieldErrors((current) => ({ ...current, modelIds: undefined }));
   }
 
   function previewSelectedModelMove(targetId: string) {
@@ -181,6 +181,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
   async function saveConfiguration() {
     setActiveAction("saving");
     setFeedback(null);
+    setFieldErrors({});
     try {
       const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${roomId}/configuration`, {
         method: "PUT",
@@ -196,10 +197,13 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         type: data.room.type,
         modelIds: data.room.roomModels.map((item) => item.modelId),
       });
+      setFieldErrors({});
       setNotice("房间配置已保存。");
       router.push(`/rooms/${roomId}`);
     } catch (error: unknown) {
-      setFeedback(describeClientError(error));
+      const nextFeedback = describeClientError(error);
+      setFeedback(nextFeedback);
+      setFieldErrors(resolveRoomConfigFieldErrors(error, nextFeedback));
     } finally {
       setActiveAction(null);
     }
@@ -236,14 +240,36 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间名称</label>
-            <input value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="ly-control" />
+            <input
+              data-testid="edit-room-title"
+              aria-label="房间名称"
+              value={form.title}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, title: e.target.value }));
+                setFieldErrors((current) => ({ ...current, title: undefined }));
+              }}
+              className={`ly-control ${getInputErrorClass(fieldErrors.title)}`}
+            />
+            <FieldErrorHint message={fieldErrors.title} />
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold tracking-wide text-[var(--muted)] uppercase ml-1">房间类型</label>
-            <select value={form.type} onChange={(e) => { const t = e.target.value as RoomType; setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds })); clearDragState(); }} className="ly-control appearance-none cursor-pointer">
+            <select
+              data-testid="edit-room-type"
+              aria-label="房间类型"
+              value={form.type}
+              onChange={(e) => {
+                const t = e.target.value as RoomType;
+                setForm((c) => ({ ...c, type: t, modelIds: t === "SINGLE" ? c.modelIds.slice(0, 1) : c.modelIds }));
+                clearDragState();
+                setFieldErrors((current) => ({ ...current, type: undefined, modelIds: undefined }));
+              }}
+              className={`ly-control appearance-none cursor-pointer ${getInputErrorClass(fieldErrors.type)}`}
+            >
               <option value="GROUP">群聊 (顺序协作)</option>
               <option value="SINGLE">单聊 (单模型对话)</option>
             </select>
+            <FieldErrorHint message={fieldErrors.type} />
           </div>
         </div>
         {(notice || activeAction) && (
@@ -279,6 +305,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
               ))}
             </select>
           </div>
+          <FieldErrorHint message={fieldErrors.modelIds} />
 
           <div className="mt-4 space-y-2 max-h-[500px] overflow-y-auto scrollbar-thin">
             {filteredModels.length === 0 ? (
@@ -421,6 +448,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
             <div className="mt-6 space-y-3">
               <button
                 type="button"
+                data-testid="edit-room-save"
                 onClick={() => startTransition(() => void saveConfiguration())}
                 disabled={!dirty || !countValid || disabledSelectedModels.length > 0 || activeAction !== null}
                 className="w-full rounded-xl bg-[var(--accent)] px-5 py-3.5 text-[15px] font-bold text-white shadow-md shadow-[var(--accent)]/20 transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0"

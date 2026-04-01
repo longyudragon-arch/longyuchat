@@ -305,6 +305,10 @@ describe("updateModelConfigWithDependencies", () => {
       status: 400,
       message:
         "Model 受连接保护的模型 is linked to a provider connection. Please update the connection or switch the model to another connection first.",
+      details: expect.objectContaining({
+        reasonCode: "model_linked_to_connection",
+        modelName: "受连接保护的模型",
+      }),
     });
   });
 
@@ -315,6 +319,7 @@ describe("updateModelConfigWithDependencies", () => {
       provider: "DEEPSEEK" as const,
       baseUrl: "https://api.deepseek.com/v1",
       apiKey: "encrypted-connection-key",
+      avatarColor: "#1d4ed8",
     };
     const updateModel = vi.fn(async () => updatedModel);
 
@@ -323,6 +328,7 @@ describe("updateModelConfigWithDependencies", () => {
       {
         connectionId: "conn-2",
         modelName: "deepseek-reasoner",
+        avatarColor: "#1d4ed8",
       },
       {
         getModelById: async () => buildModel("model-switch"),
@@ -343,9 +349,51 @@ describe("updateModelConfigWithDependencies", () => {
         provider: "DEEPSEEK",
         baseUrl: "https://api.deepseek.com/v1",
         apiKey: "encrypted-connection-key",
+        avatarColor: "#1d4ed8",
       }),
     );
     expect(result.connectionId).toBe("conn-2");
+  });
+
+  it("can detach a linked model back to direct mode while keeping direct fields editable", async () => {
+    const updateModel = vi.fn(async () => ({
+      ...buildModel("model-detach"),
+      connectionId: null,
+      provider: "GEMINI" as const,
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      modelName: "gemini-2.5-pro",
+    }));
+
+    const result = await updateModelConfigWithDependencies(
+      "model-detach",
+      {
+        connectionId: null,
+        provider: "GEMINI",
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        modelName: "gemini-2.5-pro",
+      },
+      {
+        getModelById: async () => ({
+          ...buildModel("model-detach"),
+          connectionId: "conn-linked",
+          provider: "GEMINI",
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        }),
+        getConnectionById: async () => null,
+        updateModel,
+      },
+    );
+
+    expect(updateModel).toHaveBeenCalledWith(
+      "model-detach",
+      expect.objectContaining({
+        connectionId: null,
+        provider: "GEMINI",
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        modelName: "gemini-2.5-pro",
+      }),
+    );
+    expect(result.connectionId).toBeNull();
   });
 
   it("updates a model avatar color with a validated custom hex value", async () => {
@@ -418,11 +466,12 @@ describe("deleteModelConfig", () => {
     ).rejects.toMatchObject<ApiError>({
       status: 409,
       message: "Model Gemini 主模型 is still used by 2 chat room(s).",
-      details: {
+      details: expect.objectContaining({
+        reasonCode: "model_in_use_by_rooms",
         modelId: "model-in-use",
         modelName: "Gemini 主模型",
         roomCount: 2,
-      },
+      }),
     });
   });
 

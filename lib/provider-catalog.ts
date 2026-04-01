@@ -10,18 +10,6 @@ import {
   shouldRetryReasoningOnlyResponses,
 } from "@/lib/runtime";
 
-export const providerOptions = [
-  "OPENAI_COMPATIBLE",
-  "CLAUDE",
-  "GEMINI",
-  "GROK",
-  "DOUBAO",
-  "DEEPSEEK",
-  "MODELSCOPE",
-  "HUNYUAN",
-  "QWEN",
-] as const;
-
 export interface ProviderPreset {
   label: string;
   labelZh: string;
@@ -33,6 +21,14 @@ export interface ProviderPreset {
   badgeClassName: string;
   iconClassName: string;
   softClassName: string;
+}
+
+export type ProviderAdapterKind = "OPENAI_COMPATIBLE" | "UNSUPPORTED";
+
+export interface ProviderCapabilityDescriptor {
+  adapterKind: ProviderAdapterKind;
+  supportsAutomaticDiscovery: boolean;
+  supportsDirectCreate: boolean;
 }
 
 interface ProviderTemplateVisualPreset {
@@ -168,30 +164,55 @@ export const providerPresets: Record<ProviderType, ProviderPreset> = {
   },
 };
 
-/**
- * 支持通过 GET /models 自动发现模型列表的 provider。
- *
- * 判断依据：provider 在用 OPENAI_COMPATIBLE 模式时，其平台的 /models 端点
- * 返回符合 OpenAI 格式的响应（data[] 数组）。
- *
- * 注意：某些平台（如智谱 BigModel、OpenRouter）虽然在技术上可以返回模型列表，
- * 但实际行为可能受账号权限、套餐影响，因此在模板层面设置为
- * AUTO_FETCH_WITH_MANUAL_FALLBACK，以便失败时有 fallback。
- *
- * DOUBAO / HUNYUAN / QWEN 现按兼容接口做 best-effort 自动发现，
- * 实际结果仍可能受账号权限、平台网关和模型目录策略影响。
- * CLAUDE 使用 Anthropic 原生 API，不兼容此路径。
- */
-const autoDiscoverableProviders = new Set<ProviderType>([
-  "OPENAI_COMPATIBLE",
-  "GEMINI",
-  "GROK",
-  "DOUBAO",
-  "DEEPSEEK",
-  "MODELSCOPE",
-  "HUNYUAN",
-  "QWEN",
-]);
+const providerCapabilities: Record<ProviderType, ProviderCapabilityDescriptor> = {
+  OPENAI_COMPATIBLE: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: true,
+  },
+  CLAUDE: {
+    adapterKind: "UNSUPPORTED",
+    supportsAutomaticDiscovery: false,
+    supportsDirectCreate: false,
+  },
+  GEMINI: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: true,
+  },
+  GROK: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: true,
+  },
+  DOUBAO: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: false,
+  },
+  DEEPSEEK: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: false,
+  },
+  MODELSCOPE: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: false,
+  },
+  HUNYUAN: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: false,
+  },
+  QWEN: {
+    adapterKind: "OPENAI_COMPATIBLE",
+    supportsAutomaticDiscovery: true,
+    supportsDirectCreate: false,
+  },
+};
+
+export const providerOptions = Object.keys(providerCapabilities) as ProviderType[];
 
 const providerTemplateVisualPresets: Record<string, ProviderTemplateVisualPreset> = {
   "zhipu-bigmodel": { avatarLabel: "ZP", avatarColor: "#2563eb" },
@@ -469,12 +490,44 @@ export function getProviderPreset(provider: ProviderType) {
   return providerPresets[provider];
 }
 
+export function getProviderCapabilities(provider: ProviderType) {
+  return providerCapabilities[provider];
+}
+
+export function supportsProviderAdapter(provider: string, adapterKind: ProviderAdapterKind) {
+  if (!isKnownProviderType(provider)) {
+    return false;
+  }
+
+  return getProviderCapabilities(provider).adapterKind === adapterKind;
+}
+
 export function supportsAutomaticModelDiscovery(provider: ProviderType) {
-  return autoDiscoverableProviders.has(provider);
+  return getProviderCapabilities(provider).supportsAutomaticDiscovery;
+}
+
+export function getDirectCreateProviderOptions() {
+  return providerOptions.filter((provider) => getProviderCapabilities(provider).supportsDirectCreate);
 }
 
 export function getDefaultDiscoveryStrategy(provider: ProviderType): ProviderConnectionDiscoveryStrategy {
   return supportsAutomaticModelDiscovery(provider) ? "AUTO_FETCH_WITH_MANUAL_FALLBACK" : "MANUAL_ONLY";
+}
+
+export function getProviderProbeModelName(provider: ProviderType, baseUrl?: string) {
+  const matchedTemplate = baseUrl ? findMatchingProviderTemplate(provider, baseUrl) : null;
+  const templateDefaultModel = matchedTemplate?.defaultModelName?.trim();
+
+  if (templateDefaultModel) {
+    return templateDefaultModel;
+  }
+
+  const providerDefaultModel = getProviderPreset(provider).defaultModelName?.trim();
+  return providerDefaultModel || null;
+}
+
+export function requiresExplicitProbeModel(provider: ProviderType, baseUrl?: string) {
+  return getProviderProbeModelName(provider, baseUrl) === null;
 }
 
 export function getProviderTemplateById(templateId: string) {

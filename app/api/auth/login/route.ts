@@ -22,7 +22,10 @@ const loginSchema = z.object({
 export async function POST(request: Request) {
   try {
     if (!isAppLoginEnabled()) {
-      throw new ApiError(503, "App login is not enabled on this server.");
+      throw new ApiError(503, "App login is not enabled on this server.", {
+        reasonCode: "app_login_disabled",
+        retryable: false,
+      });
     }
 
     const body = await parseJsonBody(request, loginSchema);
@@ -30,11 +33,19 @@ export async function POST(request: Request) {
     const configuredPassword = process.env.APP_LOGIN_PASSWORD?.trim();
 
     if (!configuredUsername || !configuredPassword) {
-      throw new ApiError(503, "App login credentials are incomplete.");
+      throw new ApiError(503, "App login credentials are incomplete.", {
+        reasonCode: "app_login_misconfigured",
+        retryable: false,
+        fieldHints: ["APP_LOGIN_USERNAME", "APP_LOGIN_PASSWORD"],
+      });
     }
 
     if (body.username !== configuredUsername || body.password !== configuredPassword) {
-      throw new ApiError(401, "Invalid username or password.");
+      throw new ApiError(401, "Invalid username or password.", {
+        reasonCode: "invalid_credentials",
+        retryable: true,
+        fieldHints: ["username", "password"],
+      });
     }
 
     const response = withRequestIdHeader(

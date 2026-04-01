@@ -34,6 +34,7 @@ APP_LOG_DIR="/srv/ai-chat-lab/var/log"
 SQLITE_BACKUP_DIR="/srv/ai-chat-lab/backups/sqlite"
 SQLITE_BACKUP_RETENTION_DAYS="7"
 ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION="false"
+APP_LISTEN_HOST="127.0.0.1"
 ```
 
 说明：
@@ -49,6 +50,7 @@ ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION="false"
 - `APP_LOG_DIR` 建议放到项目目录之外或独立的持久化目录
 - 使用 SQLite 时，建议显式配置 `SQLITE_BACKUP_DIR`
 - `ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION` 仅在你已经通过其他网关做了访问保护时才建议设为 `true`
+- `APP_LISTEN_HOST` 建议在使用 Nginx 反代时保持为 `127.0.0.1`
 
 ### 2.2 数据库
 
@@ -150,7 +152,15 @@ npm run build
 npm run start:prod
 ```
 
-默认监听 `0.0.0.0`，可配合 `PORT` 环境变量使用。
+默认监听 `127.0.0.1`，可配合 `PORT` 与 `APP_LISTEN_HOST` 环境变量使用。
+
+如果你使用 Nginx 或其他反向代理，建议通过 `APP_LISTEN_HOST=127.0.0.1` 只监听本机回环地址。
+
+如果你明确需要让 Node 进程直接对公网提供服务，则显式设置：
+
+```bash
+APP_LISTEN_HOST=0.0.0.0
+```
 
 ### 3.5 SQLite 手动备份
 
@@ -197,6 +207,7 @@ Environment=ENABLE_FILE_LOGGING=true
 Environment=APP_LOG_DIR=/srv/ai-chat-lab/var/log
 Environment=SQLITE_BACKUP_DIR=/srv/ai-chat-lab/backups/sqlite
 Environment=SQLITE_BACKUP_RETENTION_DAYS=7
+Environment=APP_LISTEN_HOST=127.0.0.1
 ExecStart=/usr/bin/npm run start:prod
 Restart=always
 RestartSec=5

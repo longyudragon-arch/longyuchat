@@ -115,7 +115,11 @@ function requireTitle(title: string) {
   const normalized = title.trim();
 
   if (!normalized) {
-    throw new Error("Room title is required.");
+    throw new ApiError(400, "Room title is required.", {
+      reasonCode: "room_title_required",
+      retryable: false,
+      fieldHints: ["title"],
+    });
   }
 
   return normalized;
@@ -123,17 +127,32 @@ function requireTitle(title: string) {
 
 function validateRoomType(type: string) {
   if (!(type in RoomType)) {
-    throw new ApiError(400, `Unsupported room type: ${type}`);
+    throw new ApiError(400, `Unsupported room type: ${type}`, {
+      reasonCode: "unsupported_room_type",
+      retryable: false,
+      fieldHints: ["type"],
+      target: type,
+    });
   }
 }
 
 function validateModelCount(type: keyof typeof RoomType, modelIds: string[]) {
   if (type === "SINGLE" && modelIds.length !== 1) {
-    throw new ApiError(400, "Single chat rooms must be bound to exactly one model.");
+    throw new ApiError(400, "Single chat rooms must be bound to exactly one model.", {
+      reasonCode: "room_single_requires_one_model",
+      retryable: false,
+      fieldHints: ["type", "modelIds"],
+      target: type,
+    });
   }
 
   if (type === "GROUP" && modelIds.length < 2) {
-    throw new ApiError(400, "Group chat rooms must include at least two models.");
+    throw new ApiError(400, "Group chat rooms must include at least two models.", {
+      reasonCode: "room_group_requires_two_models",
+      retryable: false,
+      fieldHints: ["type", "modelIds"],
+      target: type,
+    });
   }
 }
 
@@ -142,7 +161,11 @@ function uniqueModelIds(modelIds: string[]) {
   const uniqueIds = Array.from(new Set(ids));
 
   if (uniqueIds.length !== ids.length) {
-    throw new ApiError(400, "Each model can only appear once in a room.");
+    throw new ApiError(400, "Each model can only appear once in a room.", {
+      reasonCode: "room_duplicate_model_selection",
+      retryable: false,
+      fieldHints: ["modelIds"],
+    });
   }
 
   return uniqueIds;

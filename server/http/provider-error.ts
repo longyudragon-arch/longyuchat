@@ -126,6 +126,50 @@ function isNetworkFailure(normalized: string) {
   );
 }
 
+function getProviderReasonCode(kind: ProviderErrorKind) {
+  switch (kind) {
+    case "authentication":
+      return "provider_authentication_failed";
+    case "quota":
+      return "provider_quota_exhausted";
+    case "not_found":
+      return "provider_target_not_found";
+    case "network":
+      return "provider_timeout";
+    case "empty_response":
+      return "provider_empty_response";
+    case "reasoning_only":
+      return "provider_reasoning_only";
+    case "request":
+    default:
+      return "provider_request_failed";
+  }
+}
+
+function isRetryableProviderErrorKind(kind: ProviderErrorKind) {
+  return kind === "network" || kind === "empty_response" || kind === "reasoning_only" || kind === "request";
+}
+
+function getProviderFieldHints(kind: ProviderErrorKind) {
+  switch (kind) {
+    case "authentication":
+      return ["apiKey", "baseUrl", "providerTemplate"];
+    case "quota":
+      return ["billing", "quota", "modelAccess"];
+    case "not_found":
+      return ["modelName", "baseUrl", "providerTemplate"];
+    case "network":
+      return ["baseUrl", "network", "providerStatus"];
+    case "empty_response":
+      return ["modelName", "providerStatus", "providerCompatibility"];
+    case "reasoning_only":
+      return ["modelName", "providerCompatibility", "inputPrompt"];
+    case "request":
+    default:
+      return ["providerTemplate", "baseUrl", "network"];
+  }
+}
+
 export { isProviderTimeoutLikeMessage };
 
 export function inferProviderErrorKind(status: number, bodyText: string): ProviderErrorKind {
@@ -245,6 +289,9 @@ export function createProviderApiError(input: {
     providerErrorKind: kind,
     upstreamStatus: input.status,
     endpoint: input.endpoint,
+    reasonCode: getProviderReasonCode(kind),
+    retryable: isRetryableProviderErrorKind(kind),
+    fieldHints: getProviderFieldHints(kind),
   });
 }
 
@@ -276,6 +323,9 @@ export function createProviderResponseApiError(input: {
     provider: input.provider,
     providerErrorKind: input.kind,
     endpoint: input.endpoint,
+    reasonCode: getProviderReasonCode(input.kind),
+    retryable: isRetryableProviderErrorKind(input.kind),
+    fieldHints: getProviderFieldHints(input.kind),
     finishReason: input.finishReason ?? null,
     attemptCount: input.attemptCount,
     contentLength: input.contentLength,

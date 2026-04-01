@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getProviderExecutionProfile } from "@/lib/provider-catalog";
+import {
+  getDirectCreateProviderOptions,
+  getProviderCapabilities,
+  getProviderExecutionProfile,
+  supportsProviderAdapter,
+} from "@/lib/provider-catalog";
 
 describe("getProviderExecutionProfile", () => {
   afterEach(() => {
@@ -60,6 +65,29 @@ describe("getProviderExecutionProfile", () => {
       allowsReplyRewritePass: false,
       supportsAutomaticDiscovery: false,
       endpointCompatibility: "STANDARD_OPENAI",
+    });
+  });
+});
+
+describe("provider capability registry", () => {
+  it("drives the direct-create provider list from a single capability source", () => {
+    expect(getDirectCreateProviderOptions()).toEqual([
+      "OPENAI_COMPATIBLE",
+      "GEMINI",
+      "GROK",
+    ]);
+  });
+
+  it("exposes adapter compatibility from the provider capability registry", () => {
+    expect(supportsProviderAdapter("GEMINI", "OPENAI_COMPATIBLE")).toBe(true);
+    expect(supportsProviderAdapter("CLAUDE", "OPENAI_COMPATIBLE")).toBe(false);
+  });
+
+  it("returns provider capabilities that stay aligned with discovery behavior", () => {
+    expect(getProviderCapabilities("QWEN")).toMatchObject({
+      adapterKind: "OPENAI_COMPATIBLE",
+      supportsAutomaticDiscovery: true,
+      supportsDirectCreate: false,
     });
   });
 });

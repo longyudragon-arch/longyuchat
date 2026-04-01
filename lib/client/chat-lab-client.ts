@@ -2,6 +2,8 @@ import { areDevMocksEnabledForClient } from "@/lib/runtime";
 import {
   findMatchingProviderTemplate,
   getDefaultDiscoveryStrategy,
+  getDirectCreateProviderOptions as getCatalogDirectCreateProviderOptions,
+  getProviderCapabilities as getCatalogProviderCapabilities,
   getProviderPreset as getCatalogProviderPreset,
   getProviderTemplateById,
   providerConnectionTemplates as catalogProviderConnectionTemplates,
@@ -9,6 +11,7 @@ import {
   supportsAutomaticModelDiscovery as catalogSupportsAutomaticModelDiscovery,
 } from "@/lib/provider-catalog";
 import type {
+  ApiErrorDetailsView,
   AuthSessionView,
   CreateProviderConnectionPayload,
   DiscoveredModelView,
@@ -35,6 +38,14 @@ export {
 
 export const providerOptions = catalogProviderOptions;
 export const providerConnectionTemplates = catalogProviderConnectionTemplates;
+
+export function getDirectCreateProviderOptions() {
+  return getCatalogDirectCreateProviderOptions();
+}
+
+export function getProviderCapabilities(provider: ProviderType) {
+  return getCatalogProviderCapabilities(provider);
+}
 
 interface ReferencingRoomSummary {
   id: string;
@@ -465,6 +476,68 @@ function getErrorMessage(error: unknown) {
   return "请求失败。";
 }
 
+function getClientErrorDetails(error: unknown) {
+  if (!(error instanceof ClientRequestError)) {
+    return undefined;
+  }
+
+  if (!error.details || typeof error.details !== "object") {
+    return undefined;
+  }
+
+  return error.details as ApiErrorDetailsView;
+}
+
+function inferProviderIssueKind(details: ApiErrorDetailsView | undefined, message: string) {
+  if (typeof details?.providerErrorKind === "string") {
+    return details.providerErrorKind;
+  }
+
+  if (details?.reasonCode === "provider_authentication_failed") {
+    return "authentication" as const;
+  }
+
+  if (details?.reasonCode === "provider_quota_exhausted") {
+    return "quota" as const;
+  }
+
+  if (details?.reasonCode === "provider_target_not_found") {
+    return "not_found" as const;
+  }
+
+  if (details?.reasonCode === "provider_timeout") {
+    return "network" as const;
+  }
+
+  if (details?.reasonCode === "provider_reasoning_only") {
+    return "reasoning_only" as const;
+  }
+
+  if (details?.reasonCode === "provider_empty_response") {
+    return "empty_response" as const;
+  }
+
+  if (details?.reasonCode === "provider_request_failed") {
+    return "request" as const;
+  }
+
+  if (typeof details?.upstreamStatus === "number") {
+    if (details.upstreamStatus === 401 || details.upstreamStatus === 403) {
+      return "authentication" as const;
+    }
+
+    if (details.upstreamStatus === 404) {
+      return "not_found" as const;
+    }
+
+    if (details.upstreamStatus === 429) {
+      return "quota" as const;
+    }
+  }
+
+  return inferModelIssueKind(message);
+}
+
 function formatReferencingRooms(rooms: ReferencingRoomSummary[] | undefined) {
   if (!rooms || rooms.length === 0) {
     return "";
@@ -490,17 +563,14 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
   const normalized = message.toLowerCase();
   const status = error instanceof ClientRequestError ? error.status : undefined;
   const unsupportedProvider = extractUnsupportedProviderName(message);
-  const details =
-    error instanceof ClientRequestError && typeof error.details === "object" && error.details !== null
-      ? (error.details as {
-          roomCount?: number;
-          modelName?: string;
-          rooms?: ReferencingRoomSummary[];
-          modelCount?: number;
-          connectionName?: string;
-          models?: ReferencingModelSummary[];
-        })
-      : undefined;
+  const details = getClientErrorDetails(error) as
+    | (ApiErrorDetailsView & {
+        rooms?: ReferencingRoomSummary[];
+        models?: ReferencingModelSummary[];
+      })
+    | undefined;
+  const issueKind = inferProviderIssueKind(details, message);
+  const reasonCode = details?.reasonCode;
 
   if (status === 401 && normalized.includes("login")) {
     return {
@@ -511,12 +581,239 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     };
   }
 
+  if (reasonCode === "app_login_disabled") {
+    return {
+      title: "当前站点未开启登录",
+      description: message,
+      suggestion: "这是服务器侧配置状态，不是你的输入问题。请先联系管理员确认访问保护方式。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "app_login_misconfigured") {
+    return {
+      title: "登录服务配置不完整",
+      description: message,
+      suggestion: "当前站点的登录配置还没准备好。请先检查 APP_LOGIN_USERNAME、APP_LOGIN_PASSWORD 等环境变量。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "invalid_credentials") {
+    return {
+      title: "用户名或密码不正确",
+      description: message,
+      suggestion: "请检查用户名和密码后再试一次。如果你确认输入无误，请联系管理员重置登录配置。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "invalid_request_payload") {
+    return {
+      title: "请求参数不完整或格式不正确",
+      description: message,
+      suggestion: "请检查当前表单必填项是否都已填写完整；如果刷新后仍然失败，再继续排查字段映射或接口参数。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "invalid_json_body") {
+    return {
+      title: "请求体格式不正确",
+      description: message,
+      suggestion: "这次提交的请求体不是合法 JSON。请刷新页面后重试；如果仍然出现，说明当前前端请求拼装还需要继续排查。",
+      tone: "error",
+    };
+  }
+
+  if (reasonCode === "room_title_required") {
+    return {
+      title: "房间名称不能为空",
+      description: message,
+      suggestion: "请先填写一个清晰的房间名称，再保存房间配置。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "unsupported_room_type") {
+    return {
+      title: "房间类型不支持",
+      description: message,
+      suggestion: "请重新选择单聊或群聊后再提交。如果刷新后仍然出现，说明当前房间类型参数还需要继续排查。",
+      tone: "error",
+    };
+  }
+
+  if (reasonCode === "room_single_requires_one_model") {
+    return {
+      title: "单聊必须且只能选择 1 个模型",
+      description: message,
+      suggestion: "请只保留 1 个模型，或切换回群聊模式后再保存。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "room_group_requires_two_models") {
+    return {
+      title: "群聊至少需要 2 个模型",
+      description: message,
+      suggestion: "请至少选择 2 个可用模型后再保存群聊配置。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "room_duplicate_model_selection") {
+    return {
+      title: "同一个模型不能重复加入房间",
+      description: message,
+      suggestion: "请去掉重复的模型成员后再保存房间配置。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "record_already_exists") {
+    return {
+      title: "记录已存在",
+      description: message,
+      suggestion: "这通常是重复创建了同名或同唯一约束的数据。请检查是否已经存在相同记录，再决定是编辑原有内容还是调整输入。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "record_still_referenced") {
+    return {
+      title: "数据仍被其他内容引用",
+      description: message,
+      suggestion: "请先解除相关引用关系，再回来删除或修改这条记录。",
+      tone: "warning",
+    };
+  }
+
   if (normalized.includes("cooling down") || normalized.includes("runnable models")) {
     return {
       title: "当前房间暂时没有可运行的模型",
       description: message,
       suggestion: "房间里的模型目前都在冷却中或已停用。请等待冷却结束，或先恢复至少一个健康模型后再继续发送。",
       tone: "warning",
+    };
+  }
+
+  if (reasonCode === "room_message_in_flight") {
+    return {
+      title: "当前房间正在回复中",
+      description: message,
+      suggestion: "这一轮顺序回复还没结束。请稍等当前轮次完成后再发送下一条消息，避免房间上下文交叉。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "room_has_no_runnable_models") {
+    return {
+      title: "当前房间暂时没有可运行的模型",
+      description: message,
+      suggestion: "房间里的模型目前都在冷却中或已停用。请等待冷却结束，或先恢复至少一个健康模型后再继续发送。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "room_has_no_models") {
+    return {
+      title: "当前房间还没有绑定模型",
+      description: message,
+      suggestion: "请先回到房间配置，为这个房间绑定至少一个可用模型后再继续发送。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "provider_connection_manual_only") {
+    return {
+      title: "该连接配置为手动录入模式",
+      description: message,
+      suggestion: "这类连接不会自动获取模型列表。请直接在模型 ID 输入框里手动填写模型 ID。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "provider_connection_probe_model_required") {
+    return {
+      title: "需要提供探针模型 ID",
+      description: message,
+      suggestion: "当前 Provider 没有默认探针模型。请在测试连接时补一个可用的模型 ID，再执行连接验证。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "model_linked_to_connection") {
+    return {
+      title: "当前模型由已保存连接托管",
+      description: message,
+      suggestion: "如果要改 Base URL、API Key 或 Provider 模板，请先切到“直接配置”，或者先切换到另一个已保存连接。",
+      tone: "warning",
+    };
+  }
+
+  if (reasonCode === "model_direct_config_incomplete") {
+    return {
+      title: "直连模式所需字段还没填完整",
+      description: message,
+      suggestion: "请补齐 Provider、Base URL 和 API Key；如果你本来想走连接模式，可以切回“使用已保存连接”。",
+      tone: "warning",
+    };
+  }
+
+  if (issueKind === "reasoning_only") {
+    return {
+      title: "模型只返回了推理内容",
+      description: message,
+      suggestion: "请优先重试一次；如果仍然出现，请检查该模型是否支持当前接口格式，或暂时切换到更稳定的模型。",
+      tone: "error",
+    };
+  }
+
+  if (issueKind === "empty_response") {
+    return {
+      title: "模型未返回可用答案",
+      description: message,
+      suggestion: "请先重试一次；如果持续出现，优先检查上游模型是否真的返回了正文内容，或暂时切换到其他模型。",
+      tone: "error",
+    };
+  }
+
+  if (issueKind === "quota") {
+    return {
+      title: "当前额度不足或已超出配额",
+      description: message,
+      suggestion: "请检查该平台的计费、额度和模型可用性。如果是预览模型，请确认是否仅支持付费层。",
+      tone: "error",
+    };
+  }
+
+  if (issueKind === "network") {
+    return {
+      title: isTimeoutLikeMessage(message) ? "模型请求超时" : "模型请求超时或网络连接失败",
+      description: message,
+      suggestion: isTimeoutLikeMessage(message)
+        ? "这通常说明上游模型响应过慢，或当前网络到模型接口的链路不稳定。请先重试一次；如果连续超时，建议先停用这个模型，或切换到更快、更稳定的模型。"
+        : "请检查 Base URL、当前网络、服务器到上游模型接口的连通性，以及模型服务本身是否可用。",
+      tone: "error",
+    };
+  }
+
+  if (issueKind === "authentication") {
+    return {
+      title: "API Key 无效或鉴权失败",
+      description: message,
+      suggestion: "请检查 API Key、Base URL、模型 ID 是否属于同一个 Provider，并确认账号已经开通对应的 API 能力。",
+      tone: "error",
+    };
+  }
+
+  if (issueKind === "not_found") {
+    return {
+      title: "模型 ID、端点或上游资源不存在",
+      description: message,
+      suggestion: "请检查模型 ID、Base URL、Provider 模板和当前接口路径是否匹配；如果这是平台限制，也可以先切回手动模型 ID 或更换模型。",
+      tone: "error",
     };
   }
 
@@ -623,70 +920,34 @@ export function describeClientError(error: unknown): ClientErrorFeedback {
     };
   }
 
-  if (normalized.includes("reasoning content but no final answer")) {
-    return {
-      title: "模型只返回了推理内容",
-      description: message,
-      suggestion: "请优先重试一次；如果仍然出现，请检查该模型是否支持当前接口格式，或暂时切换到更稳定的模型。",
-      tone: "error",
-    };
-  }
-
-  if (normalized.includes("returned an empty response") || normalized.includes("empty final answer")) {
-    return {
-      title: "模型未返回可用答案",
-      description: message,
-      suggestion: "请先重试一次；如果持续出现，优先检查上游模型是否真的返回了正文内容，或暂时切换到其他模型。",
-      tone: "error",
-    };
-  }
-
-  if (normalized.includes("quota") || normalized.includes("billing") || normalized.includes("429") || normalized.includes("token is exhausted")) {
-
-    return {
-      title: "当前额度不足或已超出配额",
-      description: message,
-      suggestion: "请检查该平台的计费、额度和模型可用性。如果是预览模型，请确认是否仅支持付费层。",
-      tone: "error",
-    };
-  }
-
-  if (
-    normalized.includes("timeout") ||
-    normalized.includes("timed out") ||
-    normalized.includes("fetch failed") ||
-    normalized.includes("network")
-  ) {
-    return {
-      title: isTimeoutLikeMessage(message) ? "模型请求超时" : "模型请求超时或网络连接失败",
-      description: message,
-      suggestion: isTimeoutLikeMessage(message)
-        ? "这通常说明上游模型响应过慢，或当前网络到模型接口的链路不稳定。请先重试一次；如果连续超时，建议先停用这个模型，或切换到更快、更稳定的模型。"
-        : "请检查 Base URL、当前网络、服务器到上游模型接口的连通性，以及模型服务本身是否可用。",
-      tone: "error",
-    };
-  }
-
-  if (
-    normalized.includes("invalid_api_key") ||
-    normalized.includes("api_key_invalid") ||
-    normalized.includes("api key not found") ||
-    normalized.includes("key not found") ||
-    normalized.includes("invalid api key") ||
-    normalized.includes("incorrect api key") ||
-    normalized.includes("unauthorized") ||
-    normalized.includes("authentication failed") ||
-    normalized.includes("401")
-  ) {
-    return {
-      title: "API Key 无效或鉴权失败",
-      description: message,
-      suggestion: "请检查 API Key、Base URL、模型 ID 是否属于同一个 Provider，并确认账号已经开通对应的 API 能力。",
-      tone: "error",
-    };
-  }
-
   if (status === 404 || normalized.includes("not found")) {
+    if (reasonCode === "provider_connection_not_found") {
+      return {
+        title: "Provider 连接不存在",
+        description: message,
+        suggestion: "这个连接可能已经被删除。请刷新连接列表后重新选择，或重新创建一条新的连接。",
+        tone: "error",
+      };
+    }
+
+    if (reasonCode === "model_not_found") {
+      return {
+        title: "模型不存在",
+        description: message,
+        suggestion: "这个模型可能已经被删除。请刷新模型列表后重新选择，或重新创建模型。",
+        tone: "error",
+      };
+    }
+
+    if (reasonCode === "room_not_found") {
+      return {
+        title: "房间不存在",
+        description: message,
+        suggestion: "这个房间可能已经被删除或地址已失效。请回到房间列表刷新后重试。",
+        tone: "error",
+      };
+    }
+
     return {
       title: "目标内容不存在",
       description: message,

@@ -1,7 +1,7 @@
 import type { GenerateReplyInput, ModelAdapter, ModelReply } from "@/server/adapters/model-adapter";
 import { createProviderApiError, createProviderResponseApiError } from "@/server/http/provider-error";
 import { requestProvider } from "@/server/http/provider-request";
-import { getProviderExecutionProfile } from "@/lib/provider-catalog";
+import { getProviderExecutionProfile, supportsProviderAdapter } from "@/lib/provider-catalog";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
 interface ChatCompletionContentPart {
@@ -423,19 +423,8 @@ export class OpenAiCompatibleAdapter implements ModelAdapter {
   }
 }
 
-const openAiCompatibleProviders = new Set([
-  "OPENAI_COMPATIBLE",
-  "GEMINI",
-  "GROK",
-  "DOUBAO",
-  "DEEPSEEK",
-  "MODELSCOPE",
-  "HUNYUAN",
-  "QWEN",
-]);
-
 export function createModelAdapter(config: ModelRuntimeConfig): ModelAdapter {
-  if (openAiCompatibleProviders.has(config.provider)) {
+  if (supportsProviderAdapter(config.provider, "OPENAI_COMPATIBLE")) {
     return new OpenAiCompatibleAdapter();
   }
 

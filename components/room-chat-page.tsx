@@ -133,7 +133,11 @@ function FeedbackPanel({ feedback, onDismiss }: { feedback: ClientErrorFeedback 
       : "border-red-200 bg-red-50/90 text-red-900";
 
   return (
-    <div className={`ly-surface-card animate-chat-in mx-auto max-w-3xl px-4 py-2.5 ${toneClass}`}>
+    <div
+      data-testid="room-feedback-panel"
+      data-feedback-tone={feedback.tone}
+      className={`ly-surface-card animate-chat-in mx-auto max-w-3xl px-4 py-2.5 ${toneClass}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold">{feedback.title}</p>
@@ -952,6 +956,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                <div className="ly-chat-input rounded-3xl p-2.5 flex flex-col gap-2">
                 <div className="flex items-end gap-3 px-3 py-1">
                    <textarea
+                     data-testid="room-composer-input"
                      ref={textareaRef}
                      value={input}
                      onChange={(event) => {
@@ -965,6 +970,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                      disabled={isBusy && !isSending}
                    />
                    <button
+                     data-testid="room-composer-send"
                      type="button"
                      onClick={() => startTransition(() => void sendMessage({ preventDefault: () => {} } as React.FormEvent))}
                      disabled={!input.trim() || isBusy}
@@ -989,7 +995,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
              {/* Mobile backdrop */}
              <div className="fixed inset-0 z-30 bg-black/10 backdrop-blur-sm md:hidden" onClick={() => setShowSidePanel(false)} />
              
-              <aside className="ly-glass absolute inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-white/45 shadow-2xl md:static md:z-10 md:shadow-none animate-slide-in">
+              <aside
+                data-testid="room-execution-chain"
+                className="ly-glass absolute inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-white/45 shadow-2xl md:static md:z-10 md:shadow-none animate-slide-in"
+              >
                 <div className="ly-soft-card m-4 mb-0 flex shrink-0 items-center justify-between p-4 sm:p-5">
                   <div className="min-w-0">
                     <h2 className="font-extrabold text-[#2f2e33] flex items-center gap-2 text-[14px] tracking-widest uppercase">
@@ -999,6 +1008,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     {sidebarHeadline && (
                       <>
                         <p
+                          data-testid="room-sidebar-headline-label"
                           className={`mt-1 text-[10px] font-bold tracking-[0.24em] uppercase ${
                             sidebarHeadline.tone === "failed"
                               ? "text-rose-500"
@@ -1010,6 +1020,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           {sidebarHeadline.label}
                         </p>
                         <p
+                          data-testid="room-sidebar-headline-name"
                           className={`truncate text-[14px] font-extrabold ${
                             sidebarHeadline.tone === "failed"
                               ? "text-rose-700"
@@ -1142,6 +1153,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                        return (
                         <div
                           key={roomModel.id}
+                          data-testid={`room-model-card-${roomModel.modelId}`}
                           draggable={orderedRoomModels.length > 1 && !isBusy}
                           onDragStart={(event) => {
                             setDraggedModelId(roomModel.modelId);
@@ -1184,7 +1196,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                <h4 className="text-[12px] font-extrabold uppercase tracking-tighter text-[#2f2e33]">
                                   {index + 1}. {roomModel.model.name}
                                </h4>
-                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusToneClass}`}>
+                               <span
+                                 data-testid={`room-model-status-${roomModel.modelId}`}
+                                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusToneClass}`}
+                               >
                                  {statusLabel}
                                </span>
                             </div>

@@ -33,13 +33,43 @@ describe("normalizeRoomSelection", () => {
   });
 
   it("rejects duplicate models in the same room", () => {
-    expect(() => normalizeRoomSelection("GROUP", ["model-a", "model-a"])).toThrowError(ApiError);
+    try {
+      normalizeRoomSelection("GROUP", ["model-a", "model-a"]);
+      throw new Error("expected normalizeRoomSelection to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).details).toMatchObject({
+        reasonCode: "room_duplicate_model_selection",
+        fieldHints: ["modelIds"],
+      });
+    }
   });
 
   it("rejects single rooms with more than one model", () => {
-    expect(() => normalizeRoomSelection("SINGLE", ["model-a", "model-b"])).toThrowError(
-      "Single chat rooms must be bound to exactly one model.",
-    );
+    try {
+      normalizeRoomSelection("SINGLE", ["model-a", "model-b"]);
+      throw new Error("expected normalizeRoomSelection to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).message).toBe("Single chat rooms must be bound to exactly one model.");
+      expect((error as ApiError).details).toMatchObject({
+        reasonCode: "room_single_requires_one_model",
+        fieldHints: ["type", "modelIds"],
+      });
+    }
+  });
+
+  it("rejects group rooms with fewer than two models using structured details", () => {
+    try {
+      normalizeRoomSelection("GROUP", ["model-a"]);
+      throw new Error("expected normalizeRoomSelection to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).details).toMatchObject({
+        reasonCode: "room_group_requires_two_models",
+        fieldHints: ["type", "modelIds"],
+      });
+    }
   });
 });
 

@@ -242,6 +242,34 @@ export interface SendRoomMessageResult {
   failedModelCooldownUntil?: string;
 }
 
+export interface ApiErrorDetailsView {
+  target?: unknown;
+  provider?: string;
+  providerErrorKind?: SendRoomMessageFailureKind;
+  upstreamStatus?: number;
+  endpoint?: string;
+  reasonCode?: string;
+  retryable?: boolean;
+  fieldHints?: string[];
+  roomId?: string;
+  modelId?: string;
+  connectionId?: string;
+  discoveryStrategy?: ProviderConnectionDiscoveryStrategy;
+  roomCount?: number;
+  modelName?: string;
+  rooms?: Array<{
+    id: string;
+    title: string;
+    type: RoomType;
+  }>;
+  modelCount?: number;
+  connectionName?: string;
+  models?: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+  }>;
+}
 
 export interface DiscoveredModelView {
   id: string;
@@ -251,7 +279,8 @@ export interface DiscoveredModelView {
 
 export interface JsonErrorResponse {
   error?: string;
-  details?: unknown;
+  details?: ApiErrorDetailsView;
+  requestId?: string;
 }
 
 export interface AuthSessionView {

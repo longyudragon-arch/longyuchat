@@ -78,6 +78,10 @@ function isUnprotectedAccessAllowed() {
   return parseBoolean(process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION) ?? false;
 }
 
+function getListenHost() {
+  return process.env.APP_LISTEN_HOST?.trim() || "127.0.0.1";
+}
+
 function getAccessProtectionMode() {
   if (isAppLoginEnabled()) {
     return "app";
@@ -137,7 +141,7 @@ function validateProductionReadiness() {
 
 function startNextServer() {
   const nextCommand = process.platform === "win32" ? "next.cmd" : "next";
-  const child = spawn(nextCommand, ["start", "-H", "0.0.0.0"], {
+  const child = spawn(nextCommand, ["start", "-H", getListenHost()], {
     stdio: "inherit",
     env: process.env,
   });

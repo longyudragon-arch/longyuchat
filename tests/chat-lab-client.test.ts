@@ -60,6 +60,45 @@ describe("describeClientError", () => {
     expect(feedback.tone).toBe("error");
   });
 
+  it("prefers structured provider auth details over brittle message wording", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Request failed.", 400, {
+        providerErrorKind: "authentication",
+        upstreamStatus: 401,
+        endpoint: "https://api.example.com/v1/chat/completions",
+      }),
+    );
+
+    expect(feedback.title).toBe("API Key 无效或鉴权失败");
+    expect(feedback.suggestion).toContain("API Key");
+  });
+
+  it("prefers structured provider not-found details over generic 404 copy", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("The requested record was not found.", 404, {
+        providerErrorKind: "not_found",
+        upstreamStatus: 404,
+        endpoint: "https://api.example.com/v1/models",
+      }),
+    );
+
+    expect(feedback.title).toBe("模型 ID、端点或上游资源不存在");
+    expect(feedback.suggestion).toContain("Provider 模板");
+  });
+
+  it("prefers structured network details when the message text is generic", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Request failed.", 502, {
+        providerErrorKind: "network",
+        upstreamStatus: 504,
+        reasonCode: "provider_timeout",
+      }),
+    );
+
+    expect(feedback.title).toBe("模型请求超时或网络连接失败");
+    expect(feedback.suggestion).toContain("Base URL");
+  });
+
   it("does not misclassify provider API key errors as deleted resources", () => {
     const feedback = describeClientError(
       new Error("Provider authentication failed with 400: API Key not found. Please pass a valid API key."),
@@ -83,6 +122,69 @@ describe("describeClientError", () => {
     const feedback = describeClientError(new ClientRequestError("Login required.", 401));
 
     expect(feedback.title).toBe("需要先登录");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured app-login reason codes for disabled login", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("App login is not enabled on this server.", 503, {
+        reasonCode: "app_login_disabled",
+        retryable: false,
+      }),
+    );
+
+    expect(feedback.title).toBe("当前站点未开启登录");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured app-login reason codes for invalid credentials", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Invalid username or password.", 401, {
+        reasonCode: "invalid_credentials",
+        retryable: true,
+        fieldHints: ["username", "password"],
+      }),
+    );
+
+    expect(feedback.title).toBe("用户名或密码不正确");
+    expect(feedback.suggestion).toContain("用户名");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured request validation reason codes before generic message guesses", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Invalid request payload.", 400, {
+        reasonCode: "invalid_request_payload",
+        fieldHints: ["provider", "baseUrl", "apiKey"],
+      }),
+    );
+
+    expect(feedback.title).toBe("请求参数不完整或格式不正确");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured duplicate-record reason codes for unique conflicts", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("The record already exists.", 409, {
+        reasonCode: "record_already_exists",
+        fieldHints: ["name"],
+      }),
+    );
+
+    expect(feedback.title).toBe("记录已存在");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured room configuration reason codes before generic wording", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Group chat rooms must include at least two models.", 400, {
+        reasonCode: "room_group_requires_two_models",
+        fieldHints: ["type", "modelIds"],
+      }),
+    );
+
+    expect(feedback.title).toBe("群聊至少需要 2 个模型");
+    expect(feedback.suggestion).toContain("2 个可用模型");
     expect(feedback.tone).toBe("warning");
   });
 
@@ -116,6 +218,54 @@ describe("describeClientError", () => {
 
     expect(feedback.title).toBe("当前房间暂时没有可运行的模型");
     expect(feedback.suggestion).toContain("冷却结束");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured room in-flight reason codes for room-send conflicts", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Room room-1 is already processing another message. Please wait for the current round to finish.", 409, {
+        reasonCode: "room_message_in_flight",
+        retryable: true,
+        roomId: "room-1",
+      }),
+    );
+
+    expect(feedback.title).toBe("当前房间正在回复中");
+    expect(feedback.suggestion).toContain("顺序回复");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured manual-only reason codes for provider discovery guidance", () => {
+    const feedback = describeClientError(
+      new ClientRequestError("Provider connection Google Workspace is configured for manual model entry only.", 400, {
+        reasonCode: "provider_connection_manual_only",
+        connectionId: "connection-1",
+        connectionName: "Google Workspace",
+        discoveryStrategy: "MANUAL_ONLY",
+      }),
+    );
+
+    expect(feedback.title).toBe("该连接配置为手动录入模式");
+    expect(feedback.suggestion).toContain("模型 ID");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("uses structured source-mode reason codes for linked models", () => {
+    const feedback = describeClientError(
+      new ClientRequestError(
+        "Model Gemini 主模型 is linked to a provider connection. Please update the connection or switch the model to another connection first.",
+        400,
+        {
+          reasonCode: "model_linked_to_connection",
+          modelId: "model-1",
+          modelName: "Gemini 主模型",
+          connectionId: "connection-1",
+        },
+      ),
+    );
+
+    expect(feedback.title).toBe("当前模型由已保存连接托管");
+    expect(feedback.suggestion).toContain("直接配置");
     expect(feedback.tone).toBe("warning");
   });
 
