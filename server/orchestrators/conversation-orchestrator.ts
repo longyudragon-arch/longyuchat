@@ -33,6 +33,25 @@ export interface SequentialConversationInput {
   models: ConversationModel[];
   createAdapter: (config: ModelRuntimeConfig) => ModelAdapter;
   saveAssistantMessage: (input: SaveAssistantMessageInput) => Promise<PersistedMessage>;
+  onModelStart?: (input: {
+    roomId: string;
+    modelId: string;
+    sortOrder: number;
+  }) => Promise<void> | void;
+  onModelReplied?: (input: {
+    roomId: string;
+    modelId: string;
+    sortOrder: number;
+    message: PersistedMessage;
+  }) => Promise<void> | void;
+  onModelFailed?: (input: {
+    roomId: string;
+    modelId: string;
+    sortOrder: number;
+    error: string;
+    providerErrorKind?: ProviderErrorKind;
+    providerErrorDetails?: SequentialConversationModelOutcome["providerErrorDetails"];
+  }) => Promise<void> | void;
 }
 
 export interface SequentialConversationModelOutcome {
@@ -335,18 +354,37 @@ export async function runSequentialConversation(
     let reply: Awaited<ReturnType<ModelAdapter["generateReply"]>>;
 
     try {
+      await input.onModelStart?.({
+        roomId: input.roomId,
+        modelId: model.modelId,
+        sortOrder: model.sortOrder,
+      });
+
       const adapter = input.createAdapter(model.config);
       reply = await adapter.generateReply({
         config: model.config,
         messages: buildConversationMessagesForModel(history, models, model),
       });
     } catch (error) {
+      const providerErrorKind = extractProviderErrorKind(error);
+      const providerErrorDetails = extractProviderErrorDetails(error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+      await input.onModelFailed?.({
+        roomId: input.roomId,
+        modelId: model.modelId,
+        sortOrder: model.sortOrder,
+        error: errorMessage,
+        providerErrorKind,
+        providerErrorDetails,
+      });
+
       roundOutcomes.push({
         modelId: model.modelId,
         outcome: "failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-        providerErrorKind: extractProviderErrorKind(error),
-        providerErrorDetails: extractProviderErrorDetails(error),
+        error: errorMessage,
+        providerErrorKind,
+        providerErrorDetails,
       });
       continue;
     }
@@ -363,6 +401,12 @@ export async function runSequentialConversation(
     });
 
     persistedMessages.push(savedMessage);
+    await input.onModelReplied?.({
+      roomId: input.roomId,
+      modelId: model.modelId,
+      sortOrder: model.sortOrder,
+      message: savedMessage,
+    });
     roundOutcomes.push({
       modelId: model.modelId,
       outcome: "replied",

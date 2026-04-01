@@ -30,6 +30,7 @@ export interface ConversationHistoryMessage {
 }
 
 export interface PersistedMessage extends ChatMessage {
+  id: string;
   roomId: string;
   sequence: number;
 }

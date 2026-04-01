@@ -1176,6 +1176,42 @@ export function describeSkippedModelsResult(result: SendRoomMessageResult): Clie
   };
 }
 
+export function describeInterruptedSendRecovery(input: {
+  expectedAssistantCount: number;
+  assistantReplyCount: number;
+}): ClientErrorFeedback {
+  const expectedAssistantCount = Math.max(0, input.expectedAssistantCount);
+  const assistantReplyCount = Math.max(0, input.assistantReplyCount);
+
+  if (expectedAssistantCount > 0 && assistantReplyCount >= expectedAssistantCount) {
+    return {
+      title: "本轮连接中断，但服务器已完成回复",
+      description: "浏览器没有收到这次发送的最终响应，但服务器已经完成当前轮顺序回复，最新消息已同步到房间。",
+      suggestion: "不用重复发送同一条消息；如果这类情况频繁出现，请继续排查浏览器网络、反向代理超时或服务器到上游模型的链路稳定性。",
+      tone: "warning",
+    };
+  }
+
+  if (assistantReplyCount > 0) {
+    return {
+      title: "本轮连接中断，但服务器已继续执行",
+      description:
+        expectedAssistantCount > 0
+          ? `浏览器没有收到这次发送的最终响应，但服务器已经接收这条消息，并同步了 ${assistantReplyCount}/${expectedAssistantCount} 个模型回复。后续模型可能仍在继续执行。`
+          : "浏览器没有收到这次发送的最终响应，但服务器已经接收这条消息，并同步了部分模型回复。",
+      suggestion: "先不要重复发送同一条消息；请稍等片刻观察房间状态，必要时刷新页面确认后续模型的回复是否已经同步。",
+      tone: "warning",
+    };
+  }
+
+  return {
+    title: "消息已提交，服务器可能仍在继续执行",
+    description: "浏览器没有收到这次发送的最终响应，但这条用户消息已经保存到房间。服务器可能仍在继续顺序调用后续模型。",
+    suggestion: "请先不要立即重发同一条消息，以免产生重复上下文；可以稍等几秒或刷新房间，确认服务器是否已经继续执行。",
+    tone: "warning",
+  };
+}
+
 
 
 export function getLocalMockBaseUrl() {

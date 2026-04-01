@@ -70,6 +70,28 @@ type RoomWithModels = ChatRoom & {
   _count: {
     messages: number;
   };
+  currentRound?: {
+    id: string;
+    roomId: string;
+    userMessageId: string;
+    userMessageSequence: number;
+    status: string;
+    startedAt: Date;
+    finishedAt: Date | null;
+    steps: Array<{
+      id: string;
+      roundId: string;
+      roomModelId: string;
+      modelId: string;
+      sortOrder: number;
+      status: string;
+      errorKind: string | null;
+      errorMessage: string | null;
+      startedAt: Date | null;
+      finishedAt: Date | null;
+      messageId: string | null;
+    }>;
+  } | null;
   roomModelReplyMetrics?: Record<
     string,
     {
@@ -198,6 +220,30 @@ export function presentRoom(room: RoomWithModels) {
           role: lastMessage.role,
           content: lastMessage.content,
           createdAt: lastMessage.createdAt,
+        }
+      : null,
+    currentRound: room.currentRound
+      ? {
+          id: room.currentRound.id,
+          roomId: room.currentRound.roomId,
+          userMessageId: room.currentRound.userMessageId,
+          userMessageSequence: room.currentRound.userMessageSequence,
+          status: room.currentRound.status,
+          startedAt: room.currentRound.startedAt,
+          finishedAt: room.currentRound.finishedAt,
+          steps: room.currentRound.steps.map((step) => ({
+            id: step.id,
+            roundId: step.roundId,
+            roomModelId: step.roomModelId,
+            modelId: step.modelId,
+            sortOrder: step.sortOrder,
+            status: step.status,
+            errorKind: step.errorKind,
+            errorMessage: step.errorMessage,
+            startedAt: step.startedAt,
+            finishedAt: step.finishedAt,
+            messageId: step.messageId,
+          })),
         }
       : null,
     roomModels: room.roomModels.map<SafeRoomModel>((roomModel) => ({

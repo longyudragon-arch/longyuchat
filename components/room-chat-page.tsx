@@ -6,6 +6,7 @@ import { startTransition, type KeyboardEvent, useEffect, useEffectEvent, useMemo
 
 import {
   describeClientError,
+  describeInterruptedSendRecovery,
   describePartialSendResult,
   describeSkippedModelsResult,
   fetchJson,
@@ -25,7 +26,15 @@ import {
   type ClientErrorFeedback,
 } from "@/lib/client/chat-lab-client";
 import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
-import type { MessageView, ProviderType, RoomView, SendRoomMessageResult } from "@/types/app";
+import type {
+  ConversationRoundEventView,
+  MessageView,
+  ProviderType,
+  RoomRoundEventStreamView,
+  RoomStreamSnapshotView,
+  RoomView,
+  SendRoomMessageResult,
+} from "@/types/app";
 
 interface RoomChatPageProps {
   roomId: string;
@@ -40,6 +49,9 @@ type PendingRoundState = {
   expectedAssistantCount: number;
   repliedModelIds: string[];
 };
+
+type CurrentConversationRound = NonNullable<RoomView["currentRound"]>;
+type CurrentConversationRoundStep = CurrentConversationRound["steps"][number];
 
 function getProviderMessageSurfaceClassName(provider?: ProviderType) {
   switch (provider) {
@@ -120,6 +132,10 @@ function isRoomModelCoolingDown(roomModel: RoomView["roomModels"][number], now =
 
 function isRoomModelHalfOpen(roomModel: RoomView["roomModels"][number]) {
   return roomModel.executionState === "HALF_OPEN";
+}
+
+function isRoundStepCompleted(step: CurrentConversationRoundStep) {
+  return step.status === "REPLIED" || step.status === "FAILED";
 }
 
 /* ─── Small sub-components ─── */
@@ -218,6 +234,10 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const messageListRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef<boolean>(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const roomStateRef = useRef<RoomView | null>(null);
+  const messagesRef = useRef<MessageView[]>([]);
+  const pendingRoundRef = useRef<PendingRoundState | null>(null);
+  const roomEventStreamConnectedRef = useRef(false);
   const [room, setRoom] = useState<RoomView | null>(null);
   const [messages, setMessages] = useState<MessageView[]>([]);
   const [input, setInput] = useState("");
@@ -232,17 +252,38 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasRoomEventStream, setHasRoomEventStream] = useState(false);
 
   const isBusy = activeAction !== null;
   const isSending = activeAction === "sending";
 
   /* ─── Data loading ─── */
 
-  async function loadRoom() {
+  function applyRoomState(nextRoom: RoomView) {
+    roomStateRef.current = nextRoom;
+    setRoom(nextRoom);
+    setDraftModelIds(nextRoom.roomModels.map((item) => item.modelId));
+  }
+
+  function applyMessagesState(nextMessages: MessageView[]) {
+    messagesRef.current = nextMessages;
+    setMessages(nextMessages);
+  }
+
+  function applyPendingRoundState(nextPendingRound: PendingRoundState | null) {
+    pendingRoundRef.current = nextPendingRound;
+    setPendingRound(nextPendingRound);
+  }
+
+  async function fetchRoomState() {
     const data = await fetchJson<{ room: RoomView }>(`/api/rooms/${roomId}`);
-    setRoom(data.room);
-    setDraftModelIds(data.room.roomModels.map((item) => item.modelId));
     return data.room;
+  }
+
+  async function loadRoom() {
+    const nextRoom = await fetchRoomState();
+    applyRoomState(nextRoom);
+    return nextRoom;
   }
 
   async function fetchMessagesState() {
@@ -252,7 +293,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   async function loadMessages() {
     const nextMessages = await fetchMessagesState();
-    setMessages(nextMessages);
+    applyMessagesState(nextMessages);
     return nextMessages;
   }
 
@@ -265,7 +306,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       ? listAssistantReplyModelIdsForUserMessage(nextMessages, persistedUserMessage.sequence)
       : [];
 
-    setPendingRound({
+    applyPendingRoundState({
       baselineSequence,
       userSequence: persistedUserMessage?.sequence ?? null,
       completedAssistantCount: completedAssistantReplies.length,
@@ -287,16 +328,85 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     });
 
     while (!settled) {
-      try {
-        const nextMessages = await fetchMessagesState();
-        setMessages(nextMessages);
-        syncPendingRound(nextMessages, baselineSequence, expectedAssistantCount);
-      } catch {}
+      if (!roomEventStreamConnectedRef.current) {
+        try {
+          const [nextRoom, nextMessages] = await Promise.all([fetchRoomState(), fetchMessagesState()]);
+          applyRoomState(nextRoom);
+          applyMessagesState(nextMessages);
+          syncPendingRound(nextMessages, baselineSequence, expectedAssistantCount);
+        } catch {}
+      }
 
       if (!settled) {
         await new Promise((resolve) => setTimeout(resolve, 450));
       }
     }
+  }
+
+  async function reconcileInterruptedSend(baselineSequence: number, expectedAssistantCount: number) {
+    let latestRoom: RoomView | null = null;
+    let latestMessages: MessageView[] = [];
+    let persistedUserMessage: MessageView | null = null;
+    let assistantReplies: MessageView[] = [];
+    let lastObservedSignature: string | null = null;
+    let stablePollCount = 0;
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      try {
+        const [nextRoom, nextMessages] = await Promise.all([fetchRoomState(), fetchMessagesState()]);
+        latestRoom = nextRoom;
+        latestMessages = nextMessages;
+        applyRoomState(nextRoom);
+        applyMessagesState(nextMessages);
+
+        persistedUserMessage = findNextUserMessageAfterSequence(nextMessages, baselineSequence);
+        assistantReplies = persistedUserMessage
+          ? listAssistantRepliesForUserMessage(nextMessages, persistedUserMessage.sequence)
+          : [];
+
+        if (persistedUserMessage) {
+          syncPendingRound(nextMessages, baselineSequence, expectedAssistantCount);
+        }
+
+        const snapshotSignature = [
+          persistedUserMessage?.id ?? "no-user",
+          assistantReplies.length,
+          nextMessages.at(-1)?.id ?? "no-message",
+          ...nextRoom.roomModels.map(
+            (roomModel) =>
+              `${roomModel.modelId}:${roomModel.executionState}:${roomModel.cooldownUntil ?? ""}:${roomModel.model.enabled}`,
+          ),
+        ].join("|");
+
+        stablePollCount = snapshotSignature === lastObservedSignature ? stablePollCount + 1 : 0;
+        lastObservedSignature = snapshotSignature;
+
+        const roundLooksStable =
+          Boolean(persistedUserMessage) &&
+          (
+            assistantReplies.length >= expectedAssistantCount ||
+            stablePollCount >= 5
+          );
+
+        if (roundLooksStable) {
+          break;
+        }
+      } catch {
+        // 请求中断后补偿同步尽量自愈；若本轮都失败，再由外层走常规错误提示。
+      }
+
+      if (attempt < 9) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+    }
+
+    return {
+      acceptedByServer: Boolean(persistedUserMessage),
+      room: latestRoom,
+      messages: latestMessages,
+      persistedUserMessage,
+      assistantReplies,
+    };
   }
 
   const handleInitialLoad = useEffectEvent(async () => {
@@ -310,11 +420,175 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     }
   });
 
+  const pollCurrentRoundState = useEffectEvent(async () => {
+    const [nextRoom, nextMessages] = await Promise.all([fetchRoomState(), fetchMessagesState()]);
+    applyRoomState(nextRoom);
+    applyMessagesState(nextMessages);
+    return nextRoom.currentRound?.status === "RUNNING";
+  });
+
+  const handleRoomStreamSnapshot = useEffectEvent(async (nextRoom: RoomView) => {
+    const previousMessageCount = roomStateRef.current?.messageCount ?? messagesRef.current.length;
+    const shouldRefreshMessages = nextRoom.messageCount !== previousMessageCount || nextRoom.messageCount !== messagesRef.current.length;
+
+    applyRoomState(nextRoom);
+
+    if (!shouldRefreshMessages) {
+      return;
+    }
+
+    const nextMessages = await fetchMessagesState();
+    applyMessagesState(nextMessages);
+
+    if (pendingRoundRef.current) {
+      syncPendingRound(
+        nextMessages,
+        pendingRoundRef.current.baselineSequence,
+        pendingRoundRef.current.expectedAssistantCount,
+      );
+    }
+  });
+
+  const handleRoomRoundEvent = useEffectEvent(async (nextEvent: ConversationRoundEventView) => {
+    const shouldRefreshMessages =
+      nextEvent.eventType === "ROUND_CREATED" ||
+      nextEvent.eventType === "STEP_REPLIED" ||
+      nextEvent.eventType === "ROUND_COMPLETED" ||
+      nextEvent.eventType === "ROUND_PARTIAL" ||
+      nextEvent.eventType === "ROUND_FAILED";
+
+    if (shouldRefreshMessages) {
+      const [nextRoom, nextMessages] = await Promise.all([fetchRoomState(), fetchMessagesState()]);
+      applyRoomState(nextRoom);
+      applyMessagesState(nextMessages);
+
+      if (pendingRoundRef.current) {
+        syncPendingRound(
+          nextMessages,
+          pendingRoundRef.current.baselineSequence,
+          pendingRoundRef.current.expectedAssistantCount,
+        );
+      }
+
+      return;
+    }
+
+    const nextRoom = await fetchRoomState();
+    applyRoomState(nextRoom);
+  });
+
   useEffect(() => {
     startTransition(() => {
       void handleInitialLoad();
     });
   }, [roomId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof EventSource === "undefined") {
+      return;
+    }
+
+    let disposed = false;
+    const eventSource = new EventSource(`/api/rooms/${roomId}/events`);
+
+    const handleSnapshotEvent = (event: MessageEvent<string>) => {
+      if (disposed) {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(event.data) as RoomStreamSnapshotView;
+        void handleRoomStreamSnapshot(payload.room);
+      } catch {
+        // SSE 载荷解析失败时，退回到现有轮询兜底，不阻塞页面继续工作。
+      }
+    };
+
+    const handleRoundEvent = (event: MessageEvent<string>) => {
+      if (disposed) {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(event.data) as RoomRoundEventStreamView;
+        void handleRoomRoundEvent(payload.event);
+      } catch {
+        // 事件解析失败时，保留现有兜底轮询，不额外中断页面交互。
+      }
+    };
+
+    eventSource.onopen = () => {
+      if (disposed) {
+        return;
+      }
+
+      roomEventStreamConnectedRef.current = true;
+      setHasRoomEventStream(true);
+    };
+
+    eventSource.addEventListener("room-snapshot", handleSnapshotEvent as EventListener);
+    eventSource.addEventListener("round-event", handleRoundEvent as EventListener);
+
+    eventSource.onerror = () => {
+      if (disposed) {
+        return;
+      }
+
+      roomEventStreamConnectedRef.current = false;
+      setHasRoomEventStream(false);
+    };
+
+    return () => {
+      disposed = true;
+      roomEventStreamConnectedRef.current = false;
+      setHasRoomEventStream(false);
+      eventSource.removeEventListener("room-snapshot", handleSnapshotEvent as EventListener);
+      eventSource.removeEventListener("round-event", handleRoundEvent as EventListener);
+      eventSource.close();
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (hasRoomEventStream || !room?.currentRound || room.currentRound.status !== "RUNNING" || isSending) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const pollCurrentRound = async () => {
+      try {
+        const shouldContinue = await pollCurrentRoundState();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (shouldContinue) {
+          timeoutId = setTimeout(() => {
+            void pollCurrentRound();
+          }, 700);
+        }
+      } catch {
+        if (!cancelled) {
+          timeoutId = setTimeout(() => {
+            void pollCurrentRound();
+          }, 1000);
+        }
+      }
+    };
+
+    timeoutId = setTimeout(() => {
+      void pollCurrentRound();
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [hasRoomEventStream, isSending, roomId, room?.currentRound]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -365,21 +639,55 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     return room.roomModels.map((item) => item.modelId).join(",") !== draftModelIds.join(",");
   }, [draftModelIds, room]);
 
+  const currentRound = room?.currentRound ?? null;
+
+  const currentRoundStepByRoomModelId = useMemo(
+    () => new Map((currentRound?.steps ?? []).map((step) => [step.roomModelId, step])),
+    [currentRound],
+  );
+
   const activeTimelineModel = useMemo(() => {
+    const runningStep =
+      currentRound?.steps.find((step) => step.status === "RUNNING") ??
+      currentRound?.steps.find((step) => step.status === "PENDING");
+
+    if (runningStep) {
+      return orderedRoomModels.find((roomModel) => roomModel.id === runningStep.roomModelId)?.model ?? null;
+    }
+
     if (!pendingRound || !isSending) return null;
     const total = Math.min(pendingRound.expectedAssistantCount, runnableRoomModels.length);
     const activeIndex = pendingRound.completedAssistantCount;
     if (activeIndex >= total) return null;
     return runnableRoomModels[activeIndex]?.model ?? null;
-  }, [isSending, pendingRound, runnableRoomModels]);
+  }, [currentRound, isSending, orderedRoomModels, pendingRound, runnableRoomModels]);
 
   const completedRunnableModelIds = useMemo(() => {
+    if (currentRound) {
+      return new Set(
+        currentRound.steps.filter((step) => step.status === "REPLIED").map((step) => step.modelId),
+      );
+    }
+
     if (!pendingRound || !isSending) {
       return new Set<string>();
     }
 
     return new Set(pendingRound.repliedModelIds);
-  }, [isSending, pendingRound]);
+  }, [currentRound, isSending, pendingRound]);
+
+  const currentRoundProgress = useMemo(() => {
+    if (!currentRound || currentRound.status !== "RUNNING") {
+      return null;
+    }
+
+    const participatingSteps = currentRound.steps.filter((step) => step.status !== "SKIPPED");
+
+    return {
+      completedCount: participatingSteps.filter(isRoundStepCompleted).length,
+      totalCount: participatingSteps.length,
+    };
+  }, [currentRound]);
 
   const lastRoundOutcomeByModelId = useMemo(() => {
     return new Map((lastRoundResult?.roundOutcomes ?? []).map((outcome) => [outcome.modelId, outcome]));
@@ -397,6 +705,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   );
 
   const sidebarHeadline = useMemo(() => {
+    if (currentRound?.status === "RUNNING" && activeTimelineModel) {
+      return {
+        label: "当前轮到",
+        name: activeTimelineModel.name,
+        tone: "active" as const,
+      };
+    }
+
     if (isSending && activeTimelineModel) {
       return {
         label: "当前轮到",
@@ -426,7 +742,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     }
 
     return null;
-  }, [activeTimelineModel, isSending, lastRoundResult]);
+  }, [activeTimelineModel, currentRound, isSending, lastRoundResult]);
 
   /* ─── Actions ─── */
 
@@ -451,8 +767,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         method: "PUT",
         body: JSON.stringify({ modelIds: draftModelIds }),
       });
-      setRoom(data.room);
-      setDraftModelIds(data.room.roomModels.map((item) => item.modelId));
+      applyRoomState(data.room);
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -473,7 +788,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         method: "PUT",
         body: JSON.stringify({ title: nextTitle.trim() }),
       });
-      setRoom(data.room);
+      applyRoomState(data.room);
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
     } finally {
@@ -531,7 +846,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
     setActiveAction("sending");
     setFeedback(null);
     setLastRoundResult(null);
-    setPendingRound({
+    applyPendingRoundState({
       baselineSequence,
       userSequence: null,
       completedAssistantCount: 0,
@@ -545,7 +860,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
       const result = await requestPromise;
       setLastRoundResult(result);
       await Promise.all([loadMessages(), loadRoom()]);
-      setPendingRound(null);
+      applyPendingRoundState(null);
       setPendingUserContent("");
 
       if (result.status === "partial") {
@@ -554,11 +869,26 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
         setFeedback(describeSkippedModelsResult(result));
       }
     } catch (error: unknown) {
-      setInput(content);
-      setPendingUserContent("");
-      setPendingRound(null);
-      setLastRoundResult(null);
-      setFeedback(describeClientError(error));
+      const recovery = await reconcileInterruptedSend(baselineSequence, expectedAssistantCount);
+
+      if (recovery.acceptedByServer) {
+        setInput("");
+        setPendingUserContent("");
+        setLastRoundResult(null);
+        applyPendingRoundState(null);
+        setFeedback(
+          describeInterruptedSendRecovery({
+            expectedAssistantCount,
+            assistantReplyCount: recovery.assistantReplies.length,
+          }),
+        );
+      } else {
+        setInput(content);
+        setPendingUserContent("");
+        applyPendingRoundState(null);
+        setLastRoundResult(null);
+        setFeedback(describeClientError(error));
+      }
     } finally {
       setActiveAction(null);
     }
@@ -605,9 +935,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   /* ─── Status bar text ─── */
 
-  const statusText = isSending
-    ? `正在回复 ${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? 0}`
-    : `${room?.roomModels.length ?? 0} 个模型 · ${toRoomLabel(room?.type ?? "SINGLE")}${
+  const statusText = currentRoundProgress
+    ? `正在回复 ${currentRoundProgress.completedCount}/${currentRoundProgress.totalCount}`
+    : isSending
+      ? `正在回复 ${pendingRound?.completedAssistantCount ?? 0}/${pendingRound?.expectedAssistantCount ?? 0}`
+      : `${room?.roomModels.length ?? 0} 个模型 · ${toRoomLabel(room?.type ?? "SINGLE")}${
         coolingDownRoomModels.length > 0 ? ` · ${coolingDownRoomModels.length} 个冷却中` : ""
       }${halfOpenRoomModels.length > 0 ? ` · ${halfOpenRoomModels.length} 个试探恢复中` : ""}`;
 
@@ -1057,8 +1389,15 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                    <div className="space-y-4 relative ml-3 border-l-2 border-stone-200 pl-6 pb-2">
                      {orderedRoomModels.map((roomModel, index) => {
-                       const isCurrent = isSending && activeTimelineModel?.id === roomModel.model.id;
-                       const isDone = isSending && completedRunnableModelIds.has(roomModel.modelId);
+                       const currentRoundStep = currentRoundStepByRoomModelId.get(roomModel.id);
+                       const isCurrent =
+                         currentRoundStep?.status === "RUNNING" ||
+                         (isSending && !currentRound && activeTimelineModel?.id === roomModel.model.id);
+                       const isDone =
+                         currentRoundStep?.status === "REPLIED" ||
+                         (isSending && !currentRound && completedRunnableModelIds.has(roomModel.modelId));
+                       const failedDuringCurrentRound = currentRoundStep?.status === "FAILED";
+                       const skippedDuringCurrentRound = currentRoundStep?.status === "SKIPPED";
                        const provider = roomModel.model.provider;
                        const providerSoftClassName = getProviderSoftClassName(provider);
                        const providerSurfaceClassName = getProviderMessageSurfaceClassName(provider);
@@ -1093,11 +1432,14 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                       const effectiveCooldownUntilLabel = lastRoundOutcome?.cooldownUntil
                         ? formatDate(lastRoundOutcome.cooldownUntil)
                         : cooldownLabel;
-                      const failureDetail = lastRoundOutcome?.outcome === "failed"
-                        ? lastRoundOutcome.error ?? roomModel.lastFailure?.message ?? "该模型本轮未能成功完成回复。"
-                        : roomModel.lastFailure?.message ?? null;
+                      const failureDetail = failedDuringCurrentRound
+                        ? currentRoundStep?.errorMessage ?? "该模型本轮未能成功完成回复。"
+                        : lastRoundOutcome?.outcome === "failed"
+                          ? lastRoundOutcome.error ?? roomModel.lastFailure?.message ?? "该模型本轮未能成功完成回复。"
+                          : roomModel.lastFailure?.message ?? null;
                       const showFailureOverlay =
-                        !isCurrent && (failedThisRound || hasPersistentFailure || Boolean(lastRoundOutcome?.paused));
+                        !isCurrent &&
+                        (failedDuringCurrentRound || failedThisRound || hasPersistentFailure || Boolean(lastRoundOutcome?.paused));
                       const statusToneClass = isCurrent
                         ? `${providerAccentClassName} text-white`
                         : lastRoundOutcome?.paused
@@ -1110,11 +1452,11 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             ? "bg-sky-100 text-sky-700"
                             : !roomModel.model.enabled
                                   ? "bg-stone-200 text-stone-500"
-                                  : failedThisRound || hasPersistentFailure
+                                  : failedDuringCurrentRound || failedThisRound || hasPersistentFailure
                                     ? "bg-red-100 text-red-700"
                                   : isDone || wasRepliedLastRound
                                     ? "bg-[#FF8DA1]/20 text-[#DC75A5]"
-                                    : "bg-stone-100 text-stone-500";
+                                  : "bg-stone-100 text-stone-500";
                       const statusLabel = isCurrent
                         ? "正在思考"
                         : lastRoundOutcome?.paused
@@ -1125,9 +1467,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           ? "冷却中"
                         : isHalfOpen
                           ? "试探恢复"
+                          : skippedDuringCurrentRound
+                            ? roomModel.model.enabled
+                              ? "跳过"
+                              : "已停用"
                               : !roomModel.model.enabled
                                   ? "已停用"
-                                  : failedThisRound || hasPersistentFailure
+                                  : failedDuringCurrentRound || failedThisRound || hasPersistentFailure
                                     ? "失败"
                                   : isDone || wasRepliedLastRound
                                     ? "完成"
@@ -1142,11 +1488,15 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           ? "bg-amber-400"
                         : isHalfOpen
                           ? "bg-sky-400"
+                            : skippedDuringCurrentRound
+                              ? roomModel.model.enabled
+                                ? "bg-stone-300"
+                                : "bg-stone-400"
                               : !roomModel.model.enabled
                                 ? "bg-stone-400"
-                                : failedThisRound || hasPersistentFailure
+                                : failedDuringCurrentRound || failedThisRound || hasPersistentFailure
                                   ? "bg-red-400"
-                                  : isDone || wasRepliedLastRound
+                                : isDone || wasRepliedLastRound
                                   ? providerAccentClassName
                                   : "bg-stone-300";
 

@@ -331,6 +331,19 @@ describe("sendRoomMessage", () => {
     const recordRoomModelTimeout = vi.fn();
     const recordRoomModelFailure = vi.fn();
     const markRoomModelInCooldown = vi.fn(async () => new Date("2026-03-30T10:10:00.000Z"));
+    const createConversationRound = vi.fn(async () => ({
+      id: "round-1",
+      roomId: "room-2",
+      userMessageId: "user-1",
+      userMessageSequence: 1,
+      status: "RUNNING" as const,
+      startedAt: new Date("2026-03-30T10:00:00.000Z"),
+      finishedAt: null,
+    }));
+    const markConversationRoundStepRunning = vi.fn();
+    const markConversationRoundStepReplied = vi.fn();
+    const markConversationRoundStepFailed = vi.fn();
+    const finishConversationRound = vi.fn();
 
     const result = await sendRoomMessage(
       {
@@ -357,6 +370,11 @@ describe("sendRoomMessage", () => {
         recordRoomModelFailure,
         markRoomModelInCooldown,
         clearRoomModelFailure: vi.fn(),
+        createConversationRound,
+        markConversationRoundStepRunning,
+        markConversationRoundStepReplied,
+        markConversationRoundStepFailed,
+        finishConversationRound,
       },
     );
 
@@ -404,6 +422,26 @@ describe("sendRoomMessage", () => {
       }),
     );
     expect(recordRoomModelFailure).not.toHaveBeenCalled();
+    expect(createConversationRound).toHaveBeenCalledWith({
+      roomId: "room-2",
+      userMessageId: "user-1",
+      userMessageSequence: 1,
+      steps: [
+        { roomModelId: "rm-1", modelId: "model-a", sortOrder: 1, status: "PENDING" },
+        { roomModelId: "rm-2", modelId: "model-b", sortOrder: 2, status: "PENDING" },
+        { roomModelId: "rm-3", modelId: "model-c", sortOrder: 3, status: "PENDING" },
+      ],
+    });
+    expect(markConversationRoundStepRunning).toHaveBeenNthCalledWith(1, "round-1", "rm-1");
+    expect(markConversationRoundStepReplied).toHaveBeenNthCalledWith(1, "round-1", "rm-1", "model-a-2");
+    expect(markConversationRoundStepRunning).toHaveBeenNthCalledWith(2, "round-1", "rm-2");
+    expect(markConversationRoundStepFailed).toHaveBeenCalledWith("round-1", "rm-2", {
+      errorKind: "network",
+      errorMessage: "Provider timeout",
+    });
+    expect(markConversationRoundStepRunning).toHaveBeenNthCalledWith(3, "round-1", "rm-3");
+    expect(markConversationRoundStepReplied).toHaveBeenNthCalledWith(2, "round-1", "rm-3", "model-c-3");
+    expect(finishConversationRound).toHaveBeenCalledWith("round-1", "PARTIAL");
   });
 
   it("stores reply duration on persisted assistant messages", async () => {
@@ -841,6 +879,16 @@ describe("sendRoomMessage", () => {
       testConnection: vi.fn(),
       generateReply: vi.fn(async () => ({ content: `${config.id} still running` })),
     }));
+    const createConversationRound = vi.fn(async () => ({
+      id: "round-cooldown",
+      roomId: "room-cooldown",
+      userMessageId: "user-3",
+      userMessageSequence: 3,
+      status: "RUNNING" as const,
+      startedAt: new Date("2026-03-30T10:15:00.000Z"),
+      finishedAt: null,
+    }));
+    const markConversationRoundStepRunning = vi.fn();
 
     const room = createRoom("room-cooldown", [buildConfig("model-a"), buildConfig("model-b"), buildConfig("model-c")]);
     room.roomModels[1] = {
@@ -868,6 +916,8 @@ describe("sendRoomMessage", () => {
         recordRoomModelTimeout: vi.fn(),
         recordRoomModelFailure: vi.fn(),
         clearRoomModelFailure: vi.fn(),
+        createConversationRound,
+        markConversationRoundStepRunning,
       },
     );
 
@@ -882,6 +932,17 @@ describe("sendRoomMessage", () => {
       },
     ]);
     expect(createAdapter).toHaveBeenCalledTimes(2);
+    expect(createConversationRound).toHaveBeenCalledWith({
+      roomId: "room-cooldown",
+      userMessageId: "user-1",
+      userMessageSequence: 1,
+      steps: [
+        { roomModelId: "rm-1", modelId: "model-a", sortOrder: 1, status: "PENDING" },
+        { roomModelId: "rm-2", modelId: "model-b", sortOrder: 2, status: "SKIPPED" },
+        { roomModelId: "rm-3", modelId: "model-c", sortOrder: 3, status: "PENDING" },
+      ],
+    });
+    expect(markConversationRoundStepRunning).toHaveBeenCalledTimes(2);
   });
 
   it("restores half-open probe models to healthy participation after a successful reply", async () => {

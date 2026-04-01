@@ -19,6 +19,16 @@ export type ProviderConnectionCheckResultStatus = "success" | "error";
 export type AccessProtectionMode = "app" | "basic" | "none";
 export type ProviderConnectionTemplateCategory = "DOMESTIC" | "GLOBAL";
 export type RoomModelExecutionState = "ACTIVE" | "COOLDOWN" | "HALF_OPEN";
+export type ConversationRoundStatus = "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED";
+export type ConversationRoundStepStatus = "PENDING" | "RUNNING" | "REPLIED" | "FAILED" | "SKIPPED";
+export type ConversationRoundEventType =
+  | "ROUND_CREATED"
+  | "STEP_RUNNING"
+  | "STEP_REPLIED"
+  | "STEP_FAILED"
+  | "ROUND_COMPLETED"
+  | "ROUND_PARTIAL"
+  | "ROUND_FAILED";
 
 export interface ModelTestResultView {
   status: ModelTestResultStatus;
@@ -144,6 +154,31 @@ export interface RoomLastMessagePreviewView {
   createdAt: string;
 }
 
+export interface ConversationRoundStepView {
+  id: string;
+  roundId: string;
+  roomModelId: string;
+  modelId: string;
+  sortOrder: number;
+  status: ConversationRoundStepStatus;
+  errorKind: SendRoomMessageFailureKind | null;
+  errorMessage: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  messageId: string | null;
+}
+
+export interface ConversationRoundView {
+  id: string;
+  roomId: string;
+  userMessageId: string;
+  userMessageSequence: number;
+  status: ConversationRoundStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  steps: ConversationRoundStepView[];
+}
+
 export interface RoomView {
   id: string;
   title: string;
@@ -152,7 +187,34 @@ export interface RoomView {
   updatedAt: string;
   messageCount: number;
   lastMessagePreview: RoomLastMessagePreviewView | null;
+  currentRound: ConversationRoundView | null;
   roomModels: RoomModelView[];
+}
+
+export interface RoomStreamSnapshotView {
+  room: RoomView;
+  emittedAt: string;
+}
+
+export interface ConversationRoundEventView {
+  streamIndex: number;
+  roomId: string;
+  roundId: string;
+  stepId: string | null;
+  roomModelId: string | null;
+  modelId: string | null;
+  eventType: ConversationRoundEventType;
+  roundStatus: ConversationRoundStatus | null;
+  stepStatus: ConversationRoundStepStatus | null;
+  messageId: string | null;
+  errorKind: SendRoomMessageFailureKind | null;
+  errorMessage: string | null;
+  occurredAt: string;
+}
+
+export interface RoomRoundEventStreamView {
+  event: ConversationRoundEventView;
+  emittedAt: string;
 }
 
 export interface MessageView {

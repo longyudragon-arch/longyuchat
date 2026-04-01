@@ -30,6 +30,31 @@ enum RoomModelExecutionState {
   HALF_OPEN
 }
 
+enum ConversationRoundStatus {
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum ConversationRoundStepStatus {
+  PENDING
+  RUNNING
+  REPLIED
+  FAILED
+  SKIPPED
+}
+
+enum ConversationRoundEventType {
+  ROUND_CREATED
+  STEP_RUNNING
+  STEP_REPLIED
+  STEP_FAILED
+  ROUND_COMPLETED
+  ROUND_PARTIAL
+  ROUND_FAILED
+}
+
 enum MessageRole {
   USER
   ASSISTANT
@@ -53,26 +78,26 @@ enum ProviderConnectionCheckStatus {
 }
 
 model ModelConfig {
-  id                 String          @id @default(cuid())
-  name               String          @unique
-  connectionId       String?         @map("connection_id")
+  id                 String                  @id @default(cuid())
+  name               String                  @unique
+  connectionId       String?                 @map("connection_id")
   provider           ProviderType
-  baseUrl            String          @map("base_url")
-  modelName          String          @map("model_name")
-  avatarLabel        String          @default("OA") @map("avatar_label")
-  avatarColor        String          @default("#10b981") @map("avatar_color")
-  apiKey             String          @map("api_key")
-
-  defaultReplyLength Int             @default(300) @map("default_reply_length")
-  lastTestStatus     ModelTestStatus? @map("last_test_status")
-  lastTestMessage    String?         @map("last_test_message")
-  lastTestedAt       DateTime?       @map("last_tested_at")
-  enabled            Boolean         @default(true)
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
-  connection         ProviderConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  baseUrl            String                  @map("base_url")
+  modelName          String                  @map("model_name")
+  avatarLabel        String                  @default("OA") @map("avatar_label")
+  avatarColor        String                  @default("#10b981") @map("avatar_color")
+  apiKey             String                  @map("api_key")
+  defaultReplyLength Int                     @default(300) @map("default_reply_length")
+  lastTestStatus     ModelTestStatus?        @map("last_test_status")
+  lastTestMessage    String?                 @map("last_test_message")
+  lastTestedAt       DateTime?               @map("last_tested_at")
+  enabled            Boolean                 @default(true)
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  connection         ProviderConnection?     @relation(fields: [connectionId], references: [id], onDelete: SetNull)
   roomModels         ChatRoomModel[]
   messages           Message[]
+  roundSteps         ConversationRoundStep[]
 
   @@index([connectionId])
   @@map("model_configs")
@@ -100,34 +125,37 @@ model ProviderConnection {
 }
 
 model ChatRoom {
-  id         String          @id @default(cuid())
-  title      String
-  type       RoomType
-  nextMessageSequence Int    @default(1) @map("next_message_sequence")
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
-  roomModels ChatRoomModel[]
-  messages   Message[]
+  id                  String                   @id @default(cuid())
+  title               String
+  type                RoomType
+  nextMessageSequence Int                      @default(1) @map("next_message_sequence")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+  roomModels          ChatRoomModel[]
+  messages            Message[]
+  conversationRounds  ConversationRound[]
+  roundEvents         ConversationRoundEvent[]
 
   @@map("chat_rooms")
 }
 
 model ChatRoomModel {
-  id        String      @id @default(cuid())
-  roomId    String      @map("room_id")
-  modelId   String      @map("model_id")
-  sortOrder Int         @map("sort_order")
-  executionState RoomModelExecutionState @default(ACTIVE) @map("execution_state")
-  cooldownUntil DateTime? @map("cooldown_until")
-  consecutiveFailureCount Int @default(0) @map("consecutive_failure_count")
-  timeoutCount Int      @default(0) @map("timeout_count")
-  lastFailureKind String? @map("last_failure_kind")
-  lastFailureMessage String? @map("last_failure_message")
-  lastFailureAt DateTime? @map("last_failure_at")
-  lastSuccessAt DateTime? @map("last_success_at")
-  lastRecoveryAt DateTime? @map("last_recovery_at")
-  room      ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  model     ModelConfig @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  id                      String                  @id @default(cuid())
+  roomId                  String                  @map("room_id")
+  modelId                 String                  @map("model_id")
+  sortOrder               Int                     @map("sort_order")
+  executionState          RoomModelExecutionState @default(ACTIVE) @map("execution_state")
+  cooldownUntil           DateTime?               @map("cooldown_until")
+  consecutiveFailureCount Int                     @default(0) @map("consecutive_failure_count")
+  timeoutCount            Int                     @default(0) @map("timeout_count")
+  lastFailureKind         String?                 @map("last_failure_kind")
+  lastFailureMessage      String?                 @map("last_failure_message")
+  lastFailureAt           DateTime?               @map("last_failure_at")
+  lastSuccessAt           DateTime?               @map("last_success_at")
+  lastRecoveryAt          DateTime?               @map("last_recovery_at")
+  room                    ChatRoom                @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  model                   ModelConfig             @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  roundSteps              ConversationRoundStep[]
 
   @@unique([roomId, modelId])
   @@unique([roomId, sortOrder])
@@ -136,30 +164,96 @@ model ChatRoomModel {
 }
 
 model Message {
-  id                String       @id @default(cuid())
-  roomId            String       @map("room_id")
-  sequence          Int
-  role              MessageRole
-  modelId           String?      @map("model_id")
-  content           String
-  replyDurationMs   Int?         @map("reply_duration_ms")
-  queueDurationMs   Int?         @map("queue_duration_ms")
-  providerRequestDurationMs Int? @map("provider_request_duration_ms")
-  providerAttemptCount Int?      @map("provider_attempt_count")
-  recoveryRequestDurationMs Int? @map("recovery_request_duration_ms")
-  rewriteRequestDurationMs Int?  @map("rewrite_request_duration_ms")
-  persistenceDurationMs Int?     @map("persistence_duration_ms")
-  speakerName       String?      @map("speaker_name")
-  speakerProvider   ProviderType? @map("speaker_provider")
-  speakerModelName  String?      @map("speaker_model_name")
-  speakerAvatarLabel String?     @map("speaker_avatar_label")
-  speakerAvatarColor String?     @map("speaker_avatar_color")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  room              ChatRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  model             ModelConfig? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  id                        String                 @id @default(cuid())
+  roomId                    String                 @map("room_id")
+  sequence                  Int
+  role                      MessageRole
+  modelId                   String?                @map("model_id")
+  content                   String
+  replyDurationMs           Int?                   @map("reply_duration_ms")
+  queueDurationMs           Int?                   @map("queue_duration_ms")
+  providerRequestDurationMs Int?                   @map("provider_request_duration_ms")
+  providerAttemptCount      Int?                   @map("provider_attempt_count")
+  recoveryRequestDurationMs Int?                   @map("recovery_request_duration_ms")
+  rewriteRequestDurationMs  Int?                   @map("rewrite_request_duration_ms")
+  persistenceDurationMs     Int?                   @map("persistence_duration_ms")
+  speakerName               String?                @map("speaker_name")
+  speakerProvider           ProviderType?          @map("speaker_provider")
+  speakerModelName          String?                @map("speaker_model_name")
+  speakerAvatarLabel        String?                @map("speaker_avatar_label")
+  speakerAvatarColor        String?                @map("speaker_avatar_color")
+  createdAt                 DateTime               @default(now()) @map("created_at")
+  room                      ChatRoom               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  model                     ModelConfig?           @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  userConversationRound     ConversationRound?     @relation("UserConversationRound")
+  roundStep                 ConversationRoundStep? @relation("ConversationRoundStepMessage")
 
   @@unique([roomId, sequence])
   @@index([roomId, createdAt])
   @@index([modelId])
   @@map("messages")
+}
+
+model ConversationRound {
+  id                  String                   @id @default(cuid())
+  roomId              String                   @map("room_id")
+  userMessageId       String                   @unique @map("user_message_id")
+  userMessageSequence Int                      @map("user_message_sequence")
+  status              ConversationRoundStatus  @default(RUNNING)
+  startedAt           DateTime                 @default(now()) @map("started_at")
+  finishedAt          DateTime?                @map("finished_at")
+  room                ChatRoom                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userMessage         Message                  @relation("UserConversationRound", fields: [userMessageId], references: [id], onDelete: Cascade)
+  steps               ConversationRoundStep[]
+  events              ConversationRoundEvent[]
+
+  @@index([roomId, startedAt])
+  @@map("conversation_rounds")
+}
+
+model ConversationRoundStep {
+  id           String                      @id @default(cuid())
+  roundId      String                      @map("round_id")
+  roomModelId  String                      @map("room_model_id")
+  modelId      String                      @map("model_id")
+  sortOrder    Int                         @map("sort_order")
+  status       ConversationRoundStepStatus @default(PENDING)
+  errorKind    String?                     @map("error_kind")
+  errorMessage String?                     @map("error_message")
+  startedAt    DateTime?                   @map("started_at")
+  finishedAt   DateTime?                   @map("finished_at")
+  messageId    String?                     @unique @map("message_id")
+  round        ConversationRound           @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  roomModel    ChatRoomModel               @relation(fields: [roomModelId], references: [id], onDelete: Cascade)
+  model        ModelConfig                 @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  message      Message?                    @relation("ConversationRoundStepMessage", fields: [messageId], references: [id], onDelete: SetNull)
+  events       ConversationRoundEvent[]
+
+  @@unique([roundId, roomModelId])
+  @@unique([roundId, sortOrder])
+  @@index([modelId])
+  @@map("conversation_round_steps")
+}
+
+model ConversationRoundEvent {
+  streamIndex  Int                          @id @default(autoincrement()) @map("stream_index")
+  roomId       String                       @map("room_id")
+  roundId      String                       @map("round_id")
+  stepId       String?                      @map("step_id")
+  roomModelId  String?                      @map("room_model_id")
+  modelId      String?                      @map("model_id")
+  eventType    ConversationRoundEventType   @map("event_type")
+  roundStatus  ConversationRoundStatus?     @map("round_status")
+  stepStatus   ConversationRoundStepStatus? @map("step_status")
+  messageId    String?                      @map("message_id")
+  errorKind    String?                      @map("error_kind")
+  errorMessage String?                      @map("error_message")
+  occurredAt   DateTime                     @default(now()) @map("occurred_at")
+  room         ChatRoom                     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  round        ConversationRound            @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  step         ConversationRoundStep?       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, streamIndex])
+  @@index([roundId, occurredAt])
+  @@map("conversation_round_events")
 }

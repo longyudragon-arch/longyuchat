@@ -78,6 +78,30 @@ describe("presentRoom", () => {
       _count: {
         messages: 2,
       },
+      currentRound: {
+        id: "round-1",
+        roomId: "room-1",
+        userMessageId: "message-1",
+        userMessageSequence: 1,
+        status: "RUNNING",
+        startedAt: new Date("2026-03-11T02:28:00.000Z"),
+        finishedAt: null,
+        steps: [
+          {
+            id: "step-1",
+            roundId: "round-1",
+            roomModelId: "room-model-1",
+            modelId: "model-1",
+            sortOrder: 1,
+            status: "RUNNING",
+            errorKind: null,
+            errorMessage: null,
+            startedAt: new Date("2026-03-11T02:28:02.000Z"),
+            finishedAt: null,
+            messageId: null,
+          },
+        ],
+      },
       roomModelReplyMetrics: {
         "model-1": {
           replyCount: 2,
@@ -97,6 +121,30 @@ describe("presentRoom", () => {
       role: MessageRole.ASSISTANT,
       content: "这是最近一条 AI 回复。",
       createdAt: new Date("2026-03-11T02:29:00.000Z"),
+    });
+    expect(room.currentRound).toEqual({
+      id: "round-1",
+      roomId: "room-1",
+      userMessageId: "message-1",
+      userMessageSequence: 1,
+      status: "RUNNING",
+      startedAt: new Date("2026-03-11T02:28:00.000Z"),
+      finishedAt: null,
+      steps: [
+        {
+          id: "step-1",
+          roundId: "round-1",
+          roomModelId: "room-model-1",
+          modelId: "model-1",
+          sortOrder: 1,
+          status: "RUNNING",
+          errorKind: null,
+          errorMessage: null,
+          startedAt: new Date("2026-03-11T02:28:02.000Z"),
+          finishedAt: null,
+          messageId: null,
+        },
+      ],
     });
     expect(room.roomModels[0]?.model.hasApiKey).toBe(true);
     expect(room.roomModels[0]?.model.avatarColor).toBe("#10b981");
@@ -136,11 +184,13 @@ describe("presentRoom", () => {
       _count: {
         messages: 0,
       },
+      currentRound: null,
       roomModelReplyMetrics: {},
     });
 
     expect(room.messageCount).toBe(0);
     expect(room.lastMessagePreview).toBeNull();
+    expect(room.currentRound).toBeNull();
   });
 });
 

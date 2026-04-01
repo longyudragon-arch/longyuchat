@@ -7,6 +7,10 @@ import {
   getRoomModelNetworkCooldownSeconds,
 } from "@/lib/runtime";
 import { ApiError } from "@/server/http/api-error";
+import {
+  listRunningConversationRoundsByRoomIds,
+  type ConversationRoundWithSteps,
+} from "@/server/services/conversation-round-service";
 
 export interface CreateChatRoomInput {
   title: string;
@@ -61,6 +65,7 @@ type RoomRecord = Prisma.ChatRoomGetPayload<{
   include: typeof roomInclude;
 }> & {
   roomModelReplyMetrics?: Record<string, RoomModelReplyMetrics>;
+  currentRound?: ConversationRoundWithSteps | null;
 };
 
 function buildExpiredCooldownRoomModelWhereInput(now: Date, roomIds?: string[]) {
@@ -296,10 +301,12 @@ async function buildRoomReplyMetricsMap(roomIds: string[]) {
 
 async function attachReplyMetricsToRooms(rooms: RoomRecord[]) {
   const metricsByRoom = await buildRoomReplyMetricsMap(rooms.map((room) => room.id));
+  const currentRoundsByRoomId = await listRunningConversationRoundsByRoomIds(rooms.map((room) => room.id));
 
   return rooms.map((room) => ({
     ...room,
     roomModelReplyMetrics: metricsByRoom.get(room.id) ?? {},
+    currentRound: currentRoundsByRoomId.get(room.id) ?? null,
   }));
 }
 

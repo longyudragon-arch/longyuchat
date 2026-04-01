@@ -6,6 +6,7 @@ import {
   ClientRequestError,
   deleteProviderConnectionRequest,
   describeClientError,
+  describeInterruptedSendRecovery,
   describePartialSendResult,
   describeSkippedModelsResult,
   discoverProviderModelsByConnectionRequest,
@@ -717,6 +718,40 @@ describe("message round helpers", () => {
         sendInProgress: true,
       }),
     ).toBe("completed");
+  });
+});
+
+describe("describeInterruptedSendRecovery", () => {
+  it("explains when the room has already finished syncing replies", () => {
+    const feedback = describeInterruptedSendRecovery({
+      expectedAssistantCount: 2,
+      assistantReplyCount: 2,
+    });
+
+    expect(feedback.title).toBe("本轮连接中断，但服务器已完成回复");
+    expect(feedback.description).toContain("已经完成当前轮顺序回复");
+    expect(feedback.tone).toBe("warning");
+  });
+
+  it("explains when the server has continued partially after the request dropped", () => {
+    const feedback = describeInterruptedSendRecovery({
+      expectedAssistantCount: 4,
+      assistantReplyCount: 2,
+    });
+
+    expect(feedback.title).toBe("本轮连接中断，但服务器已继续执行");
+    expect(feedback.description).toContain("2/4 个模型回复");
+    expect(feedback.suggestion).toContain("不要重复发送");
+  });
+
+  it("warns against immediate resend when only the user message is known to be persisted", () => {
+    const feedback = describeInterruptedSendRecovery({
+      expectedAssistantCount: 3,
+      assistantReplyCount: 0,
+    });
+
+    expect(feedback.title).toBe("消息已提交，服务器可能仍在继续执行");
+    expect(feedback.suggestion).toContain("不要立即重发");
   });
 });
 
