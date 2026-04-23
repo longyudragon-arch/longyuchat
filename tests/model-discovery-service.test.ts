@@ -163,6 +163,6 @@ describe("discoverProviderModels", () => {
         },
         { requestProvider },
       ),
-    ).rejects.toThrow(/Provider authentication failed with 400:/);
+    ).rejects.toThrow("Provider authentication failed with 400. Check API key and endpoint configuration.");
   });
 });

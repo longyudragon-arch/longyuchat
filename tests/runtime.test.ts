@@ -6,6 +6,7 @@ import {
   areDevMocksEnabledForServer,
   getAppLogDir,
   getApiRateLimitMaxMessagePosts,
+  getApiRateLimitMaxLoginAttempts,
   getApiRateLimitMaxModelDiscovery,
   getApiRateLimitMaxModelTests,
   getApiRateLimitWindowSeconds,
@@ -67,6 +68,7 @@ describe("API rate limit env helpers", () => {
     expect(getApiRateLimitWindowSeconds(undefined)).toBe(60);
     expect(getApiRateLimitWindowSeconds("0")).toBe(60);
     expect(getApiRateLimitMaxMessagePosts("nope")).toBe(12);
+    expect(getApiRateLimitMaxLoginAttempts(undefined)).toBe(5);
     expect(getApiRateLimitMaxModelTests(undefined)).toBe(10);
     expect(getApiRateLimitMaxModelDiscovery(undefined)).toBe(20);
   });
@@ -74,6 +76,7 @@ describe("API rate limit env helpers", () => {
   it("accepts positive integer overrides", () => {
     expect(getApiRateLimitWindowSeconds("120")).toBe(120);
     expect(getApiRateLimitMaxMessagePosts("5")).toBe(5);
+    expect(getApiRateLimitMaxLoginAttempts("3")).toBe(3);
     expect(getApiRateLimitMaxModelTests("7")).toBe(7);
     expect(getApiRateLimitMaxModelDiscovery("9")).toBe(9);
   });
@@ -87,7 +90,7 @@ describe("file logging runtime helpers", () => {
 
   it("supports explicit overrides", () => {
     expect(isFileLoggingEnabled("production", "false")).toBe(false);
-    expect(getAppLogDir("production", "/srv/ai-chat-lab/logs")).toBe("/srv/ai-chat-lab/logs");
+    expect(getAppLogDir("production", "/srv/longyuchat/logs")).toBe("/srv/longyuchat/logs");
   });
 });
 

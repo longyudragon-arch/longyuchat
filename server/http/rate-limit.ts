@@ -2,6 +2,7 @@ import { ApiError } from "@/server/http/api-error";
 import { parseBasicAuthHeader } from "@/lib/server-access";
 import {
   areApiRateLimitsEnabled,
+  getApiRateLimitMaxLoginAttempts,
   getApiRateLimitMaxMessagePosts,
   getApiRateLimitMaxModelDiscovery,
   getApiRateLimitMaxModelTests,
@@ -173,6 +174,13 @@ export function assertModelDiscoveryRateLimit(request: Request) {
   assertRateLimit(request, {
     bucket: "model-discovery-posts",
     limit: getApiRateLimitMaxModelDiscovery(),
+  });
+}
+
+export function assertLoginRateLimit(request: Request) {
+  assertRateLimit(request, {
+    bucket: "app-login-posts",
+    limit: getApiRateLimitMaxLoginAttempts(),
   });
 }
 

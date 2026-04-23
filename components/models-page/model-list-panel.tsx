@@ -10,7 +10,7 @@ import {
   getProviderBadgeClassName,
   getProviderChineseLabel,
   getProviderOptionLabel,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import { resolveModelAvatar } from "@/lib/model-avatar";
 import { getAvatarPreviewStyle } from "@/components/models-page/model-builder";
 import { ModelInsightNotice, TestState } from "@/components/models-page/shared-ui";

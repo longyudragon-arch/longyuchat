@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { spawn } from "node:child_process";
+import { assertNoPlaintextSecretsInSqliteDatabase } from "./startup-readiness.mjs";
 
 function parseBoolean(value) {
   if (value === undefined) {
@@ -139,6 +140,16 @@ function validateProductionReadiness() {
   }
 }
 
+function validateStoredSecrets() {
+  try {
+    assertNoPlaintextSecretsInSqliteDatabase(process.env.DATABASE_URL);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Production secret scan failed.";
+    process.stderr.write(`${message}\n`);
+    process.exit(1);
+  }
+}
+
 function startNextServer() {
   const nextCommand = process.platform === "win32" ? "next.cmd" : "next";
   const child = spawn(nextCommand, ["start", "-H", getListenHost()], {
@@ -157,4 +168,5 @@ function startNextServer() {
 }
 
 validateProductionReadiness();
+validateStoredSecrets();
 startNextServer();

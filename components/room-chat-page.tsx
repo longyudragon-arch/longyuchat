@@ -5,6 +5,33 @@ import { useRouter } from "next/navigation";
 import { startTransition, type KeyboardEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import {
+  DeleteConfirmModal,
+  FeedbackPanel,
+  RoomModelAlert,
+} from "@/components/room-chat/room-chat-shared";
+import {
+  getActiveTimelineModel,
+  getCompletedRunnableModelIds,
+  getCoolingDownRoomModels,
+  getCurrentRoundProgress,
+  getCurrentRoundStepByRoomModelId,
+  getHalfOpenRoomModels,
+  getLastRoundOutcomeByModelId,
+  getOrderDirty,
+  getOrderedRoomModels,
+  getRoomModelAlerts,
+  getRunnableRoomModels,
+  getSidebarHeadline,
+  type PendingRoundState,
+} from "@/components/room-chat/room-chat-derived";
+import {
+  formatFailureKindLabel,
+  getProviderAccentClassName,
+  getProviderMessageSurfaceClassName,
+  isRoomModelCoolingDown,
+  isRoomModelHalfOpen,
+} from "@/components/room-chat/room-chat-helpers";
+import {
   describeClientError,
   describeInterruptedSendRecovery,
   describePartialSendResult,
@@ -24,12 +51,11 @@ import {
   sendRoomMessageRequest,
   toRoomLabel,
   type ClientErrorFeedback,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
 import type {
   ConversationRoundEventView,
   MessageView,
-  ProviderType,
   RoomRoundEventStreamView,
   RoomStreamSnapshotView,
   RoomView,
@@ -41,192 +67,6 @@ interface RoomChatPageProps {
 }
 
 type RoomAction = "loading" | "sending" | "saving-order" | "renaming-room" | "deleting-room" | null;
-
-type PendingRoundState = {
-  baselineSequence: number;
-  userSequence: number | null;
-  completedAssistantCount: number;
-  expectedAssistantCount: number;
-  repliedModelIds: string[];
-};
-
-type CurrentConversationRound = NonNullable<RoomView["currentRound"]>;
-type CurrentConversationRoundStep = CurrentConversationRound["steps"][number];
-
-function getProviderMessageSurfaceClassName(provider?: ProviderType) {
-  switch (provider) {
-    case "OPENAI_COMPATIBLE":
-      return "border-emerald-200/70 shadow-[0_10px_28px_rgba(16,185,129,0.08)]";
-    case "CLAUDE":
-      return "border-amber-200/80 shadow-[0_10px_28px_rgba(245,158,11,0.08)]";
-    case "GEMINI":
-      return "border-sky-200/80 shadow-[0_10px_28px_rgba(14,165,233,0.08)]";
-    case "GROK":
-      return "border-violet-200/80 shadow-[0_10px_28px_rgba(139,92,246,0.08)]";
-    case "DOUBAO":
-      return "border-orange-200/80 shadow-[0_10px_28px_rgba(249,115,22,0.08)]";
-    case "DEEPSEEK":
-      return "border-cyan-200/80 shadow-[0_10px_28px_rgba(6,182,212,0.08)]";
-    case "MODELSCOPE":
-      return "border-fuchsia-200/80 shadow-[0_10px_28px_rgba(217,70,239,0.08)]";
-    case "HUNYUAN":
-      return "border-rose-200/80 shadow-[0_10px_28px_rgba(244,63,94,0.08)]";
-    case "QWEN":
-      return "border-indigo-200/80 shadow-[0_10px_28px_rgba(99,102,241,0.08)]";
-    default:
-      return "border-stone-200/70 shadow-[0_8px_24px_rgba(0,0,0,0.03)]";
-  }
-}
-
-function getProviderAccentClassName(provider?: ProviderType) {
-  switch (provider) {
-    case "OPENAI_COMPATIBLE":
-      return "bg-emerald-500";
-    case "CLAUDE":
-      return "bg-amber-500";
-    case "GEMINI":
-      return "bg-sky-500";
-    case "GROK":
-      return "bg-violet-500";
-    case "DOUBAO":
-      return "bg-orange-500";
-    case "DEEPSEEK":
-      return "bg-cyan-500";
-    case "MODELSCOPE":
-      return "bg-fuchsia-500";
-    case "HUNYUAN":
-      return "bg-rose-500";
-    case "QWEN":
-      return "bg-indigo-500";
-    default:
-      return "bg-stone-400";
-  }
-}
-
-function formatFailureKindLabel(kind: string) {
-  switch (kind) {
-    case "authentication":
-      return "鉴权失败";
-    case "quota":
-      return "额度不足";
-    case "network":
-      return "网络或超时";
-    case "not_found":
-      return "模型或接口不存在";
-    case "empty_response":
-      return "空回复";
-    case "reasoning_only":
-      return "仅推理无正文";
-    default:
-      return "调用失败";
-  }
-}
-
-function isRoomModelCoolingDown(roomModel: RoomView["roomModels"][number], now = new Date()) {
-  if (roomModel.executionState !== "COOLDOWN" || !roomModel.cooldownUntil) {
-    return false;
-  }
-
-  return new Date(roomModel.cooldownUntil).getTime() > now.getTime();
-}
-
-function isRoomModelHalfOpen(roomModel: RoomView["roomModels"][number]) {
-  return roomModel.executionState === "HALF_OPEN";
-}
-
-function isRoundStepCompleted(step: CurrentConversationRoundStep) {
-  return step.status === "REPLIED" || step.status === "FAILED";
-}
-
-/* ─── Small sub-components ─── */
-
-function FeedbackPanel({ feedback, onDismiss }: { feedback: ClientErrorFeedback | null; onDismiss: () => void }) {
-  if (!feedback) return null;
-
-  const toneClass =
-    feedback.tone === "warning"
-      ? "border-amber-200 bg-amber-50/90 text-amber-900"
-      : "border-red-200 bg-red-50/90 text-red-900";
-
-  return (
-    <div
-      data-testid="room-feedback-panel"
-      data-feedback-tone={feedback.tone}
-      className={`ly-surface-card animate-chat-in mx-auto max-w-3xl px-4 py-2.5 ${toneClass}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold">{feedback.title}</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed opacity-90">{feedback.description}</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed opacity-75">建议：{feedback.suggestion}</p>
-        </div>
-        <button type="button" onClick={onDismiss} className="shrink-0 rounded-md p-1 text-current opacity-50 transition hover:opacity-100">
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function RoomModelAlert({
-  modelName,
-  shortLabel,
-  title,
-  description,
-  suggestion,
-  tone,
-}: {
-  modelName: string;
-  shortLabel: string;
-  title: string;
-  description: string;
-  suggestion: string;
-  tone: "warning" | "error";
-}) {
-  const toneClass =
-    tone === "warning"
-      ? "border-amber-200/70 bg-amber-50/85 text-amber-900"
-      : "border-red-200/70 bg-red-50/85 text-red-900";
-  const badgeClass =
-    tone === "warning"
-      ? "border-amber-300/70 bg-amber-100/80 text-amber-800"
-      : "border-red-300/70 bg-red-100/80 text-red-700";
-
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide ${badgeClass}`}>{shortLabel}</span>
-        <p className="text-[12px] font-bold">{modelName}：{title}</p>
-      </div>
-      <p className="mt-1 text-[12px] leading-6 opacity-90">{description}</p>
-      <p className="mt-1 text-[11px] leading-5 opacity-75">建议：{suggestion}</p>
-    </div>
-  );
-}
-
-function DeleteConfirmModal({ roomTitle, onConfirm, onCancel }: { roomTitle: string; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onCancel}>
-      <div className="ly-surface-card animate-chat-in mx-4 w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-500">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          </span>
-          <h3 className="text-[15px] font-bold tracking-tight">删除房间</h3>
-        </div>
-        <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-          确定要删除房间「<span className="font-bold text-[var(--foreground)]">{roomTitle}</span>」吗？
-        </p>
-        <p className="mt-1 text-[12px] font-medium text-red-500">删除后不可恢复，房间内的所有聊天记录也会一起删除。</p>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-[13px] font-bold text-[var(--muted)] transition hover:bg-white active:scale-95">取消</button>
-          <button type="button" onClick={onConfirm} className="rounded-lg bg-red-500 px-4 py-2 text-[13px] font-bold text-white transition hover:bg-red-600 active:scale-95">确认删除</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Main Component ─── */
 
 export function RoomChatPage({ roomId }: RoomChatPageProps) {
@@ -612,137 +452,53 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
   /* ─── Derived state ─── */
 
-  const orderedRoomModels = useMemo(() => {
-    if (!room) return [];
-    return draftModelIds
-      .map((modelId) => room.roomModels.find((roomModel) => roomModel.modelId === modelId))
-      .filter((roomModel): roomModel is RoomView["roomModels"][number] => Boolean(roomModel));
-  }, [draftModelIds, room]);
+  const orderedRoomModels = useMemo(() => getOrderedRoomModels(room, draftModelIds), [draftModelIds, room]);
 
-  const runnableRoomModels = useMemo(
-    () => orderedRoomModels.filter((roomModel) => roomModel.model.enabled && !isRoomModelCoolingDown(roomModel)),
-    [orderedRoomModels],
-  );
+  const runnableRoomModels = useMemo(() => getRunnableRoomModels(orderedRoomModels), [orderedRoomModels]);
 
-  const coolingDownRoomModels = useMemo(
-    () => orderedRoomModels.filter((roomModel) => isRoomModelCoolingDown(roomModel)),
-    [orderedRoomModels],
-  );
+  const coolingDownRoomModels = useMemo(() => getCoolingDownRoomModels(orderedRoomModels), [orderedRoomModels]);
 
-  const halfOpenRoomModels = useMemo(
-    () => orderedRoomModels.filter((roomModel) => isRoomModelHalfOpen(roomModel)),
-    [orderedRoomModels],
-  );
+  const halfOpenRoomModels = useMemo(() => getHalfOpenRoomModels(orderedRoomModels), [orderedRoomModels]);
 
-  const orderDirty = useMemo(() => {
-    if (!room) return false;
-    return room.roomModels.map((item) => item.modelId).join(",") !== draftModelIds.join(",");
-  }, [draftModelIds, room]);
+  const orderDirty = useMemo(() => getOrderDirty(room, draftModelIds), [draftModelIds, room]);
 
   const currentRound = room?.currentRound ?? null;
 
-  const currentRoundStepByRoomModelId = useMemo(
-    () => new Map((currentRound?.steps ?? []).map((step) => [step.roomModelId, step])),
-    [currentRound],
-  );
+  const currentRoundStepByRoomModelId = useMemo(() => getCurrentRoundStepByRoomModelId(currentRound), [currentRound]);
 
-  const activeTimelineModel = useMemo(() => {
-    const runningStep =
-      currentRound?.steps.find((step) => step.status === "RUNNING") ??
-      currentRound?.steps.find((step) => step.status === "PENDING");
-
-    if (runningStep) {
-      return orderedRoomModels.find((roomModel) => roomModel.id === runningStep.roomModelId)?.model ?? null;
-    }
-
-    if (!pendingRound || !isSending) return null;
-    const total = Math.min(pendingRound.expectedAssistantCount, runnableRoomModels.length);
-    const activeIndex = pendingRound.completedAssistantCount;
-    if (activeIndex >= total) return null;
-    return runnableRoomModels[activeIndex]?.model ?? null;
-  }, [currentRound, isSending, orderedRoomModels, pendingRound, runnableRoomModels]);
-
-  const completedRunnableModelIds = useMemo(() => {
-    if (currentRound) {
-      return new Set(
-        currentRound.steps.filter((step) => step.status === "REPLIED").map((step) => step.modelId),
-      );
-    }
-
-    if (!pendingRound || !isSending) {
-      return new Set<string>();
-    }
-
-    return new Set(pendingRound.repliedModelIds);
-  }, [currentRound, isSending, pendingRound]);
-
-  const currentRoundProgress = useMemo(() => {
-    if (!currentRound || currentRound.status !== "RUNNING") {
-      return null;
-    }
-
-    const participatingSteps = currentRound.steps.filter((step) => step.status !== "SKIPPED");
-
-    return {
-      completedCount: participatingSteps.filter(isRoundStepCompleted).length,
-      totalCount: participatingSteps.length,
-    };
-  }, [currentRound]);
-
-  const lastRoundOutcomeByModelId = useMemo(() => {
-    return new Map((lastRoundResult?.roundOutcomes ?? []).map((outcome) => [outcome.modelId, outcome]));
-  }, [lastRoundResult]);
-
-  const roomModelAlerts = useMemo(
+  const activeTimelineModel = useMemo(
     () =>
-      orderedRoomModels
-        .map((roomModel) => {
-          const insight = getModelOperationalInsight(roomModel.model);
-          return insight ? { modelName: roomModel.model.name, insight } : null;
-        })
-        .filter((item): item is { modelName: string; insight: NonNullable<ReturnType<typeof getModelOperationalInsight>> } => Boolean(item)),
-    [orderedRoomModels],
+      getActiveTimelineModel({
+        currentRound,
+        isSending,
+        orderedRoomModels,
+        pendingRound,
+        runnableRoomModels,
+      }),
+    [currentRound, isSending, orderedRoomModels, pendingRound, runnableRoomModels],
   );
 
-  const sidebarHeadline = useMemo(() => {
-    if (currentRound?.status === "RUNNING" && activeTimelineModel) {
-      return {
-        label: "当前轮到",
-        name: activeTimelineModel.name,
-        tone: "active" as const,
-      };
-    }
+  const completedRunnableModelIds = useMemo(
+    () => getCompletedRunnableModelIds(currentRound, pendingRound, isSending),
+    [currentRound, isSending, pendingRound],
+  );
 
-    if (isSending && activeTimelineModel) {
-      return {
-        label: "当前轮到",
-        name: activeTimelineModel.name,
-        tone: "active" as const,
-      };
-    }
+  const currentRoundProgress = useMemo(() => getCurrentRoundProgress(currentRound), [currentRound]);
 
-    const failedOutcome = lastRoundResult?.roundOutcomes.find((outcome) => outcome.outcome === "failed");
+  const lastRoundOutcomeByModelId = useMemo(() => getLastRoundOutcomeByModelId(lastRoundResult), [lastRoundResult]);
 
-    if (failedOutcome) {
-      return {
-        label: "最近失败",
-        name: failedOutcome.modelName,
-        tone: "failed" as const,
-      };
-    }
+  const roomModelAlerts = useMemo(() => getRoomModelAlerts(orderedRoomModels), [orderedRoomModels]);
 
-    const latestReplyOutcome = [...(lastRoundResult?.roundOutcomes ?? [])].reverse().find((outcome) => outcome.outcome === "replied");
-
-    if (latestReplyOutcome) {
-      return {
-        label: "最近完成",
-        name: latestReplyOutcome.modelName,
-        tone: "idle" as const,
-      };
-    }
-
-    return null;
-  }, [activeTimelineModel, currentRound, isSending, lastRoundResult]);
+  const sidebarHeadline = useMemo(
+    () =>
+      getSidebarHeadline({
+        activeTimelineModel,
+        currentRound,
+        isSending,
+        lastRoundResult,
+      }),
+    [activeTimelineModel, currentRound, isSending, lastRoundResult],
+  );
 
   /* ─── Actions ─── */
 

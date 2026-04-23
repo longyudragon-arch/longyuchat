@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClientErrorFeedback, ModelOperationalInsight } from "@/lib/client/chat-lab-client";
+import type { ClientErrorFeedback, ModelOperationalInsight } from "@/lib/client/longyuchat-client";
 import type { ModelTestResultView } from "@/types/app";
 
 export function FeedbackPanel({ feedback }: { feedback: ClientErrorFeedback }) {

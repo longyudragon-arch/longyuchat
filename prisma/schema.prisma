@@ -77,6 +77,79 @@ enum ProviderConnectionCheckStatus {
   ERROR
 }
 
+enum DailySourceKind {
+  RSS
+  GITHUB_RELEASES
+  GITHUB_REPO_EVENTS
+  HACKERNEWS
+  REDDIT
+  WEB_FEED
+}
+
+enum DailyStoryClusterStatus {
+  PENDING
+  SELECTED
+  REJECTED
+}
+
+enum DailyIssueStatus {
+  DRAFT
+  PUBLISHED
+  SKIPPED
+}
+
+enum DailyIssueCategory {
+  HEADLINES
+  MODEL_RELEASES
+  DEV_ECOSYSTEM
+  PRODUCT_UPDATES
+  TECH_INSIGHTS
+  RUMORS
+}
+
+enum DailyIssueItemCertainty {
+  CONFIRMED
+  WATCHLIST
+  RUMOR
+}
+
+enum DailyRunType {
+  SCAN
+  PUBLISH
+  BACKFILL
+  REPUBLISH
+  REBUILD_RSS
+}
+
+enum DailyRunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum DailyRunStepStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model DailyInterestProfile {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  includeKeywordsJson String? @map("include_keywords_json")
+  excludeKeywordsJson String? @map("exclude_keywords_json")
+  interestsText     String?  @map("interests_text")
+  enabled           Boolean  @default(true)
+  priority          Int      @default(100)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled, priority])
+  @@map("daily_interest_profiles")
+}
+
 model ModelConfig {
   id                 String                  @id @default(cuid())
   name               String                  @unique
@@ -256,4 +329,182 @@ model ConversationRoundEvent {
   @@index([roomId, streamIndex])
   @@index([roundId, occurredAt])
   @@map("conversation_round_events")
+}
+
+model DailySource {
+  id            String            @id @default(cuid())
+  name          String            @unique
+  kind          DailySourceKind
+  baseUrl       String?           @map("base_url")
+  feedUrl       String?           @map("feed_url")
+  configJson    String?           @map("config_json")
+  enabled       Boolean           @default(true)
+  priority      Int               @default(100)
+  lastFetchedAt DateTime?         @map("last_fetched_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  items         DailySourceItem[]
+
+  @@index([enabled, priority])
+  @@map("daily_sources")
+}
+
+model DailySourceItem {
+  id                String                  @id @default(cuid())
+  sourceId          String                  @map("source_id")
+  sourceItemKey     String                  @unique @map("source_item_key")
+  externalId        String?                 @map("external_id")
+  canonicalUrl      String                  @map("canonical_url")
+  title             String
+  author            String?
+  publishedAt       DateTime?               @map("published_at")
+  fetchedAt         DateTime                @default(now()) @map("fetched_at")
+  language          String?
+  contentText       String?                 @map("content_text")
+  contentHtml       String?                 @map("content_html")
+  summaryRaw        String?                 @map("summary_raw")
+  metaJson          String?                 @map("meta_json")
+  contentHash       String?                 @map("content_hash")
+  source            DailySource             @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  clusterLinks      DailyStoryClusterItem[]
+  primaryForCluster DailyStoryCluster[]     @relation("PrimaryClusterSourceItem")
+
+  @@index([sourceId, publishedAt])
+  @@index([canonicalUrl])
+  @@index([contentHash])
+  @@map("daily_source_items")
+}
+
+model DailyStoryCluster {
+  id                  String                  @id @default(cuid())
+  clusterKey          String                  @unique @map("cluster_key")
+  canonicalUrl        String                  @map("canonical_url")
+  primarySourceItemId String?                 @map("primary_source_item_id")
+  title               String
+  publishedAt         DateTime?               @map("published_at")
+  score               Float?
+  status              DailyStoryClusterStatus @default(PENDING)
+  tagsJson            String?                 @map("tags_json")
+  summaryDraft        String?                 @map("summary_draft")
+  editorialReason     String?                 @map("editorial_reason")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
+  primarySourceItem   DailySourceItem?        @relation("PrimaryClusterSourceItem", fields: [primarySourceItemId], references: [id], onDelete: SetNull)
+  items               DailyStoryClusterItem[]
+  issueItems          DailyIssueItem[]
+
+  @@index([status, publishedAt])
+  @@index([score])
+  @@map("daily_story_clusters")
+}
+
+model DailyStoryClusterItem {
+  id           String            @id @default(cuid())
+  clusterId    String            @map("cluster_id")
+  sourceItemId String            @map("source_item_id")
+  isPrimary    Boolean           @default(false) @map("is_primary")
+  sortOrder    Int               @default(1) @map("sort_order")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  cluster      DailyStoryCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  sourceItem   DailySourceItem   @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, sourceItemId])
+  @@unique([clusterId, sortOrder])
+  @@index([sourceItemId])
+  @@map("daily_story_cluster_items")
+}
+
+model DailyIssue {
+  id                String           @id @default(cuid())
+  issueDate         String           @unique @map("issue_date")
+  slug              String           @unique
+  title             String
+  summary           String?
+  coverImageUrl     String?          @map("cover_image_url")
+  status            DailyIssueStatus @default(DRAFT)
+  publishedAt       DateTime?        @map("published_at")
+  sourceWindowStart DateTime?        @map("source_window_start")
+  sourceWindowEnd   DateTime?        @map("source_window_end")
+  metaJson          String?          @map("meta_json")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  items             DailyIssueItem[]
+
+  @@index([status, publishedAt])
+  @@map("daily_issues")
+}
+
+model DailyIssueItem {
+  id         String            @id @default(cuid())
+  issueId    String            @map("issue_id")
+  clusterId  String            @map("cluster_id")
+  category   DailyIssueCategory @default(TECH_INSIGHTS)
+  certainty  DailyIssueItemCertainty @default(CONFIRMED)
+  title      String
+  summary    String?
+  content    String
+  sourceUrl  String            @map("source_url")
+  sourceName String?           @map("source_name")
+  tagsJson   String?           @map("tags_json")
+  sortOrder  Int               @map("sort_order")
+  isFeatured Boolean           @default(false) @map("is_featured")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  issue      DailyIssue        @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  cluster    DailyStoryCluster @relation(fields: [clusterId], references: [id], onDelete: Restrict)
+  sources    DailyIssueItemSource[]
+
+  @@unique([issueId, clusterId])
+  @@unique([issueId, sortOrder])
+  @@index([issueId, category, sortOrder])
+  @@index([isFeatured, sortOrder])
+  @@map("daily_issue_items")
+}
+
+model DailyIssueItemSource {
+  id         String         @id @default(cuid())
+  issueItemId String        @map("issue_item_id")
+  url        String
+  label      String?
+  sourceName String?        @map("source_name")
+  sortOrder  Int            @map("sort_order")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  issueItem  DailyIssueItem @relation(fields: [issueItemId], references: [id], onDelete: Cascade)
+
+  @@unique([issueItemId, sortOrder])
+  @@unique([issueItemId, url])
+  @@index([sourceName])
+  @@map("daily_issue_item_sources")
+}
+
+model DailyRun {
+  id           String         @id @default(cuid())
+  runType      DailyRunType   @map("run_type")
+  status       DailyRunStatus @default(RUNNING)
+  startedAt    DateTime       @default(now()) @map("started_at")
+  finishedAt   DateTime?      @map("finished_at")
+  summary      String?
+  errorMessage String?        @map("error_message")
+  statsJson    String?        @map("stats_json")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  steps        DailyRunStep[]
+
+  @@index([runType, startedAt])
+  @@index([status, startedAt])
+  @@map("daily_runs")
+}
+
+model DailyRunStep {
+  id          String             @id @default(cuid())
+  runId       String             @map("run_id")
+  stepName    String             @map("step_name")
+  status      DailyRunStepStatus @default(PENDING)
+  startedAt   DateTime?          @map("started_at")
+  finishedAt  DateTime?          @map("finished_at")
+  message     String?
+  payloadJson String?            @map("payload_json")
+  run         DailyRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, startedAt])
+  @@map("daily_run_steps")
 }

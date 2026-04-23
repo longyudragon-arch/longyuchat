@@ -5,22 +5,36 @@ declare global {
   var prismaGlobal: PrismaClient | undefined;
 }
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required to initialize Prisma.");
-}
-
-const prismaAdapter = new PrismaBetterSqlite3({
-  url: databaseUrl,
-});
-
-export const prisma =
-  globalThis.prismaGlobal ??
-  new PrismaClient({
-    adapter: prismaAdapter,
+function createPrismaClient(databaseUrl: string) {
+  const prismaAdapter = new PrismaBetterSqlite3({
+    url: databaseUrl,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.prismaGlobal = prisma;
+  return new PrismaClient({
+    adapter: prismaAdapter,
+  });
 }
+
+function getPrismaClient() {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required to initialize Prisma.");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return createPrismaClient(databaseUrl);
+  }
+
+  if (!globalThis.prismaGlobal) {
+    globalThis.prismaGlobal = createPrismaClient(databaseUrl);
+  }
+
+  return globalThis.prismaGlobal;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property, receiver) {
+    return Reflect.get(getPrismaClient(), property, receiver);
+  },
+});

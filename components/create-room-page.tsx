@@ -12,7 +12,7 @@ import {
   providerOptions,
   reorderIds,
   supportsLocalMockTools,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import { getModelAvatarPalette, resolveModelAvatar } from "@/lib/model-avatar";
 
 import type { ModelView, ProviderType, RoomType, RoomView } from "@/types/app";

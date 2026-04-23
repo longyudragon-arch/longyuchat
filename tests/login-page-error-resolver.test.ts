@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ClientRequestError, type ClientErrorFeedback } from "@/lib/client/chat-lab-client";
+import { ClientRequestError, type ClientErrorFeedback } from "@/lib/client/longyuchat-client";
 import { resolveLoginFieldErrors } from "@/components/login-page-error-resolver";
 
 const genericFeedback: ClientErrorFeedback = {

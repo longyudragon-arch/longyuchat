@@ -74,7 +74,7 @@ describe("handleRouteError", () => {
   });
 
   it("writes JSON log lines into the configured daily log file", () => {
-    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "ai-chat-lab-logs-"));
+    const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "longyuchat-logs-"));
     process.env.ENABLE_FILE_LOGGING = "true";
     process.env.APP_LOG_DIR = tempDirectory;
 

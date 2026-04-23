@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "generated/**",
+    "vendor/**",
     "stitch_handoff/**",
     "stitch_new_project/**",
     "_stitch_export/**",

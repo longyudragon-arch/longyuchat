@@ -1,4 +1,6 @@
-# AI 多模型聊天室 MVP 规范
+# LongyuChat
+
+## AI 多模型聊天室 MVP 规范
 
 ## 1. 项目定位
 

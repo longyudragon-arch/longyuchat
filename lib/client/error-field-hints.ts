@@ -1,4 +1,4 @@
-import { ClientRequestError } from "@/lib/client/chat-lab-client";
+import { ClientRequestError } from "@/lib/client/longyuchat-client";
 
 export function getClientErrorFieldHints(error: unknown) {
   if (!(error instanceof ClientRequestError)) {

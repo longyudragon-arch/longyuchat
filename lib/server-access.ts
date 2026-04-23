@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 function parseBooleanEnv(value: string | undefined) {
   if (value === undefined) {
     return undefined;
@@ -35,6 +37,24 @@ export function isPublicAccessPath(pathname: string) {
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
   );
+}
+
+export function constantTimeEqual(left: string | undefined, right: string | undefined) {
+  if (left === undefined || right === undefined) {
+    return false;
+  }
+
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  const comparisonLength = Math.max(leftBuffer.length, rightBuffer.length, 1);
+  const paddedLeft = Buffer.alloc(comparisonLength);
+  const paddedRight = Buffer.alloc(comparisonLength);
+
+  leftBuffer.copy(paddedLeft);
+  rightBuffer.copy(paddedRight);
+
+  const valuesMatch = timingSafeEqual(paddedLeft, paddedRight);
+  return valuesMatch && leftBuffer.length === rightBuffer.length;
 }
 
 export function isServerAccessProtectionEnabled(input?: {
@@ -97,7 +117,10 @@ export function isBasicAuthAuthorized(
     return false;
   }
 
-  return credentials.username === expectedUsername && credentials.password === expectedPassword;
+  return (
+    constantTimeEqual(credentials.username, expectedUsername) &&
+    constantTimeEqual(credentials.password, expectedPassword)
+  );
 }
 
 export function isHealthcheckBearerAuthorized(
@@ -110,5 +133,17 @@ export function isHealthcheckBearerAuthorized(
 
   const [scheme, token] = headerValue?.split(" ") ?? [];
 
-  return scheme?.toLowerCase() === "bearer" && token === expectedToken;
+  return scheme?.toLowerCase() === "bearer" && constantTimeEqual(token, expectedToken);
+}
+
+export function isBearerTokenAuthorized(
+  headerValue: string | null,
+  expectedToken: string | null | undefined,
+) {
+  if (!expectedToken) {
+    return false;
+  }
+
+  const [scheme, token] = headerValue?.split(" ") ?? [];
+  return scheme?.toLowerCase() === "bearer" && constantTimeEqual(token, expectedToken);
 }

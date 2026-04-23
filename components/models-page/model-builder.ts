@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { getProviderPreset } from "@/lib/client/chat-lab-client";
+import { getProviderPreset } from "@/lib/client/longyuchat-client";
 import {
   getModelAvatarPalette,
   getProviderDefaultAvatarColor,

@@ -5,7 +5,7 @@ import { assertProductionReadiness, buildProductionReadinessReport } from "@/ser
 function buildEnv(overrides?: Record<string, string | undefined>) {
   return {
     NODE_ENV: "production",
-    DATABASE_URL: "file:/srv/ai-chat-lab/data/app.db",
+    DATABASE_URL: "file:/srv/longyuchat/data/app.db",
     ENABLE_DEV_MOCKS: "false",
     NEXT_PUBLIC_ENABLE_DEV_MOCKS: "false",
     APP_LOGIN_ENABLED: "true",
@@ -19,8 +19,8 @@ function buildEnv(overrides?: Record<string, string | undefined>) {
     MODEL_SECRET_ENCRYPTION_KEY: Buffer.from("0123456789abcdef0123456789abcdef", "utf8").toString("base64"),
     ENABLE_API_RATE_LIMITS: "true",
     ENABLE_FILE_LOGGING: "true",
-    APP_LOG_DIR: "/srv/ai-chat-lab/logs",
-    SQLITE_BACKUP_DIR: "/srv/ai-chat-lab/backups/sqlite",
+    APP_LOG_DIR: "/srv/longyuchat/logs",
+    SQLITE_BACKUP_DIR: "/srv/longyuchat/backups/sqlite",
     SQLITE_BACKUP_RETENTION_DAYS: "7",
     ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION: "false",
     ...overrides,

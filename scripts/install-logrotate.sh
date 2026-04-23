@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_USER="${APP_USER:-ai-chat-lab}"
+APP_USER="${APP_USER:-longyuchat}"
 APP_GROUP="${APP_GROUP:-${APP_USER}}"
-APP_LOG_DIR="${APP_LOG_DIR:-/srv/ai-chat-lab/var/log}"
+APP_LOG_DIR="${APP_LOG_DIR:-/srv/longyuchat/var/log}"
 ROTATE_COUNT="${ROTATE_COUNT:-14}"
-LOGROTATE_CONFIG_PATH="${LOGROTATE_CONFIG_PATH:-/etc/logrotate.d/ai-chat-lab}"
+LOGROTATE_CONFIG_PATH="${LOGROTATE_CONFIG_PATH:-/etc/logrotate.d/longyuchat}"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "Please run this script as root."

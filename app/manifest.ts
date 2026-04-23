@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Longyu Chat",
-    short_name: "Longyu Chat",
+    name: "LongyuChat",
+    short_name: "LongyuChat",
     description: "Multi-model chat workspace for private deployment and mobile-friendly AI collaboration.",
     start_url: "/",
     display: "standalone",

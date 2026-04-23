@@ -24,7 +24,8 @@ import {
   supportsAutomaticModelDiscovery,
   testProviderConnectionRequest,
   updateProviderConnectionRequest,
-} from "@/lib/client/chat-lab-client";
+  fetchJson,
+} from "@/lib/client/longyuchat-client";
 import type { MessageView, ProviderConnectionView } from "@/types/app";
 
 const exampleConnection: ProviderConnectionView = {
@@ -893,5 +894,82 @@ describe("provider connection client requests", () => {
         method: "POST",
       }),
     );
+  });
+});
+
+describe("fetchJson", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("returns parsed JSON for successful requests", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        createJsonResponse({
+          ok: true,
+        }),
+      ),
+    );
+
+    await expect(fetchJson<{ ok: boolean }>("/api/test")).resolves.toEqual({
+      ok: true,
+    });
+  });
+
+  it("returns null for 204 responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 204 })),
+    );
+
+    await expect(fetchJson<null>("/api/test")).resolves.toBeNull();
+  });
+
+  it("surfaces structured API errors from JSON payloads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        createJsonResponse(
+          {
+            error: "Invalid request payload.",
+            details: {
+              reasonCode: "invalid_request_payload",
+            },
+          },
+          {
+            status: 400,
+          },
+        ),
+      ),
+    );
+
+    await expect(fetchJson("/api/test")).rejects.toMatchObject({
+      message: "Invalid request payload.",
+      status: 400,
+      details: {
+        reasonCode: "invalid_request_payload",
+      },
+    });
+  });
+
+  it("falls back to a generic client error for non-JSON error bodies", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response("<html>bad gateway</html>", {
+          status: 502,
+          headers: {
+            "Content-Type": "text/html",
+          },
+        }),
+      ),
+    );
+
+    await expect(fetchJson("/api/test")).rejects.toMatchObject({
+      message: "请求失败。",
+      status: 502,
+    });
   });
 });

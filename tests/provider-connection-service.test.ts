@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ProviderConnection } from "@/generated/prisma/client";
 import {
@@ -55,6 +55,11 @@ describe("resolveProviderConnectionDiscoveryStrategy", () => {
 });
 
 describe("testProviderConnectionById", () => {
+  afterEach(() => {
+    delete process.env.NODE_ENV;
+    delete process.env.MODEL_SECRET_ENCRYPTION_KEY;
+  });
+
   it("uses an auth probe model instead of discovery for auto-discoverable providers", async () => {
     const persistAuthResult = vi.fn(async () => buildConnection("conn-1"));
     const discoverProviderModels = vi.fn(async () => {
@@ -163,6 +168,27 @@ describe("testProviderConnectionById", () => {
         status: "SUCCESS",
       }),
     );
+  });
+
+  it("rejects plaintext stored provider API keys in production", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MODEL_SECRET_ENCRYPTION_KEY = Buffer.from(
+      "0123456789abcdef0123456789abcdef",
+      "utf8",
+    ).toString("base64");
+
+    await expect(
+      testProviderConnectionById(
+        "conn-plain",
+        {},
+        {
+          getConnectionById: async () => buildConnection("conn-plain", { apiKey: "legacy-plain-key" }),
+          persistAuthResult: vi.fn(async () => buildConnection("conn-plain")),
+          discoverProviderModels: vi.fn(),
+          createAdapter: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow("Stored model secret must be encrypted before running in production.");
   });
 });
 

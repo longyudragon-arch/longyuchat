@@ -27,7 +27,7 @@
 建议关注文件：
 
 - `components/room-chat-page.tsx`
-- `lib/client/chat-lab-client.ts`
+- `lib/client/longyuchat-client.ts`
 
 可优化方向：
 
@@ -53,7 +53,7 @@
 建议关注文件：
 
 - `components/models-page.tsx`
-- `lib/client/chat-lab-client.ts`
+- `lib/client/longyuchat-client.ts`
 
 可优化方向：
 

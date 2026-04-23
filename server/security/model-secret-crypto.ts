@@ -1,8 +1,13 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 const secretPrefix = "enc:v1:";
-const aad = Buffer.from("ai-chat-lab:model-api-key:v1", "utf8");
+const currentAad = Buffer.from("longyuchat:model-api-key:v1", "utf8");
+const legacyAads = [Buffer.from("ai-chat-lab:model-api-key:v1", "utf8")];
 const encryptionAlgorithm = "aes-256-gcm";
+
+interface DecryptSecretOptions {
+  nodeEnv?: string;
+}
 
 function normalizeSecret(value: string) {
   const normalized = value.trim();
@@ -59,7 +64,7 @@ export function encryptModelSecret(secret: string, rawKey = process.env.MODEL_SE
   const normalizedSecret = normalizeSecret(secret);
   const iv = randomBytes(12);
   const cipher = createCipheriv(encryptionAlgorithm, key, iv);
-  cipher.setAAD(aad);
+  cipher.setAAD(currentAad);
 
   const encrypted = Buffer.concat([cipher.update(normalizedSecret, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -84,17 +89,35 @@ export function decryptModelSecret(secret: string, rawKey = process.env.MODEL_SE
   const iv = Buffer.from(ivPart, "base64url");
   const tag = Buffer.from(tagPart, "base64url");
   const encrypted = Buffer.from(cipherPart, "base64url");
-  const decipher = createDecipheriv(encryptionAlgorithm, key, iv);
-  decipher.setAAD(aad);
-  decipher.setAuthTag(tag);
+  const aadCandidates = [currentAad, ...legacyAads];
+  let lastError: Error | null = null;
 
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+  for (const aad of aadCandidates) {
+    try {
+      const decipher = createDecipheriv(encryptionAlgorithm, key, iv);
+      decipher.setAAD(aad);
+      decipher.setAuthTag(tag);
 
-  return normalizeSecret(decrypted);
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+      return normalizeSecret(decrypted);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Could not decrypt the stored model secret.");
+    }
+  }
+
+  throw lastError ?? new Error("Could not decrypt the stored model secret.");
 }
 
-export function decryptModelSecretOrPlaintext(secret: string, rawKey = process.env.MODEL_SECRET_ENCRYPTION_KEY) {
+export function decryptModelSecretOrPlaintext(
+  secret: string,
+  rawKey = process.env.MODEL_SECRET_ENCRYPTION_KEY,
+  options: DecryptSecretOptions = {},
+) {
   if (!isModelSecretEncrypted(secret)) {
+    if ((options.nodeEnv ?? process.env.NODE_ENV) === "production") {
+      throw new Error("Stored model secret must be encrypted before running in production.");
+    }
+
     return normalizeSecret(secret);
   }
 

@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 import { getProviderRequestTimeoutMs } from "@/lib/runtime";
 
 interface ProviderRequestInput {
@@ -50,6 +52,104 @@ function getPowerShellCommand() {
 
   const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
   return `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+}
+
+function isLoopbackOrPrivateIpv4(address: string) {
+  const octets = address.split(".").map((value) => Number.parseInt(value, 10));
+
+  if (octets.length !== 4 || octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+
+  const [first, second] = octets;
+
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 198 && (second === 18 || second === 19))
+  );
+}
+
+function isLoopbackOrPrivateIpv6(address: string) {
+  const normalized = address.toLowerCase();
+
+  if (normalized === "::1" || normalized === "::") {
+    return true;
+  }
+
+  if (normalized.startsWith("::ffff:")) {
+    return isLoopbackOrPrivateIpv4(normalized.slice("::ffff:".length));
+  }
+
+  return normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb");
+}
+
+function isDisallowedIpAddress(address: string) {
+  const family = isIP(address);
+
+  if (family === 4) {
+    return isLoopbackOrPrivateIpv4(address);
+  }
+
+  if (family === 6) {
+    return isLoopbackOrPrivateIpv6(address);
+  }
+
+  return false;
+}
+
+function getPowerShellRequestEnv(encodedPayload: string) {
+  const env: Record<string, string> = {
+    CODEX_PROVIDER_REQUEST_PAYLOAD: encodedPayload,
+  };
+
+  if (process.env.SystemRoot) {
+    env.SystemRoot = process.env.SystemRoot;
+  }
+
+  return env as NodeJS.ProcessEnv;
+}
+
+async function assertAllowedProviderUrl(rawUrl: string) {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    throw new Error("Provider URL is not allowed.");
+  }
+
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Provider URL is not allowed.");
+  }
+
+  const hostname = parsedUrl.hostname.trim().toLowerCase();
+
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error("Provider URL is not allowed.");
+  }
+
+  if (isDisallowedIpAddress(hostname)) {
+    throw new Error("Provider URL is not allowed.");
+  }
+
+  try {
+    const resolved = await lookup(hostname, { all: true });
+    const records = Array.isArray(resolved) ? resolved : [resolved];
+
+    if (records.some((record) => isDisallowedIpAddress(record.address))) {
+      throw new Error("Provider URL is not allowed.");
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "Provider URL is not allowed.") {
+      throw error;
+    }
+  }
 }
 
 function toProviderRequestPayload(input: ProviderRequestInput): ProviderRequestPayload {
@@ -125,6 +225,7 @@ async function requestWithFetch(input: ProviderRequestPayload): Promise<Provider
     method: input.method,
     headers: input.headers,
     body: input.body || undefined,
+    redirect: "manual",
     signal: AbortSignal.timeout(input.timeoutMs),
   });
   const bodyText =
@@ -184,10 +285,7 @@ $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
       ["-NoProfile", "-Command", script],
       {
         cwd: process.cwd(),
-        env: {
-          ...process.env,
-          CODEX_PROVIDER_REQUEST_PAYLOAD: encodedPayload,
-        },
+        env: getPowerShellRequestEnv(encodedPayload),
         maxBuffer: 1024 * 1024,
         timeout: input.timeoutMs + 5_000,
         windowsHide: true,
@@ -218,6 +316,7 @@ $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
 
 export async function requestProvider(input: ProviderRequestInput): Promise<ProviderRequestResult> {
   const payload = toProviderRequestPayload(input);
+  await assertAllowedProviderUrl(payload.url);
 
   try {
     return await requestWithFetch(payload);

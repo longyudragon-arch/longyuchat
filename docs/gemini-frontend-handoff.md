@@ -173,7 +173,7 @@ Provider 枚举仍然是这些固定值：
 
 相关展示工具在：
 
-- `lib/client/chat-lab-client.ts`
+- `lib/client/longyuchat-client.ts`
 
 里面已有：
 
@@ -238,7 +238,7 @@ Provider 枚举仍然是这些固定值：
 4. `components/models-page.tsx`
 5. `components/create-room-page.tsx`
 6. `components/edit-room-page.tsx`
-7. `lib/client/chat-lab-client.ts`
+7. `lib/client/longyuchat-client.ts`
 8. `types/app.ts`
 
 ## 13. 本地开发方式

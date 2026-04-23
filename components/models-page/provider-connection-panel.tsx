@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 
-import { getProviderBadgeClassName, getProviderChineseLabel, getProviderOptionLabel, getProviderPreset } from "@/lib/client/chat-lab-client";
+import { getProviderBadgeClassName, getProviderChineseLabel, getProviderOptionLabel, getProviderPreset } from "@/lib/client/longyuchat-client";
 import {
   findTemplateByProviderAndBaseUrl,
   getAvatarPreviewStyle,
@@ -12,7 +12,7 @@ import type { ConnectionFormFieldKey } from "@/components/models-page/error-fiel
 import { FieldErrorHint, FeedbackPanel, getInputErrorClass } from "@/components/models-page/shared-ui";
 import type {
   ClientErrorFeedback,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import type {
   DiscoveredModelView,
   ProviderConnectionTemplateView,

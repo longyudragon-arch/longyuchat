@@ -26,7 +26,7 @@ import {
   testProviderConnectionRequest,
   updateProviderConnectionRequest,
   type ClientErrorFeedback,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import {
   getProviderDefaultAvatarColor,
 } from "@/lib/model-avatar";

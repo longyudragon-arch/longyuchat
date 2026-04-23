@@ -12,7 +12,7 @@ import {
   providerOptions,
   reorderIds,
   type ClientErrorFeedback,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import { resolveRoomConfigFieldErrors, type RoomConfigFieldKey } from "@/components/edit-room-page-error-resolver";
 import {
   FeedbackPanel,

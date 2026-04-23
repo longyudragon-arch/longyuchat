@@ -1,4 +1,4 @@
-import type { ClientErrorFeedback } from "@/lib/client/chat-lab-client";
+import type { ClientErrorFeedback } from "@/lib/client/longyuchat-client";
 import { getClientErrorFieldHints } from "@/lib/client/error-field-hints";
 
 export type LoginFieldKey = "username" | "password";

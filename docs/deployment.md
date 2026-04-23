@@ -16,7 +16,7 @@
 复制 `.env.example` 到服务器环境变量或 `.env.production`，至少配置：
 
 ```bash
-DATABASE_URL="file:/srv/ai-chat-lab/data/app.db"
+DATABASE_URL="file:/srv/longyuchat/data/app.db"
 ENABLE_DEV_MOCKS="false"
 NEXT_PUBLIC_ENABLE_DEV_MOCKS="false"
 BASIC_AUTH_ENABLED="true"
@@ -30,11 +30,21 @@ API_RATE_LIMIT_MAX_MESSAGE_POSTS="12"
 API_RATE_LIMIT_MAX_MODEL_TESTS="10"
 API_RATE_LIMIT_MAX_MODEL_DISCOVERY="20"
 ENABLE_FILE_LOGGING="true"
-APP_LOG_DIR="/srv/ai-chat-lab/var/log"
-SQLITE_BACKUP_DIR="/srv/ai-chat-lab/backups/sqlite"
+APP_LOG_DIR="/srv/longyuchat/var/log"
+SQLITE_BACKUP_DIR="/srv/longyuchat/backups/sqlite"
 SQLITE_BACKUP_RETENTION_DAYS="7"
 ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION="false"
 APP_LISTEN_HOST="127.0.0.1"
+AI_DAILY_ENABLED="true"
+AI_DAILY_MODEL_ID=""
+AI_DAILY_AUTOMATION_TOKEN="replace-with-a-random-daily-token"
+AI_DAILY_CANDIDATE_LIMIT="12"
+AI_DAILY_PUBLISH_ITEM_LIMIT="6"
+AI_DAILY_MINIMUM_ITEM_COUNT="3"
+AI_DAILY_HEURISTIC_SCORE_THRESHOLD="4.5"
+AI_DAILY_PUBLISH_WINDOW_HOURS="24"
+AI_DAILY_FEED_BASE_URL="https://your-domain.com"
+AI_DAILY_TIMEZONE="Asia/Shanghai"
 ```
 
 说明：
@@ -51,6 +61,9 @@ APP_LISTEN_HOST="127.0.0.1"
 - 使用 SQLite 时，建议显式配置 `SQLITE_BACKUP_DIR`
 - `ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION` 仅在你已经通过其他网关做了访问保护时才建议设为 `true`
 - `APP_LISTEN_HOST` 建议在使用 Nginx 反代时保持为 `127.0.0.1`
+- `AI_DAILY_FEED_BASE_URL` 应指向你的站点对外域名，RSS 会据此生成条目链接
+- `AI_DAILY_AUTOMATION_TOKEN` 建议设置为长随机值，用于 cron/脚本安全触发日报扫描和发布
+- 如果不设置 `AI_DAILY_MODEL_ID`，日报会回退到当前第一个已启用模型
 
 ### 2.2 数据库
 
@@ -182,15 +195,15 @@ npm run sqlite:backup
 
 ```ini
 [Unit]
-Description=AI Chat Lab
+Description=LongyuChat
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/srv/ai-chat-lab
+WorkingDirectory=/srv/longyuchat
 Environment=NODE_ENV=production
 Environment=PORT=3000
-Environment=DATABASE_URL=file:/srv/ai-chat-lab/data/app.db
+Environment=DATABASE_URL=file:/srv/longyuchat/data/app.db
 Environment=ENABLE_DEV_MOCKS=false
 Environment=NEXT_PUBLIC_ENABLE_DEV_MOCKS=false
 Environment=BASIC_AUTH_ENABLED=true
@@ -204,8 +217,8 @@ Environment=API_RATE_LIMIT_MAX_MESSAGE_POSTS=12
 Environment=API_RATE_LIMIT_MAX_MODEL_TESTS=10
 Environment=API_RATE_LIMIT_MAX_MODEL_DISCOVERY=20
 Environment=ENABLE_FILE_LOGGING=true
-Environment=APP_LOG_DIR=/srv/ai-chat-lab/var/log
-Environment=SQLITE_BACKUP_DIR=/srv/ai-chat-lab/backups/sqlite
+Environment=APP_LOG_DIR=/srv/longyuchat/var/log
+Environment=SQLITE_BACKUP_DIR=/srv/longyuchat/backups/sqlite
 Environment=SQLITE_BACKUP_RETENTION_DAYS=7
 Environment=APP_LISTEN_HOST=127.0.0.1
 ExecStart=/usr/bin/npm run start:prod
@@ -323,18 +336,34 @@ curl -H "Authorization: Bearer your-health-token" https://your-domain.com/api/he
 - 外部监控告警和日志采集
 - SQLite 备份定时调度（例如 cron / systemd timer）
 
+## 7.2 建议的 AI 日报定时任务
+
+如果你已经在后台导入了默认来源，建议为 AI 日报增加 2 个 cron：
+
+```cron
+0 */2 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:scan >> /srv/longyuchat/var/log/daily-scan.log 2>&1
+0 8 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:publish >> /srv/longyuchat/var/log/daily-publish.log 2>&1
+```
+
+说明：
+
+- `daily:scan` 负责抓取、去重和聚类
+- `daily:publish` 负责生成并发布当天日报
+- 这两个脚本会通过本地 HTTP API 触发，需要本地服务已运行
+- 如果配置了 `AI_DAILY_AUTOMATION_TOKEN`，脚本会自动附带 Bearer Token
+
 ## 7.1 建议的 SQLite 备份定时任务
 
 可以在服务器上每天定时执行：
 
 ```bash
-cd /srv/ai-chat-lab && /usr/bin/npm run sqlite:backup
+cd /srv/longyuchat && /usr/bin/npm run sqlite:backup
 ```
 
 例如 `cron`：
 
 ```cron
-15 3 * * * cd /srv/ai-chat-lab && /usr/bin/npm run sqlite:backup >> /srv/ai-chat-lab/var/log/sqlite-backup.log 2>&1
+15 3 * * * cd /srv/longyuchat && /usr/bin/npm run sqlite:backup >> /srv/longyuchat/var/log/sqlite-backup.log 2>&1
 ```
 
 ## 8. 上线检查清单

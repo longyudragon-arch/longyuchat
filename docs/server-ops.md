@@ -1,56 +1,57 @@
 # Server Ops
 
-This document covers the four most practical post-launch tasks for a single-server AI Chat Lab deployment:
+This document covers the four most practical post-launch tasks for a single-server LongyuChat deployment:
 
 1. automatic SQLite backups
 2. log rotation
 3. one-click production updates
 4. an Nginx config with gzip and safer static-asset caching
+5. AI 日报定时任务
 
 All examples below assume:
 
-- app directory: `/srv/ai-chat-lab/app`
-- data directory: `/srv/ai-chat-lab/data`
-- log directory: `/srv/ai-chat-lab/var/log`
-- backup directory: `/srv/ai-chat-lab/backups/sqlite`
-- systemd service: `ai-chat-lab`
+- app directory: `/srv/longyuchat/app`
+- data directory: `/srv/longyuchat/data`
+- log directory: `/srv/longyuchat/var/log`
+- backup directory: `/srv/longyuchat/backups/sqlite`
+- systemd service: `longyuchat`
 
 ## 1. Install Automatic SQLite Backups
 
 The repository already includes `npm run sqlite:backup`.
 
-To install a daily cron job for the `ai-chat-lab` user:
+To install a daily cron job for the `longyuchat` user:
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo bash scripts/install-sqlite-backup-cron.sh
 ```
 
 Defaults:
 
 - time: `03:30` every day
-- user: `ai-chat-lab`
-- log file: `/srv/ai-chat-lab/var/log/sqlite-backup.log`
+- user: `longyuchat`
+- log file: `/srv/longyuchat/var/log/sqlite-backup.log`
 
 Optional overrides:
 
 ```bash
-cd /srv/ai-chat-lab/app
-sudo APP_USER=ai-chat-lab BACKUP_HOUR=4 BACKUP_MINUTE=15 APP_LOG_DIR=/srv/ai-chat-lab/var/log bash scripts/install-sqlite-backup-cron.sh
+cd /srv/longyuchat/app
+sudo APP_USER=longyuchat BACKUP_HOUR=4 BACKUP_MINUTE=15 APP_LOG_DIR=/srv/longyuchat/var/log bash scripts/install-sqlite-backup-cron.sh
 ```
 
 Verify:
 
 ```bash
-sudo crontab -u ai-chat-lab -l
+sudo crontab -u longyuchat -l
 ```
 
 ## 2. Install Log Rotation
 
-To rotate all application log files under `/srv/ai-chat-lab/var/log`:
+To rotate all application log files under `/srv/longyuchat/var/log`:
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo bash scripts/install-logrotate.sh
 ```
 
@@ -63,15 +64,15 @@ Defaults:
 Optional overrides:
 
 ```bash
-cd /srv/ai-chat-lab/app
-sudo APP_LOG_DIR=/srv/ai-chat-lab/var/log ROTATE_COUNT=21 bash scripts/install-logrotate.sh
+cd /srv/longyuchat/app
+sudo APP_LOG_DIR=/srv/longyuchat/var/log ROTATE_COUNT=21 bash scripts/install-logrotate.sh
 ```
 
 Verify:
 
 ```bash
-sudo cat /etc/logrotate.d/ai-chat-lab
-sudo logrotate -d /etc/logrotate.d/ai-chat-lab
+sudo cat /etc/logrotate.d/longyuchat
+sudo logrotate -d /etc/logrotate.d/longyuchat
 ```
 
 ## 3. Use the One-Click Update Script
@@ -81,25 +82,25 @@ The production update script pulls the latest git changes, installs dependencies
 Run:
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo bash scripts/update-prod.sh
 ```
 
 Behavior:
 
-- reads `/srv/ai-chat-lab/app/.env` if present
+- reads `/srv/longyuchat/app/.env` if present
 - creates a SQLite backup before update by default
 - keeps the current checked-out git branch unless `BRANCH_NAME` is set
 
 Useful overrides:
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo BRANCH_NAME=main bash scripts/update-prod.sh
 ```
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo BACKUP_BEFORE_UPDATE=false bash scripts/update-prod.sh
 ```
 
@@ -110,7 +111,7 @@ If no health token is configured but Basic Auth is enabled, it falls back to `BA
 
 The repository now includes:
 
-- `docs/ai-chat-lab.nginx.conf.example`
+- `docs/longyuchat.nginx.conf.example`
 
 It adds:
 
@@ -122,8 +123,8 @@ It adds:
 To apply it on a Linux server:
 
 ```bash
-sudo cp /srv/ai-chat-lab/app/docs/ai-chat-lab.nginx.conf.example /etc/nginx/sites-available/ai-chat-lab
-sudo nano /etc/nginx/sites-available/ai-chat-lab
+sudo cp /srv/longyuchat/app/docs/longyuchat.nginx.conf.example /etc/nginx/sites-available/longyuchat
+sudo nano /etc/nginx/sites-available/longyuchat
 ```
 
 Replace:
@@ -151,9 +152,29 @@ If Certbot already manages your file, merge only the gzip, cache, timeout, and s
 ## 6. Quick Verification Commands
 
 ```bash
-sudo systemctl status ai-chat-lab --no-pager
+sudo systemctl status longyuchat --no-pager
 sudo systemctl status nginx --no-pager
-sudo crontab -u ai-chat-lab -l
-sudo logrotate -d /etc/logrotate.d/ai-chat-lab
+sudo crontab -u longyuchat -l
+sudo logrotate -d /etc/logrotate.d/longyuchat
 curl -I https://your-domain.com
 ```
+
+## 7. AI 日报的建议调度
+
+如果你已经配置好：
+
+- `AI_DAILY_AUTOMATION_TOKEN`
+- 至少一个可用模型
+- 默认来源或自定义来源
+
+推荐增加这两条 cron：
+
+```cron
+0 */2 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:scan >> /srv/longyuchat/var/log/daily-scan.log 2>&1
+0 8 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:publish >> /srv/longyuchat/var/log/daily-publish.log 2>&1
+```
+
+这样可以做到：
+
+- 每 2 小时增量扫描来源
+- 每天早上自动生成并发布 AI 日报

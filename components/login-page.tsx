@@ -7,7 +7,7 @@ import {
   type ClientErrorFeedback,
   describeClientError,
   fetchJson,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import { resolveLoginFieldErrors, type LoginFieldKey } from "@/components/login-page-error-resolver";
 import {
   FeedbackPanel,
@@ -58,7 +58,7 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
             <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DC75A5] to-[#FF8DA1] text-sm font-display font-bold text-white shadow-lg shadow-[var(--accent)]/25">
               LY
             </span>
-            <h1 className="mt-4 text-2xl font-display font-bold tracking-tight">登录 Longyu Chat</h1>
+            <h1 className="mt-4 text-2xl font-display font-bold tracking-tight">登录 LongyuChat</h1>
             <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-[var(--muted)]">
               使用服务器环境变量中配置的应用账号进入系统。
             </p>

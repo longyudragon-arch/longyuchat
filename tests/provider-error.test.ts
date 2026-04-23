@@ -29,7 +29,9 @@ const geminiInvalidKeyBody = JSON.stringify([
 describe("provider-error helpers", () => {
   it("classifies Gemini invalid key responses as authentication failures", () => {
     expect(inferProviderErrorKind(400, geminiInvalidKeyBody)).toBe("authentication");
-    expect(formatProviderError(400, geminiInvalidKeyBody)).toMatch(/Provider authentication failed with 400:/);
+    expect(formatProviderError(400, geminiInvalidKeyBody)).toBe(
+      "Provider authentication failed with 400. Check API key and endpoint configuration.",
+    );
   });
 
   it("keeps provider metadata in ApiError details", () => {
@@ -41,7 +43,7 @@ describe("provider-error helpers", () => {
     });
 
     expect(error.status).toBe(400);
-    expect(error.message).toMatch(/Provider authentication failed with 400:/);
+    expect(error.message).toBe("Provider authentication failed with 400. Check API key and endpoint configuration.");
     expect(error.details).toMatchObject({
       provider: "GEMINI",
       providerErrorKind: "authentication",
@@ -50,6 +52,7 @@ describe("provider-error helpers", () => {
       retryable: false,
       fieldHints: ["apiKey", "baseUrl", "providerTemplate"],
     });
+    expect(error.message).not.toContain("API Key not found");
   });
 
   it("adds structured retry and field-hint metadata for timeout-like provider failures", () => {
@@ -98,7 +101,7 @@ describe("provider-error helpers", () => {
   it("can infer the provider error kind back from a partial-send error message", () => {
     expect(
       inferProviderErrorKindFromMessage(
-        "Provider authentication failed with 400: API Key not found. Please pass a valid API key.",
+        "Provider authentication failed with 400. Check API key and endpoint configuration.",
       ),
     ).toBe("authentication");
   });

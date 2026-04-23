@@ -253,26 +253,25 @@ export function shouldPauseModelOnProviderErrorKind(kind: ProviderErrorKind) {
 }
 
 export function formatProviderError(status: number, bodyText: string) {
-  const summary = extractProviderErrorSummary(bodyText);
   const kind = inferProviderErrorKind(status, bodyText);
 
   if (kind === "authentication") {
-    return `Provider authentication failed with ${status}: ${summary || "API key is invalid or missing."}`;
+    return `Provider authentication failed with ${status}. Check API key and endpoint configuration.`;
   }
 
   if (kind === "quota") {
-    return `Provider quota or billing check failed with ${status}: ${summary || "The provider rejected the request because the quota or billing state is not available."}`;
+    return `Provider quota or billing check failed with ${status}. Check quota, billing, or token availability.`;
   }
 
   if (kind === "not_found") {
-    return `Provider target was not found with ${status}: ${summary || "The upstream model, endpoint, or resource does not exist."}`;
+    return `Provider target was not found with ${status}. Check model ID and endpoint configuration.`;
   }
 
   if (kind === "network") {
-    return `Provider network request failed with ${status}: ${summary || bodyText.slice(0, 600)}`;
+    return `Provider network request failed with ${status}. Check upstream reachability and timeout settings.`;
   }
 
-  return `Provider request failed with ${status}: ${summary || bodyText.slice(0, 600)}`;
+  return `Provider request failed with ${status}. Review provider compatibility and upstream availability.`;
 }
 
 export function createProviderApiError(input: {

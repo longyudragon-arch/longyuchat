@@ -83,6 +83,12 @@ export function getApiRateLimitMaxModelDiscovery(
   return parsePositiveIntegerEnv(explicitValue) ?? 20;
 }
 
+export function getApiRateLimitMaxLoginAttempts(
+  explicitValue = process.env.API_RATE_LIMIT_MAX_LOGIN_ATTEMPTS,
+) {
+  return parsePositiveIntegerEnv(explicitValue) ?? 5;
+}
+
 export function isFileLoggingEnabled(
   nodeEnv = process.env.NODE_ENV,
   explicitValue = process.env.ENABLE_FILE_LOGGING,

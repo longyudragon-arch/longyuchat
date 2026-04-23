@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
-import { fetchJson } from "@/lib/client/chat-lab-client";
+import { fetchJson } from "@/lib/client/longyuchat-client";
 import type { AuthSessionView } from "@/types/app";
 
 const navItems = [
   { href: "/", label: "首页", match: (p: string) => p === "/" },
+  { href: "/daily", label: "日报", match: (p: string) => p === "/daily" || p.startsWith("/daily/") },
   { href: "/models", label: "模型", match: (p: string) => p.startsWith("/models") },
   {
     href: "/rooms",
@@ -69,7 +70,7 @@ export function AppNavigation() {
               LY
             </span>
             <span className="hidden text-[15px] font-display font-bold tracking-tight text-[var(--foreground)] sm:block">
-              Longyu Chat
+              LongyuChat
             </span>
           </Link>
 

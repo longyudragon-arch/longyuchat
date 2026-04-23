@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { APP_SESSION_COOKIE_NAME } from "@/lib/app-auth";
+import { APP_SESSION_COOKIE_NAME, revokeAppSessionToken } from "@/lib/app-auth";
 import { withRequestIdHeader } from "@/server/http/api-response";
 import { handleRouteError } from "@/server/http/api-error";
 
 export async function POST(request: Request) {
   try {
+    const cookieHeader = request.headers.get("cookie");
+    const sessionToken =
+      cookieHeader
+        ?.split(";")
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${APP_SESSION_COOKIE_NAME}=`))
+        ?.slice(APP_SESSION_COOKIE_NAME.length + 1) ?? undefined;
+
+    await revokeAppSessionToken(sessionToken);
+
     const response = withRequestIdHeader(
       request,
       NextResponse.json({

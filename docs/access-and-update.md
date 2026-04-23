@@ -5,7 +5,7 @@
 ### 1. 查看服务状态
 
 ```bash
-sudo systemctl status ai-chat-lab --no-pager
+sudo systemctl status longyuchat --no-pager
 ```
 
 作用：
@@ -17,7 +17,7 @@ sudo systemctl status ai-chat-lab --no-pager
 ### 2. 实时查看应用日志
 
 ```bash
-sudo journalctl -u ai-chat-lab -f
+sudo journalctl -u longyuchat -f
 ```
 
 作用：
@@ -28,7 +28,7 @@ sudo journalctl -u ai-chat-lab -f
 ### 3. 一键更新生产环境
 
 ```bash
-sudo bash /srv/ai-chat-lab/app/scripts/update-prod.sh
+sudo bash /srv/longyuchat/app/scripts/update-prod.sh
 ```
 
 作用：
@@ -38,7 +38,7 @@ sudo bash /srv/ai-chat-lab/app/scripts/update-prod.sh
 - 执行 `npm ci`
 - 执行数据库迁移
 - 重新构建 Next.js
-- 重启 `ai-chat-lab`
+- 重启 `longyuchat`
 - 自动做健康检查
 
 这是日常更新最推荐的命令。
@@ -46,7 +46,7 @@ sudo bash /srv/ai-chat-lab/app/scripts/update-prod.sh
 ### 4. 手动执行数据库备份
 
 ```bash
-sudo -u ai-chat-lab -H bash -lc 'cd /srv/ai-chat-lab/app && npm run sqlite:backup'
+sudo -u longyuchat -H bash -lc 'cd /srv/longyuchat/app && npm run sqlite:backup'
 ```
 
 作用：
@@ -61,14 +61,14 @@ sudo -u ai-chat-lab -H bash -lc 'cd /srv/ai-chat-lab/app && npm run sqlite:backu
 直接执行：
 
 ```bash
-cd /srv/ai-chat-lab/app
+cd /srv/longyuchat/app
 sudo bash scripts/update-prod.sh
 ```
 
 或者如果你已经把全局命令装好了，也可以执行：
 
 ```bash
-sudo /usr/local/bin/ai-chat-lab-update
+sudo /usr/local/bin/longyuchat-update
 ```
 
 ## 切换到站内登录
@@ -92,7 +92,7 @@ BASIC_AUTH_ENABLED="false"
 改完后执行：
 
 ```bash
-sudo systemctl restart ai-chat-lab
+sudo systemctl restart longyuchat
 ```
 
 完成后：

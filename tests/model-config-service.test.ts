@@ -16,6 +16,8 @@ import { ApiError } from "@/server/http/api-error";
 import { encryptModelSecret } from "@/server/security/model-secret-crypto";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
+const base64Key = Buffer.from("0123456789abcdef0123456789abcdef", "utf8").toString("base64");
+
 function buildModel(id: string): ModelConfig {
   return {
     id,
@@ -41,6 +43,7 @@ function buildModel(id: string): ModelConfig {
 describe("testModelConnectionById", () => {
   afterEach(() => {
     delete process.env.MODEL_SECRET_ENCRYPTION_KEY;
+    delete process.env.NODE_ENV;
   });
 
   it("persists the latest successful test result", async () => {
@@ -149,6 +152,18 @@ describe("testModelConnectionById", () => {
     });
 
     expect(runtimeConfig.apiKey).toBe("secret-key");
+  });
+
+  it("rejects plaintext stored API keys in production", () => {
+    process.env.NODE_ENV = "production";
+    process.env.MODEL_SECRET_ENCRYPTION_KEY = base64Key;
+
+    expect(() =>
+      toModelRuntimeConfig({
+        ...buildModel("model-5"),
+        apiKey: "legacy-plain-key",
+      }),
+    ).toThrow("Stored model secret must be encrypted before running in production.");
   });
 });
 

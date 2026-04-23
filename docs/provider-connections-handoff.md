@@ -47,8 +47,8 @@
 
 相关文件：
 
-- [C:\codeX\prisma\schema.prisma](C:/codeX/prisma/schema.prisma)
-- [C:\codeX\prisma\migrations\20260325110000_add_provider_connections\migration.sql](C:/codeX/prisma/migrations/20260325110000_add_provider_connections/migration.sql)
+- [C:\longyuchat\prisma\schema.prisma](C:/longyuchat/prisma/schema.prisma)
+- [C:\longyuchat\prisma\migrations\20260325110000_add_provider_connections\migration.sql](C:/longyuchat/prisma/migrations/20260325110000_add_provider_connections/migration.sql)
 
 ### 2.2 新增连接层服务
 
@@ -70,9 +70,9 @@
 
 相关文件：
 
-- [C:\codeX\server\services\provider-connection-service.ts](C:/codeX/server/services/provider-connection-service.ts)
-- [C:\codeX\server\services\model-config-service.ts](C:/codeX/server/services/model-config-service.ts)
-- [C:\codeX\server\services\model-discovery-service.ts](C:/codeX/server/services/model-discovery-service.ts)
+- [C:\longyuchat\server\services\provider-connection-service.ts](C:/longyuchat/server/services/provider-connection-service.ts)
+- [C:\longyuchat\server\services\model-config-service.ts](C:/longyuchat/server/services/model-config-service.ts)
+- [C:\longyuchat\server\services\model-discovery-service.ts](C:/longyuchat/server/services/model-discovery-service.ts)
 
 ### 2.3 新增 Provider Catalog
 
@@ -99,9 +99,9 @@
 
 相关文件：
 
-- [C:\codeX\lib\provider-catalog.ts](C:/codeX/lib/provider-catalog.ts)
-- [C:\codeX\server\services\provider-catalog-service.ts](C:/codeX/server/services/provider-catalog-service.ts)
-- [C:\codeX\app\api\provider-catalog\route.ts](C:/codeX/app/api/provider-catalog/route.ts)
+- [C:\longyuchat\lib\provider-catalog.ts](C:/longyuchat/lib/provider-catalog.ts)
+- [C:\longyuchat\server\services\provider-catalog-service.ts](C:/longyuchat/server/services/provider-catalog-service.ts)
+- [C:\longyuchat\app\api\provider-catalog\route.ts](C:/longyuchat/app/api/provider-catalog/route.ts)
 
 ### 2.4 新增连接相关 API
 
@@ -118,11 +118,11 @@
 
 相关文件：
 
-- [C:\codeX\app\api\provider-connections\route.ts](C:/codeX/app/api/provider-connections/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\route.ts](C:/codeX/app/api/provider-connections/[id]/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\test\route.ts](C:/codeX/app/api/provider-connections/[id]/test/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\discover-models\route.ts](C:/codeX/app/api/provider-connections/[id]/discover-models/route.ts)
-- [C:\codeX\app\api\provider-catalog\route.ts](C:/codeX/app/api/provider-catalog/route.ts)
+- [C:\longyuchat\app\api\provider-connections\route.ts](C:/longyuchat/app/api/provider-connections/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\route.ts](C:/longyuchat/app/api/provider-connections/[id]/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\test\route.ts](C:/longyuchat/app/api/provider-connections/[id]/test/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\discover-models\route.ts](C:/longyuchat/app/api/provider-connections/[id]/discover-models/route.ts)
+- [C:\longyuchat\app\api\provider-catalog\route.ts](C:/longyuchat/app/api/provider-catalog/route.ts)
 
 ### 2.5 旧模型 API 已支持连接模式
 
@@ -138,9 +138,9 @@
 
 相关文件：
 
-- [C:\codeX\app\api\models\route.ts](C:/codeX/app/api/models/route.ts)
-- [C:\codeX\app\api\models\[id]\route.ts](C:/codeX/app/api/models/[id]/route.ts)
-- [C:\codeX\server\services\model-config-service.ts](C:/codeX/server/services/model-config-service.ts)
+- [C:\longyuchat\app\api\models\route.ts](C:/longyuchat/app/api/models/route.ts)
+- [C:\longyuchat\app\api\models\[id]\route.ts](C:/longyuchat/app/api/models/[id]/route.ts)
+- [C:\longyuchat\server\services\model-config-service.ts](C:/longyuchat/server/services/model-config-service.ts)
 
 ### 2.6 前端 client 层已经接好
 
@@ -157,8 +157,8 @@
 
 相关文件：
 
-- [C:\codeX\lib\client\chat-lab-client.ts](C:/codeX/lib/client/chat-lab-client.ts)
-- [C:\codeX\types\app.ts](C:/codeX/types/app.ts)
+- [C:\longyuchat\lib\client\longyuchat-client.ts](C:/longyuchat/lib/client/longyuchat-client.ts)
+- [C:\longyuchat\types\app.ts](C:/longyuchat/types/app.ts)
 
 ## 3. 已经验证过的行为
 
@@ -172,7 +172,7 @@
 
 相关模板文件：
 
-- [C:\codeX\lib\provider-catalog.ts](C:/codeX/lib/provider-catalog.ts)
+- [C:\longyuchat\lib\provider-catalog.ts](C:/longyuchat/lib/provider-catalog.ts)
 
 这个改动的出发点是：
 
@@ -200,10 +200,10 @@
 
 相关测试文件：
 
-- [C:\codeX\tests\provider-connection-service.test.ts](C:/codeX/tests/provider-connection-service.test.ts)
-- [C:\codeX\tests\model-config-service.test.ts](C:/codeX/tests/model-config-service.test.ts)
-- [C:\codeX\tests\chat-lab-client.test.ts](C:/codeX/tests/chat-lab-client.test.ts)
-- [C:\codeX\tests\api-presenters.test.ts](C:/codeX/tests/api-presenters.test.ts)
+- [C:\longyuchat\tests\provider-connection-service.test.ts](C:/longyuchat/tests/provider-connection-service.test.ts)
+- [C:\longyuchat\tests\model-config-service.test.ts](C:/longyuchat/tests/model-config-service.test.ts)
+- [C:\longyuchat\tests\longyuchat-client.test.ts](C:/longyuchat/tests/longyuchat-client.test.ts)
+- [C:\longyuchat\tests\api-presenters.test.ts](C:/longyuchat/tests/api-presenters.test.ts)
 
 ## 4. 当前前端状态
 
@@ -211,7 +211,7 @@
 
 当前模型页的核心文件是：
 
-- [C:\codeX\components\models-page.tsx](C:/codeX/components/models-page.tsx)
+- [C:\longyuchat\components\models-page.tsx](C:/longyuchat/components/models-page.tsx)
 
 这部分已经做过多轮迭代，目前的状态是：
 
@@ -354,7 +354,7 @@
 因此接手时要注意：
 
 - 如果本地跑生产模式，需配置：
-  - [C:\codeX\.env.local](C:/codeX/.env.local)
+  - [C:\longyuchat\.env.local](C:/longyuchat/.env.local)
 - 否则连接创建会直接 500
 
 ### 6.2 本地 dev 链路一度不稳定
@@ -367,8 +367,8 @@
 
 为保证本地可测，当时加过一些本地启动脚本：
 
-- [C:\codeX\.codex\start-dev-local.ps1](C:/codeX/.codex/start-dev-local.ps1)
-- [C:\codeX\.codex\start-local-start.ps1](C:/codeX/.codex/start-local-start.ps1)
+- [C:\longyuchat\.codex\start-dev-local.ps1](C:/longyuchat/.codex/start-dev-local.ps1)
+- [C:\longyuchat\.codex\start-local-start.ps1](C:/longyuchat/.codex/start-local-start.ps1)
 
 这些属于本地辅助，不是产品逻辑的一部分。
 
@@ -376,12 +376,12 @@
 
 接手时建议忽略这些本地噪音：
 
-- [C:\codeX\.codex](C:/codeX/.codex)
-- [C:\codeX\stitch_handoff](C:/codeX/stitch_handoff)
-- [C:\codeX\stitch_new_project](C:/codeX/stitch_new_project)
-- [C:\codeX\_stitch_export](C:/codeX/_stitch_export)
-- [C:\codeX\var\log](C:/codeX/var/log)
-- [C:\codeX\.agents](C:/codeX/.agents)
+- [C:\longyuchat\.codex](C:/longyuchat/.codex)
+- [C:\longyuchat\stitch_handoff](C:/longyuchat/stitch_handoff)
+- [C:\longyuchat\stitch_new_project](C:/longyuchat/stitch_new_project)
+- [C:\longyuchat\_stitch_export](C:/longyuchat/_stitch_export)
+- [C:\longyuchat\var\log](C:/longyuchat/var/log)
+- [C:\longyuchat\.agents](C:/longyuchat/.agents)
 
 这些不是 provider connection 功能的核心实现。
 
@@ -389,43 +389,43 @@
 
 ### 数据层
 
-- [C:\codeX\prisma\schema.prisma](C:/codeX/prisma/schema.prisma)
-- [C:\codeX\prisma\migrations\20260325110000_add_provider_connections\migration.sql](C:/codeX/prisma/migrations/20260325110000_add_provider_connections/migration.sql)
+- [C:\longyuchat\prisma\schema.prisma](C:/longyuchat/prisma/schema.prisma)
+- [C:\longyuchat\prisma\migrations\20260325110000_add_provider_connections\migration.sql](C:/longyuchat/prisma/migrations/20260325110000_add_provider_connections/migration.sql)
 
 ### 类型与前端请求层
 
-- [C:\codeX\types\app.ts](C:/codeX/types/app.ts)
-- [C:\codeX\lib\provider-catalog.ts](C:/codeX/lib/provider-catalog.ts)
-- [C:\codeX\lib\client\chat-lab-client.ts](C:/codeX/lib/client/chat-lab-client.ts)
+- [C:\longyuchat\types\app.ts](C:/longyuchat/types/app.ts)
+- [C:\longyuchat\lib\provider-catalog.ts](C:/longyuchat/lib/provider-catalog.ts)
+- [C:\longyuchat\lib\client\longyuchat-client.ts](C:/longyuchat/lib/client/longyuchat-client.ts)
 
 ### 服务层
 
-- [C:\codeX\server\services\provider-connection-service.ts](C:/codeX/server/services/provider-connection-service.ts)
-- [C:\codeX\server\services\provider-catalog-service.ts](C:/codeX/server/services/provider-catalog-service.ts)
-- [C:\codeX\server\services\model-config-service.ts](C:/codeX/server/services/model-config-service.ts)
-- [C:\codeX\server\services\model-discovery-service.ts](C:/codeX/server/services/model-discovery-service.ts)
-- [C:\codeX\server\presenters\api-presenters.ts](C:/codeX/server/presenters/api-presenters.ts)
+- [C:\longyuchat\server\services\provider-connection-service.ts](C:/longyuchat/server/services/provider-connection-service.ts)
+- [C:\longyuchat\server\services\provider-catalog-service.ts](C:/longyuchat/server/services/provider-catalog-service.ts)
+- [C:\longyuchat\server\services\model-config-service.ts](C:/longyuchat/server/services/model-config-service.ts)
+- [C:\longyuchat\server\services\model-discovery-service.ts](C:/longyuchat/server/services/model-discovery-service.ts)
+- [C:\longyuchat\server\presenters\api-presenters.ts](C:/longyuchat/server/presenters/api-presenters.ts)
 
 ### API Route
 
-- [C:\codeX\app\api\provider-catalog\route.ts](C:/codeX/app/api/provider-catalog/route.ts)
-- [C:\codeX\app\api\provider-connections\route.ts](C:/codeX/app/api/provider-connections/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\route.ts](C:/codeX/app/api/provider-connections/[id]/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\test\route.ts](C:/codeX/app/api/provider-connections/[id]/test/route.ts)
-- [C:\codeX\app\api\provider-connections\[id]\discover-models\route.ts](C:/codeX/app/api/provider-connections/[id]/discover-models/route.ts)
-- [C:\codeX\app\api\models\route.ts](C:/codeX/app/api/models/route.ts)
-- [C:\codeX\app\api\models\[id]\route.ts](C:/codeX/app/api/models/[id]/route.ts)
+- [C:\longyuchat\app\api\provider-catalog\route.ts](C:/longyuchat/app/api/provider-catalog/route.ts)
+- [C:\longyuchat\app\api\provider-connections\route.ts](C:/longyuchat/app/api/provider-connections/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\route.ts](C:/longyuchat/app/api/provider-connections/[id]/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\test\route.ts](C:/longyuchat/app/api/provider-connections/[id]/test/route.ts)
+- [C:\longyuchat\app\api\provider-connections\[id]\discover-models\route.ts](C:/longyuchat/app/api/provider-connections/[id]/discover-models/route.ts)
+- [C:\longyuchat\app\api\models\route.ts](C:/longyuchat/app/api/models/route.ts)
+- [C:\longyuchat\app\api\models\[id]\route.ts](C:/longyuchat/app/api/models/[id]/route.ts)
 
 ### 前端页面
 
-- [C:\codeX\components\models-page.tsx](C:/codeX/components/models-page.tsx)
+- [C:\longyuchat\components\models-page.tsx](C:/longyuchat/components/models-page.tsx)
 
 ### 测试
 
-- [C:\codeX\tests\provider-connection-service.test.ts](C:/codeX/tests/provider-connection-service.test.ts)
-- [C:\codeX\tests\model-config-service.test.ts](C:/codeX/tests/model-config-service.test.ts)
-- [C:\codeX\tests\chat-lab-client.test.ts](C:/codeX/tests/chat-lab-client.test.ts)
-- [C:\codeX\tests\api-presenters.test.ts](C:/codeX/tests/api-presenters.test.ts)
+- [C:\longyuchat\tests\provider-connection-service.test.ts](C:/longyuchat/tests/provider-connection-service.test.ts)
+- [C:\longyuchat\tests\model-config-service.test.ts](C:/longyuchat/tests/model-config-service.test.ts)
+- [C:\longyuchat\tests\longyuchat-client.test.ts](C:/longyuchat/tests/longyuchat-client.test.ts)
+- [C:\longyuchat\tests\api-presenters.test.ts](C:/longyuchat/tests/api-presenters.test.ts)
 
 ## 9. 建议下一位 AI 的处理顺序
 

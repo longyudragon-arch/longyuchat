@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   APP_SESSION_COOKIE_NAME,
@@ -6,10 +6,16 @@ import {
   getAccessProtectionMode,
   isAppLoginEnabled,
   isAppSessionAuthorized,
+  resetAppSessionRevocations,
+  revokeAppSessionToken,
   resolveSafeNextPath,
 } from "@/lib/app-auth";
 
 describe("app auth helpers", () => {
+  afterEach(() => {
+    resetAppSessionRevocations();
+  });
+
   it("detects app login when credentials and session secret are configured", () => {
     expect(
       isAppLoginEnabled({
@@ -20,18 +26,27 @@ describe("app auth helpers", () => {
     ).toBe(true);
   });
 
-  it("creates a stable session token and validates it", async () => {
+  it("creates signed session tokens, validates them, and supports revocation", async () => {
     const input = {
       username: "longyu",
       password: "secret",
       sessionSecret: "session-secret",
     };
 
-    const token = await createAppSessionToken(input);
+    const firstToken = await createAppSessionToken(input, { nowMs: 1_000 });
+    const secondToken = await createAppSessionToken(input, { nowMs: 1_000 });
 
-    expect(token.length).toBeGreaterThan(20);
-    expect(await isAppSessionAuthorized(token, input)).toBe(true);
-    expect(await isAppSessionAuthorized(`${token}-wrong`, input)).toBe(false);
+    expect(firstToken.length).toBeGreaterThan(20);
+    expect(secondToken.length).toBeGreaterThan(20);
+    expect(firstToken).not.toBe(secondToken);
+
+    expect(await isAppSessionAuthorized(firstToken, input, { nowMs: 2_000 })).toBe(true);
+    expect(await isAppSessionAuthorized(`${firstToken}-wrong`, input, { nowMs: 2_000 })).toBe(false);
+
+    await revokeAppSessionToken(firstToken, input, { nowMs: 2_000 });
+
+    expect(await isAppSessionAuthorized(firstToken, input, { nowMs: 2_000 })).toBe(false);
+    expect(await isAppSessionAuthorized(secondToken, input, { nowMs: 2_000 })).toBe(true);
   });
 
   it("prefers app login over basic auth when both are configured", () => {

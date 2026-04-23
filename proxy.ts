@@ -6,11 +6,14 @@ import {
   isAppSessionAuthorized,
   resolveSafeNextPath,
 } from "@/lib/app-auth";
+import { isUnprotectedAccessAllowedInProduction } from "@/lib/runtime";
 import {
+  isBearerTokenAuthorized,
   isBasicAuthAuthorized,
   isHealthcheckBearerAuthorized,
   isPublicAccessPath,
 } from "@/lib/server-access";
+import { getAiDailyAutomationToken } from "@/server/services/daily-config-service";
 
 const APP_LOGIN_PUBLIC_PATHS = new Set([
   "/login",
@@ -18,6 +21,7 @@ const APP_LOGIN_PUBLIC_PATHS = new Set([
   "/api/auth/logout",
   "/api/auth/session",
 ]);
+const MUTATING_API_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function isAppLoginPublicPath(pathname: string) {
   return APP_LOGIN_PUBLIC_PATHS.has(pathname);
@@ -62,6 +66,98 @@ function createAppUnauthorizedResponse(request: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
+function createMissingAuthConfigurationResponse(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "Service unavailable: auth required.",
+      },
+      {
+        status: 503,
+      },
+    );
+  }
+
+  return new NextResponse("Service unavailable: auth required.", {
+    status: 503,
+  });
+}
+
+function isMutatingApiRequest(request: NextRequest) {
+  return request.nextUrl.pathname.startsWith("/api/") && MUTATING_API_METHODS.has(request.method.toUpperCase());
+}
+
+function hasJsonRequestContentType(request: NextRequest) {
+  const contentType = request.headers.get("content-type");
+
+  if (contentType) {
+    return contentType.toLowerCase().startsWith("application/json");
+  }
+
+  const contentLength = request.headers.get("content-length");
+  return contentLength === null || contentLength === "0";
+}
+
+function isTrustedMutationOrigin(request: NextRequest) {
+  const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase();
+
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    return false;
+  }
+
+  const origin = request.headers.get("origin");
+
+  if (origin) {
+    return origin === request.nextUrl.origin;
+  }
+
+  const referer = request.headers.get("referer");
+
+  if (!referer) {
+    return true;
+  }
+
+  try {
+    return new URL(referer).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
+function createUnsupportedMediaTypeResponse(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "API mutations must use application/json.",
+      },
+      {
+        status: 415,
+      },
+    );
+  }
+
+  return new NextResponse("API mutations must use application/json.", {
+    status: 415,
+  });
+}
+
+function createCsrfRejectedResponse(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "Cross-site request rejected.",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  return new NextResponse("Cross-site request rejected.", {
+    status: 403,
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -75,7 +171,32 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (
+    (pathname === "/api/daily/admin/runs/scan" || pathname === "/api/daily/admin/runs/publish") &&
+    isBearerTokenAuthorized(authorization, getAiDailyAutomationToken())
+  ) {
+    return NextResponse.next();
+  }
+
+  if (isMutatingApiRequest(request)) {
+    if (!hasJsonRequestContentType(request)) {
+      return createUnsupportedMediaTypeResponse(request);
+    }
+
+    if (!isTrustedMutationOrigin(request)) {
+      return createCsrfRejectedResponse(request);
+    }
+  }
+
   const protectionMode = getAccessProtectionMode();
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    protectionMode === "none" &&
+    !isUnprotectedAccessAllowedInProduction()
+  ) {
+    return createMissingAuthConfigurationResponse(request);
+  }
 
   if (protectionMode === "none") {
     return NextResponse.next();

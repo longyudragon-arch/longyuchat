@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { getProviderPreset, supportsAutomaticModelDiscovery } from "@/lib/client/chat-lab-client";
+import { getProviderPreset, supportsAutomaticModelDiscovery } from "@/lib/client/longyuchat-client";
 import { getTemplateAvatarDefaults, findTemplateByProviderAndBaseUrl } from "@/components/models-page/model-builder";
 import type {
   ProviderConnectionTemplateView,

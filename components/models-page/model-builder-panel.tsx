@@ -5,14 +5,14 @@ import type { CSSProperties, RefObject } from "react";
 import {
   getProviderChineseLabel,
   getProviderOptionLabel,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import {
   getProviderDefaultAvatarColor,
   getProviderDefaultAvatarLabel,
 } from "@/lib/model-avatar";
 import type {
   ClientErrorFeedback,
-} from "@/lib/client/chat-lab-client";
+} from "@/lib/client/longyuchat-client";
 import {
   getAvatarPreviewStyle,
   getTemplateAvatarDefaults,

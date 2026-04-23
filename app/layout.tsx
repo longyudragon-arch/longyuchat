@@ -5,16 +5,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Longyu Chat",
-    template: "%s | Longyu Chat",
+    default: "LongyuChat",
+    template: "%s | LongyuChat",
   },
   description: "面向中文用户的多模型聊天室工作台，支持模型配置、顺序协作回复、历史续聊与移动端访问。",
-  applicationName: "Longyu Chat",
+  applicationName: "LongyuChat",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Longyu Chat",
+    title: "LongyuChat",
   },
   icons: {
     icon: "/icon.svg",

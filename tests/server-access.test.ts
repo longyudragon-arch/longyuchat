@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  constantTimeEqual,
   isBasicAuthAuthorized,
   isHealthcheckBearerAuthorized,
   isPublicAccessPath,
@@ -44,6 +45,15 @@ describe("isBasicAuthAuthorized", () => {
 
     expect(isBasicAuthAuthorized(validHeader, "demo", "secret")).toBe(true);
     expect(isBasicAuthAuthorized(invalidHeader, "demo", "secret")).toBe(false);
+  });
+});
+
+describe("constantTimeEqual", () => {
+  it("accepts equal values and rejects mismatches without throwing on length differences", () => {
+    expect(constantTimeEqual("demo", "demo")).toBe(true);
+    expect(constantTimeEqual("demo", "secret")).toBe(false);
+    expect(constantTimeEqual("demo", "demonstration")).toBe(false);
+    expect(constantTimeEqual(undefined, "secret")).toBe(false);
   });
 });
 

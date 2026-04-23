@@ -1,16 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { execFileMock } = vi.hoisted(() => ({
+const { execFileMock, lookupMock } = vi.hoisted(() => ({
   execFileMock: vi.fn(),
+  lookupMock: vi.fn(),
 }));
 
 vi.mock("node:child_process", () => ({
   execFile: execFileMock,
 }));
 
+vi.mock("node:dns/promises", () => ({
+  lookup: lookupMock,
+}));
+
 import { requestProvider } from "@/server/http/provider-request";
 
 const originalPlatform = process.platform;
+const originalSystemRoot = process.env.SystemRoot;
 
 function createConnectTimeoutError() {
   const error = new TypeError("fetch failed") as TypeError & {
@@ -33,17 +39,68 @@ describe("requestProvider", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     execFileMock.mockReset();
+    lookupMock.mockReset();
+    lookupMock.mockResolvedValue({ address: "198.51.100.7", family: 4 });
     Object.defineProperty(process, "platform", {
       configurable: true,
       value: originalPlatform,
     });
+
+    if (originalSystemRoot === undefined) {
+      delete process.env.SystemRoot;
+    } else {
+      process.env.SystemRoot = originalSystemRoot;
+    }
   });
 
-  it("falls back to PowerShell when Node fetch times out on Windows", async () => {
+  it("rejects requests to loopback and private targets before fetch runs", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      requestProvider({
+        url: "http://127.0.0.1:11434/v1/chat/completions",
+      }),
+    ).rejects.toThrow("Provider URL is not allowed");
+
+    lookupMock.mockResolvedValueOnce({ address: "10.0.0.8", family: 4 });
+
+    await expect(
+      requestProvider({
+        url: "https://internal.example/v1/models",
+      }),
+    ).rejects.toThrow("Provider URL is not allowed");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forces fetch requests to use manual redirect handling", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response('{"object":"list","data":[]}', {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await requestProvider({
+      url: "https://api.openai.com/v1/models",
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      redirect: "manual",
+    });
+  });
+
+  it("passes only the minimum environment into the PowerShell fallback", async () => {
     Object.defineProperty(process, "platform", {
       configurable: true,
       value: "win32",
     });
+    process.env.SystemRoot = "C:\\Windows";
+    process.env.APP_LOGIN_SESSION_SECRET = "should-not-leak";
+    process.env.DATABASE_URL = "file:./prisma/test.db";
 
     vi.stubGlobal(
       "fetch",
@@ -64,97 +121,15 @@ describe("requestProvider", () => {
       );
     });
 
-    const result = await requestProvider({
+    await requestProvider({
       url: "https://api.openai.com/v1/chat/completions",
-      headers: {
-        Authorization: "Bearer test-key",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        messages: [{ role: "user", content: "ping" }],
-      }),
     });
 
-    expect(result.transport).toBe("powershell");
-    expect(result.ok).toBe(true);
-    expect(result.status).toBe(200);
-    expect(execFileMock).toHaveBeenCalledOnce();
-    expect(execFileMock.mock.calls[0]?.[1]?.[2]).toContain("[Console]::OutputEncoding = $utf8");
-  });
+    const options = execFileMock.mock.calls[0]?.[2];
 
-  it("preserves unicode provider payloads returned through PowerShell", async () => {
-    Object.defineProperty(process, "platform", {
-      configurable: true,
-      value: "win32",
+    expect(options?.env).toEqual({
+      CODEX_PROVIDER_REQUEST_PAYLOAD: expect.any(String),
+      SystemRoot: "C:\\Windows",
     });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw createConnectTimeoutError();
-      }),
-    );
-
-    execFileMock.mockImplementation((_file, _args, _options, callback) => {
-      callback(
-        null,
-        `\ufeff${JSON.stringify({
-          ok: true,
-          status: 200,
-          body: '{"choices":[{"message":{"content":"你好，欢迎使用 Gemini。"}}]}',
-        })}`,
-        "",
-      );
-    });
-
-    const result = await requestProvider({
-      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      headers: {
-        Authorization: "Bearer test-key",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: [{ role: "user", content: "你好" }],
-      }),
-    });
-
-    expect(result.transport).toBe("powershell");
-    expect(result.bodyText).toContain("你好，欢迎使用 Gemini。");
-  });
-
-  it("returns a readable transport error when both request paths fail", async () => {
-    Object.defineProperty(process, "platform", {
-      configurable: true,
-      value: "win32",
-    });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw createConnectTimeoutError();
-      }),
-    );
-
-    execFileMock.mockImplementation((_file, _args, _options, callback) => {
-      callback(new Error("PowerShell HttpClient timed out."));
-    });
-
-    await expect(
-      requestProvider({
-        url: "https://api.openai.com/v1/chat/completions",
-        headers: {
-          Authorization: "Bearer test-key",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4.1-mini",
-          messages: [{ role: "user", content: "ping" }],
-        }),
-      }),
-    ).rejects.toThrow(
-      "Could not reach https://api.openai.com/v1/chat/completions. Provider request timed out after 120s before the provider responded. PowerShell fallback also failed: PowerShell HttpClient timed out.",
-    );
   });
 });

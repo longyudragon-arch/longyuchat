@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/srv/ai-chat-lab/app}"
-APP_USER="${APP_USER:-ai-chat-lab}"
-SERVICE_NAME="${SERVICE_NAME:-ai-chat-lab}"
+APP_DIR="${APP_DIR:-/srv/longyuchat/app}"
+APP_USER="${APP_USER:-longyuchat}"
+SERVICE_NAME="${SERVICE_NAME:-longyuchat}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 BACKUP_BEFORE_UPDATE="${BACKUP_BEFORE_UPDATE:-true}"
 
