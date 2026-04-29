@@ -368,9 +368,9 @@ export function DailyAdminPage() {
   }
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
+    <main className="ly-page-wrap ly-page-daily">
+      <div className="ly-shell page-rise flex flex-col gap-5">
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-start">
           <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
             <div className="ly-page-header">
               <div className="ly-page-heading">
@@ -411,20 +411,20 @@ export function DailyAdminPage() {
             </div>
           </div>
 
-          <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
+          <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">已发布</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{issueStats.published}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">已发布</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.published}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">对外可见的日报期数。</p>
             </div>
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">草稿</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{issueStats.draft}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">草稿</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.draft}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">已生成但尚未公开的日报。</p>
             </div>
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">跳过</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{issueStats.skipped}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">跳过</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.skipped}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">未达到自动发布阈值的日期。</p>
             </div>
           </div>
@@ -627,8 +627,8 @@ export function DailyAdminPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#2f2e33]">{source.name}</p>
-                            <span className="rounded-md bg-[#DC75A5]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#DC75A5]">
+                            <p className="font-bold text-[#0F1A2B]">{source.name}</p>
+                            <span className="rounded-md bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2563EB]">
                               {source.kind}
                             </span>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${source.enabled ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
@@ -679,7 +679,7 @@ export function DailyAdminPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#2f2e33]">{profile.name}</p>
+                            <p className="font-bold text-[#0F1A2B]">{profile.name}</p>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${profile.enabled ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
                               {profile.enabled ? "启用" : "停用"}
                             </span>
@@ -723,7 +723,7 @@ export function DailyAdminPage() {
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#2f2e33]">{run.runType}</p>
+                            <p className="font-bold text-[#0F1A2B]">{run.runType}</p>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${run.status === "SUCCESS" ? "bg-emerald-50 text-emerald-700" : run.status === "FAILED" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
                               {run.status}
                             </span>
@@ -750,7 +750,7 @@ export function DailyAdminPage() {
                   <article key={issue.id} className="rounded-[1.35rem] bg-white/40 px-4 py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <Link href={`/daily/${issue.slug}`} className="font-bold text-[#2f2e33] hover:text-[#DC75A5]">
+                        <Link href={`/daily/${issue.slug}`} className="font-bold text-[#0F1A2B] hover:text-[#2563EB]">
                           {issue.title}
                         </Link>
                         <p className="mt-1 text-[12px] text-[var(--muted)]">{issue.summary ?? "暂无导语"}</p>

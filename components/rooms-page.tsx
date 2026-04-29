@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
+import { ChatSectionNav } from "@/components/chat-section-nav";
 import {
   bootstrapLocalTestWorkspace,
   describeClientError,
@@ -186,26 +187,29 @@ export function RoomsPage() {
   }
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
+    <main className="ly-page-wrap ly-page-chat">
+      <div className="ly-shell page-rise flex flex-col gap-5">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
-        <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+        <div className="ly-glass flex h-full rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
           {/* ─ Header & Search ─ */}
-          <header className="ly-page-header">
-            <div className="ly-page-heading">
-              <h1 className="ly-page-title">房间列表</h1>
-              <p className="ly-page-subtitle">
-                共 {rooms.length} 个房间 · {filteredRooms.length !== rooms.length ? `匹配 ${filteredRooms.length} 个` : "查看历史会话"}
-              </p>
+          <header className="ly-chat-domain-header w-full">
+            <div className="ly-chat-domain-top">
+              <div className="ly-page-heading">
+                <h1 className="ly-page-title">AI 聊天室</h1>
+                <p className="ly-page-subtitle">
+                  共 {rooms.length} 个房间
+                </p>
+              </div>
+              <ChatSectionNav />
             </div>
-            <div className="ly-page-actions w-full sm:w-auto">
+            <div className="ly-chat-domain-tools">
               <div className="relative w-full sm:w-80">
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="搜索房间或模型..."
-                  className="ly-page-control w-full bg-white border border-stone-200 focus:border-[#DC75A5] focus:ring focus:ring-[#FF8DA1]/20 pl-12 pr-4 py-3 text-sm font-medium outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                  className="ly-page-control w-full bg-white border border-stone-200 focus:border-[#2563EB] focus:ring focus:ring-[#60A5FA]/20 pl-12 pr-4 py-3 text-sm font-medium outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                 />
               </div>
               {mockToolsEnabled && (
@@ -218,31 +222,24 @@ export function RoomsPage() {
                     本地测试
                   </button>
               )}
-              <Link
-                href="/rooms/new"
-                className="ly-page-action ly-page-control ly-primary-action w-full sm:w-auto px-6 py-3 flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                新建房间
-              </Link>
             </div>
           </header>
         </div>
 
-        <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">群聊房间</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{roomStats.groupCount}</p>
+        <div className="ly-surface-card grid h-full gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">群聊房间</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.groupCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">多个模型依次协作回复的房间数量。</p>
           </div>
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">单聊房间</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{roomStats.singleCount}</p>
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">单聊房间</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.singleCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">适合做单模型测试与快速追问的会话。</p>
           </div>
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">协作节点</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{roomStats.participantCount}</p>
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">协作节点</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.participantCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">当前所有房间中已编入协作链的模型总数。</p>
           </div>
         </div>
@@ -257,7 +254,7 @@ export function RoomsPage() {
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value as RoomFilterType)}
-              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#FF8DA1]/40"
+              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#60A5FA]/40"
             >
               <option value="ALL">全部类型</option>
               <option value="GROUP">群聊 (GROUP)</option>
@@ -269,7 +266,7 @@ export function RoomsPage() {
             <select
               value={providerFilter}
               onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")}
-              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#FF8DA1]/40"
+              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#60A5FA]/40"
             >
               <option value="ALL">全部厂商</option>
               {providerOptions.map((provider) => (
@@ -300,10 +297,10 @@ export function RoomsPage() {
             <div className="ly-empty-card md:col-span-2 lg:col-span-3 mt-4 grid gap-6 p-8 text-left lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)] lg:p-10">
               <div className="space-y-4">
                 <div className="ly-surface-card flex h-16 w-16 items-center justify-center rounded-2xl">
-                  <svg className="w-8 h-8 text-[#DC75A5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                  <svg className="w-8 h-8 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 </div>
-                <h2 className="text-3xl font-display font-bold tracking-tight text-[#DC75A5]">准备开启新对话？</h2>
-                <p className="max-w-2xl text-[15px] leading-7 text-[#5c5b60]">
+                <h2 className="text-3xl font-display font-bold tracking-tight text-[#2563EB]">准备开启新对话？</h2>
+                <p className="max-w-2xl text-[15px] leading-7 text-[#475569]">
                   {mockToolsEnabled
                     ? "当前还没有房间。你可以先去模型管理配置真实模型，或者直接生成本地测试工作区，先体验多模型顺序协作。"
                     : "当前还没有房间。建议先配置模型，再创建第一个单聊或群聊房间。"}
@@ -312,7 +309,7 @@ export function RoomsPage() {
                   <Link href="/rooms/new" className="ly-primary-action inline-flex px-6 py-3 font-bold">
                     现在创建房间
                   </Link>
-                  <Link href="/models" className="ly-secondary-action inline-flex px-6 py-3 font-bold text-[#2f2e33]">
+                  <Link href="/models" className="ly-secondary-action inline-flex px-6 py-3 font-bold text-[#0F1A2B]">
                     先去配置模型
                   </Link>
                 </div>
@@ -325,7 +322,7 @@ export function RoomsPage() {
                   "发送一条消息，观察模型依次接力回复。",
                 ].map((item, index) => (
                   <div key={item} className="rounded-[1.35rem] bg-white/45 px-4 py-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">步骤 {index + 1}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#2563EB]">步骤 {index + 1}</p>
                     <p className="mt-1 text-sm leading-6 text-stone-600">{item}</p>
                   </div>
                 ))}
@@ -333,7 +330,7 @@ export function RoomsPage() {
             </div>
           ) : filteredRooms.length === 0 ? (
             <div className="ly-surface-card md:col-span-2 lg:col-span-3 mt-8 p-12 text-center">
-              <p className="text-[#5c5b60] text-sm font-medium">没有符合条件的房间，试试调整筛选条件。</p>
+              <p className="text-[#475569] text-sm font-medium">没有符合条件的房间，试试调整筛选条件。</p>
             </div>
           ) : (
             filteredRooms.map((room) => {
@@ -344,11 +341,11 @@ export function RoomsPage() {
                   key={room.id}
                   className="group relative ly-surface-card ly-surface-card-hover overflow-hidden p-6"
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8DA1]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#60A5FA]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
                   
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex flex-wrap items-center gap-1.5 z-10">
-                       <span className={`px-2.5 py-1 ${room.type === 'GROUP' ? 'bg-[#FF8DA1]/20 text-[#DC75A5]' : 'bg-[#DC75A5]/20 text-[#DC75A5]'} text-[10px] font-bold uppercase tracking-wider rounded-md`}>
+                       <span className={`px-2.5 py-1 ${room.type === 'GROUP' ? 'bg-[#60A5FA]/20 text-[#2563EB]' : 'bg-[#2563EB]/20 text-[#2563EB]'} text-[10px] font-bold uppercase tracking-wider rounded-md`}>
                           {toRoomLabel(room.type)}
                        </span>
                     </div>
@@ -360,7 +357,7 @@ export function RoomsPage() {
                            e.preventDefault();
                            setOpenMenuId(openMenuId === room.id ? null : room.id);
                          }}
-                         className={`ly-icon-button rounded-lg ${openMenuId === room.id ? "bg-stone-100 text-[#2f2e33]" : "text-stone-400 hover:bg-stone-50 hover:text-[#2f2e33]"}`}
+                         className={`ly-icon-button rounded-lg ${openMenuId === room.id ? "bg-stone-100 text-[#0F1A2B]" : "text-stone-400 hover:bg-stone-50 hover:text-[#0F1A2B]"}`}
                        >
                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></svg>
                        </button>
@@ -368,10 +365,10 @@ export function RoomsPage() {
                          <>
                            <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); }} />
                            <div className="ly-menu-panel absolute right-0 top-full z-50 mt-2 w-36 animate-chat-in py-2">
-                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); startTransition(() => void renameRoom(room)); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#2f2e33] transition hover:bg-stone-50">
+                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); startTransition(() => void renameRoom(room)); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] transition hover:bg-stone-50">
                                重命名
                              </button>
-                             <Link href={`/rooms/${room.id}/edit`} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#2f2e33] transition hover:bg-stone-50">
+                             <Link href={`/rooms/${room.id}/edit`} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] transition hover:bg-stone-50">
                                编辑配置
                              </Link>
                              <div className="my-1 border-t border-stone-100" />
@@ -384,7 +381,7 @@ export function RoomsPage() {
                     </div>
                   </div>
 
-                  <h3 className="text-xl font-bold tracking-tight text-[#DC75A5] mb-2 truncate z-10 relative">
+                  <h3 className="text-xl font-bold tracking-tight text-[#2563EB] mb-2 truncate z-10 relative">
                     {room.title}
                   </h3>
                   
@@ -448,7 +445,7 @@ export function RoomsPage() {
                     </div>
                     <Link
                       href={`/rooms/${room.id}`}
-                      className="ly-icon-button flex h-10 w-10 items-center justify-center rounded-full bg-white/40 text-stone-400 shadow-sm group-hover:bg-gradient-to-br group-hover:from-[#DC75A5] group-hover:to-[#FF8DA1] group-hover:text-white"
+                      className="ly-icon-button flex h-10 w-10 items-center justify-center rounded-full bg-white/40 text-stone-400 shadow-sm group-hover:bg-gradient-to-br group-hover:from-[#2563EB] group-hover:to-[#60A5FA] group-hover:text-white"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </Link>

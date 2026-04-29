@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
+import { ChatSectionNav } from "@/components/chat-section-nav";
 import {
   ensureLocalMockModels,
   fetchJson,
@@ -159,25 +160,29 @@ export function CreateRoomPage() {
   }
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
+    <main className="ly-page-wrap ly-page-chat">
+      <div className="ly-shell page-rise flex flex-col gap-5">
       {/* ─ Page header ─ */}
-      <section className="ly-page-header">
-        <div className="ly-page-heading">
-          <h1 className="ly-page-title">新建房间</h1>
-          <p className="ly-page-subtitle">
-            挑选模型，定义回答顺序，创建多模型协作房间。
-          </p>
-        </div>
-        <div className="ly-page-actions">
-          <Link href="/rooms" className="ly-page-action ly-secondary-action px-4 py-2 text-[13px] font-bold active:scale-95">
-            返回列表
-          </Link>
-          {mockToolsEnabled && (
-            <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} disabled={busy} className="ly-page-action rounded-xl border border-sky-200/50 bg-sky-50/50 px-4 py-2 text-[13px] font-bold text-sky-700 transition hover:bg-sky-50 active:scale-95 disabled:opacity-50">
-              加载测试模型
-            </button>
-          )}
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
+        <div className="ly-glass flex h-full rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+          <div className="ly-chat-domain-header w-full">
+            <div className="ly-chat-domain-top">
+              <div className="ly-page-heading">
+                <h1 className="ly-page-title">新建 AI 聊天室</h1>
+                <p className="ly-page-subtitle">
+                  挑选模型，定义回答顺序，创建多模型协作房间。
+                </p>
+              </div>
+              <ChatSectionNav />
+            </div>
+            {mockToolsEnabled && (
+              <div className="ly-chat-domain-tools">
+                <button type="button" onClick={() => startTransition(() => void createLocalMockModels())} disabled={busy} className="ly-page-action rounded-xl border border-sky-200/50 bg-sky-50/50 px-4 py-2 text-[13px] font-bold text-sky-700 transition hover:bg-sky-50 active:scale-95 disabled:opacity-50">
+                  加载测试模型
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

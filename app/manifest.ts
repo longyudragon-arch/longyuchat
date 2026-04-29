@@ -4,11 +4,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "LongyuChat",
     short_name: "LongyuChat",
-    description: "Multi-model chat workspace for private deployment and mobile-friendly AI collaboration.",
+    description: "LongyuChat 个人 AI 总站，聚合 AI 日报、多模型聊天室和模型管理。",
     start_url: "/",
     display: "standalone",
-    background_color: "#f6f4ee",
-    theme_color: "#bf5f36",
+    background_color: "#eef4fb",
+    theme_color: "#2563eb",
     icons: [
       {
         src: "/icon.svg",

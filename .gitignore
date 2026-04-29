@@ -23,6 +23,11 @@ SOUL.md
 USER.md
 pyproject.toml
 var/log/
+var/*.png
+var/codex-*.log
+var/codex-*.out.log
+var/codex-*.err.log
+前端素材/
 tsconfig.tsbuildinfo
 .env
 .env.local

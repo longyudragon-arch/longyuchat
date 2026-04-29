@@ -55,7 +55,7 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
         <div className="ly-glass rounded-2xl p-6 shadow-xl sm:rounded-[1.5rem] sm:p-8">
           {/* Header */}
           <div className="text-center">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DC75A5] to-[#FF8DA1] text-sm font-display font-bold text-white shadow-lg shadow-[var(--accent)]/25">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2563EB] to-[#60A5FA] text-sm font-display font-bold text-white shadow-lg shadow-[var(--accent)]/25">
               LY
             </span>
             <h1 className="mt-4 text-2xl font-display font-bold tracking-tight">登录 LongyuChat</h1>

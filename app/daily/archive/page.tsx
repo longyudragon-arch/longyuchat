@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import {
+  estimateDailyReadMinutes,
+  formatDailyDate,
+  getDailyIssueDek,
+} from "@/lib/daily-presentation";
 import { getDailyIssueStats, listPublishedDailyIssues } from "@/server/services/daily-issue-service";
 
 export const dynamic = "force-dynamic";
@@ -24,73 +29,86 @@ export default async function DailyArchivePage({
         });
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
-        <section className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
-          <div className="ly-page-header">
-            <div className="ly-page-heading">
-              <h1 className="ly-page-title">日报归档</h1>
-              <p className="ly-page-subtitle">按日期浏览 LongyuChat 的 AI 日报历史记录。</p>
+    <main className="ly-page-wrap ly-page-daily">
+      <div className="ly-shell page-rise flex flex-col gap-5">
+        <section className="ly-glass relative overflow-hidden rounded-[1.75rem] px-5 py-7 sm:px-7 sm:py-8">
+          <div className="relative grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,0.6fr)] lg:items-end">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">Archive</p>
+              <h1 className="mt-3 font-display text-[2.15rem] font-black leading-tight text-[#0F1A2B] sm:text-[3rem]">
+                日报归档
+              </h1>
+              <p className="mt-3 max-w-2xl text-[15px] font-semibold leading-8 text-slate-600">
+                把每天的 AI 变化留在同一个索引里。按日期浏览，也可以直接搜索关键词或标题。
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-[12px] font-bold text-slate-500">
+                <span>{stats.publishedIssueCount} 期日报</span>
+                <span>·</span>
+                <span>{stats.publishedItemCount} 条内容</span>
+                <span>·</span>
+                <span>更新至 {formatDailyDate(stats.latestIssueDate)}</span>
+              </div>
             </div>
-            <div className="ly-page-actions">
-              <Link href="/daily" className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold">
+
+            <form method="GET" className="grid gap-3">
+              <label htmlFor="daily-archive-search" className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">
+                搜索归档
+              </label>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <input
+                  id="daily-archive-search"
+                  name="q"
+                  defaultValue={query}
+                  className="ly-control bg-white/45"
+                  placeholder="日期、模型、公司或主题"
+                />
+                <button type="submit" className="ly-primary-action inline-flex px-6 py-3 font-bold">
+                  搜索
+                </button>
+              </div>
+              <Link href="/daily" className="w-fit text-sm font-bold text-slate-500 transition hover:text-[#2563EB]">
                 返回日报首页
               </Link>
+            </form>
+          </div>
+        </section>
+
+        <section className="ly-surface-card rounded-[1.75rem] p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">索引</p>
+              <h2 className="mt-2 font-display text-2xl font-black text-[#0F1A2B]">
+                {query ? `“${query}”的匹配结果` : "全部日报"}
+              </h2>
             </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5 md:grid-cols-3">
-          <div className="ly-surface-card rounded-[1.5rem] p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">累计期数</p>
-            <p className="mt-3 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{stats.publishedIssueCount}</p>
-          </div>
-          <div className="ly-surface-card rounded-[1.5rem] p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">累计条目</p>
-            <p className="mt-3 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{stats.publishedItemCount}</p>
-          </div>
-          <div className="ly-surface-card rounded-[1.5rem] p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">最近更新</p>
-            <p className="mt-3 text-2xl font-display font-bold tracking-tight text-[#2f2e33]">{stats.latestIssueDate ?? "暂无"}</p>
-          </div>
-        </section>
-
-        <section className="ly-surface-card rounded-[1.75rem] p-6">
-          <form method="GET" className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input
-              name="q"
-              defaultValue={query}
-              className="ly-control"
-              placeholder="搜索标题或日期，例如 2026-04-22 / DeepSeek / Kimi"
-            />
-            <button type="submit" className="ly-primary-action inline-flex px-6 py-3 font-bold">
-              搜索归档
-            </button>
-          </form>
-
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <p className="text-sm font-medium text-stone-500">
-              {query ? `搜索“${query}”共匹配 ${filteredIssues.length} 期` : `共收录 ${filteredIssues.length} 期日报`}
+            <p className="text-sm font-bold text-slate-500">
+              {query ? `共匹配 ${filteredIssues.length} 期` : `共收录 ${filteredIssues.length} 期`}
             </p>
           </div>
 
           {filteredIssues.length === 0 ? (
-            <p className="text-sm text-stone-500">当前还没有已发布的日报。</p>
+            <div className="mt-6 rounded-[1.2rem] border border-dashed border-slate-200 bg-white/35 p-6 text-sm font-medium text-slate-500">
+              没有找到匹配的日报。可以换一个关键词，或者回到全部归档。
+            </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="mt-5 divide-y divide-slate-200/60">
               {filteredIssues.map((issue) => (
                 <Link
                   key={issue.id}
                   href={`/daily/${issue.slug}`}
-                  className="rounded-[1.25rem] bg-white/40 px-4 py-4 transition hover:bg-white/70"
+                  className="hover-lift grid gap-4 rounded-[1.1rem] px-3 py-5 transition hover:bg-white/30 sm:grid-cols-[9rem_minmax(0,1fr)_auto]"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#DC75A5]">{issue.issueDate}</p>
-                      <p className="mt-1 font-bold text-[#2f2e33]">{issue.title}</p>
-                      <p className="mt-1 text-sm leading-6 text-stone-500">{issue.summary ?? "暂无导语"}</p>
-                    </div>
-                    <span className="text-sm text-stone-500">{issue.itemCount} 条</span>
+                  <div className="text-[12px] font-black text-[#2563EB]">
+                    {formatDailyDate(issue.issueDate)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black leading-7 text-[#0F1A2B]">{issue.title}</p>
+                    <p className="mt-2 text-sm font-medium leading-7 text-slate-600">{getDailyIssueDek(issue)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2 text-[12px] font-bold text-slate-500 sm:justify-end">
+                    <span>{issue.itemCount} 条</span>
+                    <span>·</span>
+                    <span>{estimateDailyReadMinutes(issue.itemCount)} min</span>
                   </div>
                 </Link>
               ))}

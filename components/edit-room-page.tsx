@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
+import { ChatSectionNav } from "@/components/chat-section-nav";
 import {
   describeClientError,
   fetchJson,
@@ -210,8 +211,8 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
   }
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
+    <main className="ly-page-wrap ly-page-chat">
+      <div className="ly-shell page-rise flex flex-col gap-5">
       {/* ─ Page header ─ */}
       <section className="ly-page-header">
         <div className="ly-page-heading">
@@ -223,6 +224,7 @@ export function EditRoomPage({ roomId }: EditRoomPageProps) {
           </p>
         </div>
         <div className="ly-page-actions">
+          <ChatSectionNav />
           <Link href={`/rooms/${roomId}`} className="ly-page-action rounded-xl bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95">
             返回聊天
           </Link>

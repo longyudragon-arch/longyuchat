@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
@@ -8,16 +9,17 @@ import { fetchJson } from "@/lib/client/longyuchat-client";
 import type { AuthSessionView } from "@/types/app";
 
 const navItems = [
-  { href: "/", label: "首页", match: (p: string) => p === "/" },
-  { href: "/daily", label: "日报", match: (p: string) => p === "/daily" || p.startsWith("/daily/") },
-  { href: "/models", label: "模型", match: (p: string) => p.startsWith("/models") },
+  { href: "/", label: "首页", shortLabel: "首页", match: (p: string) => p === "/" },
+  { href: "/daily", label: "AI 日报", shortLabel: "日报", match: (p: string) => p === "/daily" || p.startsWith("/daily/") },
   {
     href: "/rooms",
-    label: "房间",
+    label: "AI聊天室",
+    shortLabel: "聊天",
     match: (p: string) =>
-      p === "/rooms" || /^\/rooms\/(?!new(?:\/|$))[^/]+(?:\/edit)?$/.test(p),
+      p === "/rooms" || p.startsWith("/rooms/") || p.startsWith("/models"),
   },
-  { href: "/rooms/new", label: "新建", match: (p: string) => p === "/rooms/new" },
+  { href: "/projects", label: "项目推荐", shortLabel: "项目", match: (p: string) => p.startsWith("/projects") },
+  { href: "/about", label: "个人简介", shortLabel: "简介", match: (p: string) => p.startsWith("/about") },
 ];
 
 export function AppNavigation() {
@@ -61,51 +63,57 @@ export function AppNavigation() {
   if (isChatPage || isLoginPage) return null;
 
   return (
-    <header className="sticky top-0 z-40 px-0 pt-2 pb-1.5 sm:pt-3 sm:pb-2">
+    <header className="sticky top-0 z-40 px-0 pb-2 pt-3 sm:pt-4">
       <div className="ly-shell">
-        <div className="ly-glass flex items-center justify-between gap-3 rounded-2xl px-3 py-2 sm:rounded-[1.25rem] sm:px-5 sm:py-2.5">
-          {/* Brand */}
-          <Link href="/" className="inline-flex shrink-0 items-center gap-2.5 group">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f48498,#993c50)] text-[11px] font-display font-bold text-white shadow-md shadow-[var(--accent)]/25 transition-transform duration-300 group-hover:scale-105 sm:h-9 sm:w-9 sm:text-[12px]">
-              LY
+        <div className="ly-glass flex items-center justify-between gap-3 rounded-[1.35rem] px-3 py-2 sm:px-4">
+          <Link href="/" className="group inline-flex shrink-0 items-center gap-2.5">
+            <span className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-white/70 transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="/portal/feather-logo-transparent.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-8 w-8 object-contain"
+                priority
+              />
             </span>
             <span className="hidden text-[15px] font-display font-bold tracking-tight text-[var(--foreground)] sm:block">
               LongyuChat
             </span>
           </Link>
 
-          {/* Nav links */}
-          <nav className="flex items-center gap-2.5 overflow-x-auto scrollbar-none">
+          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none sm:gap-1.5">
             {navItems.map((item) => {
               const active = item.match(pathname);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={`ly-nav-item shrink-0 ${
                     active
                       ? "ly-nav-item-active"
                       : "ly-nav-item-idle"
                   }`}
                 >
-                  {item.label}
+                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="sm:hidden">{item.shortLabel}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Session info */}
           <div className="flex shrink-0 items-center gap-2">
             {session?.mode === "app" && session.authenticated && (
               <>
-                <span className="hidden text-[11px] font-bold text-[var(--muted)] tracking-wide xl:inline">
+                <span className="hidden text-[11px] font-bold tracking-wide text-[var(--muted)] xl:inline">
                   {session.username ?? "owner"}
                 </span>
                 <button
                   type="button"
                   onClick={() => startTransition(() => void logout())}
                   disabled={loggingOut}
-                  className="ly-secondary-action rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-500 hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
+                  className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-500 transition hover:bg-red-500/20 active:scale-95 disabled:opacity-40"
                 >
                   {loggingOut ? "..." : "退出"}
                 </button>

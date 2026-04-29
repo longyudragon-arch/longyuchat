@@ -224,7 +224,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                   {currentAvatarLabel}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-bold text-[#2f2e33]">
+                  <p className="truncate text-[13px] font-bold text-[#0F1A2B]">
                     {selectedModelChoiceLabel}
                   </p>
                   <p className="truncate text-[11px] leading-5 text-[var(--muted)]">
@@ -271,7 +271,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                             {templateAvatar.avatarLabel}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12px] font-bold text-[#2f2e33]">
+                            <p className="truncate text-[12px] font-bold text-[#0F1A2B]">
                               {template.name}
                             </p>
                             <p className="truncate text-[10px] leading-5 text-[var(--muted)]">
@@ -304,7 +304,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                             {templateAvatar.avatarLabel}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12px] font-bold text-[#2f2e33]">
+                            <p className="truncate text-[12px] font-bold text-[#0F1A2B]">
                               {template.name}
                             </p>
                             <p className="truncate text-[10px] leading-5 text-[var(--muted)]">
@@ -336,7 +336,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                             {getProviderDefaultAvatarLabel(provider)}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12px] font-bold text-[#2f2e33]">
+                            <p className="truncate text-[12px] font-bold text-[#0F1A2B]">
                               {getProviderOptionLabel(provider)}
                             </p>
                             <p className="truncate text-[10px] leading-5 text-[var(--muted)]">
@@ -368,7 +368,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[12px] font-bold text-[#2f2e33]">
+                <p className="text-[12px] font-bold text-[#0F1A2B]">
                   {selectedModelTemplate?.name ?? getProviderOptionLabel(modelForm.provider)}
                 </p>
                 <span className="rounded-full border border-[var(--accent)]/15 bg-[var(--accent)]/8 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">
@@ -429,7 +429,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                 {currentAvatarLabel}
               </span>
               <div className="min-w-0">
-                <p className="text-[12px] font-bold text-[#2f2e33]">模型头像预览</p>
+                <p className="text-[12px] font-bold text-[#0F1A2B]">模型头像预览</p>
                 <p className="truncate text-[11px] leading-5 text-[var(--muted)]">
                   {modelForm.name.trim() ||
                     modelForm.modelName.trim() ||
@@ -559,7 +559,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                       getProviderDefaultAvatarLabel(selectedConnection.provider)}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-[#2f2e33]">{selectedConnection.name}</p>
+                    <p className="text-[13px] font-bold text-[#0F1A2B]">{selectedConnection.name}</p>
                     <p className="mt-0.5 break-all font-mono text-[11px] leading-5 text-[var(--muted)]">
                       {selectedConnection.baseUrl}
                     </p>
@@ -650,7 +650,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                 aria-expanded={showDiscoveredModelMenu}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-[#2f2e33]">
+                  <p className="truncate text-[13px] font-semibold text-[#0F1A2B]">
                     {selectedDiscoveredModel?.label ?? "请从列表中选择一个模型"}
                   </p>
                   <p className="truncate font-mono text-[10px] leading-5 text-[var(--muted)]">
@@ -681,7 +681,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                       className={getGlassMenuOptionClassName(!selectedDiscoveredModel)}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] font-bold text-[#2f2e33]">
+                        <p className="truncate text-[12px] font-bold text-[#0F1A2B]">
                           请从列表中选择一个模型
                         </p>
                         <p className="truncate text-[10px] leading-5 text-[var(--muted)]">
@@ -700,7 +700,7 @@ export function ModelBuilderPanel(props: ModelBuilderPanelProps) {
                           className={getGlassMenuOptionClassName(isActive)}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12px] font-bold text-[#2f2e33]">
+                            <p className="truncate text-[12px] font-bold text-[#0F1A2B]">
                               {item.label}
                             </p>
                             <p className="truncate font-mono text-[10px] leading-5 text-[var(--muted)]">

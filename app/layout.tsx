@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     default: "LongyuChat",
     template: "%s | LongyuChat",
   },
-  description: "面向中文用户的多模型聊天室工作台，支持模型配置、顺序协作回复、历史续聊与移动端访问。",
+  description: "LongyuChat 是面向中文用户的个人 AI 总站，聚合 AI 日报、多模型聊天室和模型管理工作流。",
   applicationName: "LongyuChat",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f9f5fc",
+  themeColor: "#eef4fb",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

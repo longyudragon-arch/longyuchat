@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
+import { ChatSectionNav } from "@/components/chat-section-nav";
 import {
   createProviderConnectionRequest,
   deleteProviderConnectionRequest,
@@ -802,10 +802,10 @@ export function ModelsPage() {
   if (activeAction === "loading" && models.length === 0) {
 
     return (
-      <main className="ly-page-wrap">
-        <div className="ly-shell flex flex-col gap-5">
+      <main className="ly-page-wrap ly-page-chat">
+        <div className="ly-shell page-rise flex flex-col gap-5">
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
-            <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+            <div className="ly-glass flex h-full rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
               <div className="ly-page-header">
                 <div className="space-y-3">
                   <div className="h-8 w-36 animate-pulse rounded-xl bg-white/45" />
@@ -819,7 +819,7 @@ export function ModelsPage() {
               </div>
             </div>
 
-            <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
+            <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
               {[1, 2, 3].map((item) => (
                 <div key={item} className="rounded-[1.4rem] bg-white/45 px-4 py-4">
                   <div className="h-3 w-20 animate-pulse rounded bg-white/50" />
@@ -830,7 +830,7 @@ export function ModelsPage() {
             </div>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
             <div className="ly-glass ly-panel-card space-y-4">
               <div className="h-6 w-24 animate-pulse rounded-lg bg-white/45" />
               {[1, 2, 3, 4, 5].map((item) => (
@@ -876,22 +876,22 @@ export function ModelsPage() {
   }
 
   return (
-    <main className="ly-page-wrap">
-      <div className="ly-shell flex flex-col gap-5">
+    <main className="ly-page-wrap ly-page-chat">
+      <div className="ly-shell page-rise flex flex-col gap-5">
       {/* ─ Page header ─ */}
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
-        <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
-          <div className="ly-page-header">
-            <div className="ly-page-heading">
-              <h1 className="ly-page-title">模型管理</h1>
-              <p className="ly-page-subtitle">
-                共 {models.length} 个模型 · 配置、测试并管理你的多模型入口
-              </p>
+        <div className="ly-glass flex h-full rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+          <div className="ly-chat-domain-header w-full">
+            <div className="ly-chat-domain-top">
+              <div className="ly-page-heading">
+                <h1 className="ly-page-title">模型管理</h1>
+                <p className="ly-page-subtitle">
+                  共 {models.length} 个模型 · 配置、测试并管理你的多模型入口
+                </p>
+              </div>
+              <ChatSectionNav />
             </div>
-            <div className="ly-page-actions">
-              <Link href="/rooms/new" className="ly-page-action rounded-xl border border-transparent bg-[var(--accent)] px-4 text-[13px] font-bold text-white shadow-sm shadow-[var(--accent)]/20 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95">
-                新建房间
-              </Link>
+            <div className="ly-chat-domain-tools">
               <button type="button" onClick={fillLocalMockPreset} className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold shadow-sm shadow-black/5 active:scale-95">
                 测试预设
               </button>
@@ -904,20 +904,20 @@ export function ModelsPage() {
           </div>
         </div>
 
-        <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6 xl:grid-cols-1">
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">已启用</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.enabledCount}</p>
+        <div className="ly-surface-card grid h-full gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">已启用</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.enabledCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">已可参与房间协作的模型数量。</p>
           </div>
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">连接正常</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.testedSuccessCount}</p>
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">连接正常</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.testedSuccessCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">最近连接测试成功的模型数量。</p>
           </div>
-          <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#DC75A5]">Provider</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#2f2e33]">{modelStats.providerCount}</p>
+          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">Provider</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.providerCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">当前已接入的不同模型厂商数量。</p>
           </div>
         </div>
@@ -932,9 +932,9 @@ export function ModelsPage() {
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
       {/* ─ Form + List layout ─ */}
-      <section className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
-        <div className="xl:sticky xl:top-20 xl:self-start">
-          <div className="flex flex-col gap-5">
+      <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className="min-w-0 xl:sticky xl:top-20 xl:self-start">
+          <div className="flex min-w-0 flex-col gap-5">
 
             {/* ══ 直接建模型（主流程）══ */}
             {builderMode === "model" && (

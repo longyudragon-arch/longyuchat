@@ -17,6 +17,7 @@ const eslintConfig = defineConfig([
     "stitch_handoff/**",
     "stitch_new_project/**",
     "_stitch_export/**",
+    "前端素材/**",
   ]),
 ]);
 
