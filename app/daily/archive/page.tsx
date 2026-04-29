@@ -34,7 +34,7 @@ export default async function DailyArchivePage({
         <section className="ly-glass relative overflow-hidden rounded-[1.75rem] px-5 py-7 sm:px-7 sm:py-8">
           <div className="relative grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,0.6fr)] lg:items-end">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">Archive</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">日报归档</p>
               <h1 className="mt-3 font-display text-[2.15rem] font-black leading-tight text-[#0F1A2B] sm:text-[3rem]">
                 日报归档
               </h1>
@@ -108,7 +108,7 @@ export default async function DailyArchivePage({
                   <div className="flex shrink-0 flex-wrap gap-2 text-[12px] font-bold text-slate-500 sm:justify-end">
                     <span>{issue.itemCount} 条</span>
                     <span>·</span>
-                    <span>{estimateDailyReadMinutes(issue.itemCount)} min</span>
+                    <span>{estimateDailyReadMinutes(issue.itemCount)} 分钟</span>
                   </div>
                 </Link>
               ))}

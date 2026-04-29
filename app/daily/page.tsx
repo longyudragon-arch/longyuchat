@@ -128,7 +128,7 @@ export default async function DailyIndexPage() {
                   <div className="flex shrink-0 flex-wrap gap-2 text-[12px] font-bold text-slate-500 sm:justify-end">
                     <span>{issue.itemCount} 条</span>
                     <span>·</span>
-                    <span>{estimateDailyReadMinutes(issue.itemCount)} min</span>
+                    <span>{estimateDailyReadMinutes(issue.itemCount)} 分钟</span>
                   </div>
                 </article>
               ))}

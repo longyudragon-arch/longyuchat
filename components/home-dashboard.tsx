@@ -211,7 +211,7 @@ export async function HomeDashboard() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">
-                  Recent Daily
+                  近期日报
                 </p>
                 <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--foreground)]">
                   近期日报
@@ -256,7 +256,7 @@ export async function HomeDashboard() {
 
           <div className="ly-surface-card p-5 sm:p-6">
             <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">
-              Snapshot
+              站点速览
             </p>
             <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--foreground)]">
               站点速览
