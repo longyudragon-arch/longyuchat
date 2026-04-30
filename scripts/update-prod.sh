@@ -32,12 +32,19 @@ parse_boolean() {
   esac
 }
 
-if [[ -f "${APP_DIR}/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "${APP_DIR}/.env"
-  set +a
-fi
+load_env_file() {
+  local env_file="$1"
+
+  if [[ -f "${env_file}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "${env_file}"
+    set +a
+  fi
+}
+
+load_env_file "${APP_DIR}/.env"
+load_env_file "${APP_DIR}/.env.production"
 
 PORT="${PORT:-3000}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/health}"
