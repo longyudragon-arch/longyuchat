@@ -63,9 +63,9 @@ export function AppNavigation() {
   if (isChatPage || isLoginPage) return null;
 
   return (
-    <header className="sticky top-0 z-40 px-0 pb-2 pt-3 sm:pt-4">
+    <header className="ly-app-header sticky top-0 z-50 px-0 pb-2 pt-3 sm:pt-4">
       <div className="ly-shell">
-        <div className="ly-glass flex items-center justify-between gap-3 rounded-[1.35rem] px-3 py-2 sm:px-4">
+        <div className="ly-app-nav ly-glass flex items-center justify-between gap-3 rounded-[1.35rem] px-3 py-2 sm:px-4">
           <Link href="/" className="group inline-flex shrink-0 items-center gap-2.5">
             <span className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-white/70 transition-transform duration-300 group-hover:scale-105">
               <Image

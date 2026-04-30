@@ -906,18 +906,18 @@ export function ModelsPage() {
 
         <div className="ly-surface-card grid h-full gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
           <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">已启用</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.enabledCount}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">已启用</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{modelStats.enabledCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">已可参与房间协作的模型数量。</p>
           </div>
           <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">连接正常</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.testedSuccessCount}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">连接正常</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{modelStats.testedSuccessCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">最近连接测试成功的模型数量。</p>
           </div>
           <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">Provider</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{modelStats.providerCount}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Provider</p>
+            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{modelStats.providerCount}</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">当前已接入的不同模型厂商数量。</p>
           </div>
         </div>

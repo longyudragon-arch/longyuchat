@@ -35,7 +35,7 @@
   --accent-light: var(--brand-400);
   --accent-soft: rgba(37, 99, 235, 0.1);
   --accent-cyan: var(--brand-cyan);
-  --chat-accent: #14b8a6;
+  --chat-accent: #d97706;
   --project-accent: #16a34a;
   --about-accent: #5b78a6;
   --navy: #0f1a2b;
@@ -114,17 +114,6 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes ly-pulse-ring {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.5;
-  }
-  70%, 100% {
-    transform: scale(1.65);
-    opacity: 0;
   }
 }
 
@@ -343,12 +332,12 @@ a {
 
 .ly-page-chat {
   --accent: var(--chat-accent);
-  --accent-strong: #14b8a6;
-  --accent-light: #5eead4;
+  --accent-strong: #f59e0b;
+  --accent-light: #fbbf24;
   --ly-page-bg:
-    radial-gradient(72% 66% at 100% 12%, rgba(245, 158, 11, 0.2), transparent 66%),
-    radial-gradient(60% 56% at 0% 90%, rgba(20, 184, 166, 0.1), transparent 72%),
-    linear-gradient(90deg, #fffaf0 0%, #fff7e3 48%, #f6ead4 100%);
+    radial-gradient(72% 66% at 100% 12%, rgba(245, 158, 11, 0.22), transparent 66%),
+    radial-gradient(60% 56% at 0% 90%, rgba(251, 191, 36, 0.14), transparent 72%),
+    linear-gradient(90deg, #fffaf0 0%, #fff6dc 48%, #f6ead4 100%);
   --ly-page-grid-color: rgba(180, 124, 35, 0.045);
   --ly-page-grid-mask: radial-gradient(ellipse 94% 70% at 58% 18%, rgba(0, 0, 0, 0.34), transparent 82%);
 }
@@ -378,6 +367,19 @@ a {
 .ly-reading-wrap {
   width: min(100%, 78rem);
   margin-inline: auto;
+}
+
+.ly-chat-thread-wrap {
+  width: min(100%, 64rem);
+  margin-inline: auto;
+}
+
+.ly-chat-message-ai {
+  max-width: min(100%, 58rem);
+}
+
+.ly-chat-message-user {
+  max-width: min(88%, 46rem);
 }
 
 .ly-surface-card {
@@ -428,6 +430,8 @@ a {
 }
 
 .ly-panel-card {
+  min-width: 0;
+  max-width: 100%;
   border-radius: 1.25rem;
   padding: 1rem;
   box-shadow: 0 18px 42px rgba(47, 46, 51, 0.06);
@@ -491,8 +495,38 @@ a {
   border-radius: 1rem;
 }
 
+.ly-themed-control {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ly-themed-control:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, white 42%);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent 86%),
+    0 8px 22px rgba(15, 26, 43, 0.04);
+}
+
+.ly-daily-issue-row {
+  border: 1px solid transparent;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ly-daily-issue-row:hover {
+  border-color: color-mix(in srgb, var(--accent) 14%, white 86%);
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow:
+    0 14px 30px rgba(15, 26, 43, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
 .ly-control {
   width: 100%;
+  min-width: 0;
   border-radius: 0.95rem;
   border: 1px solid rgba(255, 255, 255, 0.42);
   background: rgba(255, 255, 255, 0.3);
@@ -711,6 +745,63 @@ a {
   box-shadow: none;
 }
 
+.ly-hero-secondary-action {
+  min-height: 48px;
+  border-radius: 1rem;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  background: linear-gradient(180deg, #fff7d6 0%, #ffe8a3 100%);
+  color: #7c4a03;
+  box-shadow:
+    0 12px 28px rgba(217, 119, 6, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.ly-hero-secondary-action:hover {
+  transform: translateY(-2px);
+  border-color: rgba(217, 119, 6, 0.44);
+  background: linear-gradient(180deg, #fff9df 0%, #ffdd7a 100%);
+  box-shadow:
+    0 18px 36px rgba(217, 119, 6, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.ly-hero-secondary-action:active {
+  transform: scale(0.97);
+}
+
+.ly-app-header {
+  isolation: isolate;
+}
+
+.ly-app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -1.1rem;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(248, 250, 252, 0.92) 70%, rgba(248, 250, 252, 0) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ly-app-nav.ly-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 255, 255, 0.95));
+  border-color: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 18px 42px -22px rgba(15, 26, 43, 0.36),
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -1px 0 rgba(15, 26, 43, 0.04) inset;
+  backdrop-filter: blur(34px) saturate(1.35);
+  -webkit-backdrop-filter: blur(34px) saturate(1.35);
+}
+
 .ly-nav-item {
   position: relative;
   display: inline-flex;
@@ -800,7 +891,7 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.78);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.54)),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.08), rgba(20, 184, 166, 0.06));
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent 91%), rgba(255, 255, 255, 0.1));
   padding: 0.32rem;
   box-shadow:
     0 16px 34px rgba(15, 26, 43, 0.07),
@@ -849,10 +940,10 @@ a {
 }
 
 .ly-chat-action-tab-active {
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.98), rgba(37, 99, 235, 0.96));
+  background: linear-gradient(180deg, var(--accent-light), var(--accent));
   color: white;
   box-shadow:
-    0 12px 22px rgba(37, 99, 235, 0.22),
+    0 12px 22px color-mix(in srgb, var(--accent) 22%, transparent 78%),
     inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
@@ -869,7 +960,12 @@ a {
 
   .ly-chat-domain-tools {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+  }
+
+  .ly-chat-domain-tools > .relative {
+    grid-column: 1 / -1;
   }
 
   .ly-chat-action-tabs {
@@ -925,6 +1021,69 @@ a {
   transform: translateY(-1px);
   background: rgba(229, 225, 233, 0.95);
   box-shadow: 0 12px 24px rgba(47, 46, 51, 0.05);
+}
+
+.ly-pill-filter:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent 84%),
+    0 12px 24px rgba(47, 46, 51, 0.05);
+}
+
+.ly-chat-stat-pill {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, white 86%);
+  background: rgba(255, 255, 255, 0.56);
+  padding: 0.35rem 0.75rem;
+  color: color-mix(in srgb, var(--accent) 82%, var(--foreground) 18%);
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.ly-room-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.52fr) minmax(220px, 0.72fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.52));
+  padding: 1rem;
+  box-shadow:
+    0 14px 34px rgba(47, 46, 51, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.ly-room-row:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 24%, white 76%);
+  box-shadow:
+    0 18px 40px rgba(47, 46, 51, 0.065),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.ly-room-preview {
+  min-width: 0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.46);
+  padding: 0.75rem 0.9rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 767px) {
+  .ly-room-row {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    padding: 1rem;
+  }
 }
 
 .ly-menu-panel {
@@ -1019,6 +1178,20 @@ a {
   .ly-reading-wrap {
     width: min(100%, 82rem);
   }
+
+  .ly-chat-thread-wrap {
+    width: min(100%, 68rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .ly-chat-message-ai {
+    max-width: 100%;
+  }
+
+  .ly-chat-message-user {
+    max-width: 92%;
+  }
 }
 
 /* Luminous Glass Rule: 24px+ blur, highly translucent base, ghost border */
@@ -1062,14 +1235,14 @@ a {
 
 /* ─── Portal homepage system ─── */
 .ly-portal-shell {
-  width: min(100%, 1280px);
+  width: min(calc(100vw - 2rem), 1720px);
   margin-inline: auto;
-  padding-inline: clamp(0.9rem, 3vw, 2rem);
+  padding-inline: clamp(0rem, 1.2vw, 1rem);
 }
 
 .ly-portal-hero {
   position: relative;
-  min-height: clamp(36rem, 70vh, 43rem);
+  min-height: clamp(38rem, 72vh, 48rem);
   overflow: hidden;
   border-radius: clamp(1.6rem, 3vw, 2.2rem);
   border: 1px solid rgba(255, 255, 255, 0.76);
@@ -1095,15 +1268,15 @@ a {
   inset: 0;
   background-image: url("/portal/hero-desk.png");
   background-size: cover;
-  background-position: center 36%;
+  background-position: center 38%;
 }
 
 .ly-portal-hero-wash {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.68) 32%, rgba(255, 255, 255, 0.18) 58%, rgba(255, 255, 255, 0.02) 76%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 44%, rgba(255, 255, 255, 0.62) 100%);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.72) 30%, rgba(255, 255, 255, 0.2) 55%, rgba(255, 255, 255, 0.03) 78%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 42%, rgba(255, 255, 255, 0.58) 100%);
 }
 
 .ly-portal-hero::after {
@@ -1117,43 +1290,6 @@ a {
     linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(ellipse 72% 62% at 78% 48%, rgba(0, 0, 0, 0.5), transparent 72%);
-}
-
-.ly-hero-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  background: rgba(255, 255, 255, 0.72);
-  padding: 0.45rem 0.8rem 0.45rem 0.6rem;
-  box-shadow:
-    0 8px 18px -10px rgba(15, 26, 43, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
-  color: var(--foreground);
-  font-size: 0.75rem;
-  font-weight: 700;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.ly-live-dot {
-  position: relative;
-  display: inline-flex;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: #10b981;
-  box-shadow: 0 0 0 0.32rem rgba(16, 185, 129, 0.16);
-}
-
-.ly-live-dot::after {
-  content: "";
-  position: absolute;
-  inset: -0.25rem;
-  border-radius: inherit;
-  background: rgba(16, 185, 129, 0.34);
-  animation: ly-pulse-ring 2.4s ease-out infinite;
 }
 
 .ly-headline-card {
@@ -1218,7 +1354,7 @@ a {
 
 .ly-entry-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(147, 197, 253, 0.7);
+  border-color: color-mix(in srgb, var(--entry-accent, var(--accent)) 34%, white 66%);
   box-shadow:
     0 30px 66px -28px rgba(15, 26, 43, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
@@ -1300,7 +1436,7 @@ a {
     0 -4px 24px rgba(47, 46, 51, 0.03),
     0 8px 32px rgba(47, 46, 51, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 0 0 3px rgba(37, 99, 235, 0.12);
+    0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent 86%);
 }
 
 /* Chat message animations */

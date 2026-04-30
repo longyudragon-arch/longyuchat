@@ -34,9 +34,9 @@ export default async function DailyArchivePage({
         <section className="ly-glass relative overflow-hidden rounded-[1.75rem] px-5 py-7 sm:px-7 sm:py-8">
           <div className="relative grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,0.6fr)] lg:items-end">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">日报归档</p>
-              <h1 className="mt-3 font-display text-[2.15rem] font-black leading-tight text-[#0F1A2B] sm:text-[3rem]">
-                日报归档
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--accent)]">日报归档</p>
+              <h1 className="mt-3 text-balance font-display text-[2.15rem] font-black leading-tight text-[var(--foreground)] sm:text-[3rem]">
+                按时间检索 AI 变化
               </h1>
               <p className="mt-3 max-w-2xl text-[15px] font-semibold leading-8 text-slate-600">
                 把每天的 AI 变化留在同一个索引里。按日期浏览，也可以直接搜索关键词或标题。
@@ -50,8 +50,8 @@ export default async function DailyArchivePage({
               </div>
             </div>
 
-            <form method="GET" className="grid gap-3">
-              <label htmlFor="daily-archive-search" className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">
+            <form method="GET" className="ly-soft-card grid gap-3 p-5">
+              <label htmlFor="daily-archive-search" className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--accent)]">
                 搜索归档
               </label>
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -66,7 +66,7 @@ export default async function DailyArchivePage({
                   搜索
                 </button>
               </div>
-              <Link href="/daily" className="w-fit text-sm font-bold text-slate-500 transition hover:text-[#2563EB]">
+              <Link href="/daily" className="w-fit text-sm font-bold text-slate-500 transition hover:text-[var(--accent)]">
                 返回日报首页
               </Link>
             </form>
@@ -76,8 +76,8 @@ export default async function DailyArchivePage({
         <section className="ly-surface-card rounded-[1.75rem] p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#2563EB]">索引</p>
-              <h2 className="mt-2 font-display text-2xl font-black text-[#0F1A2B]">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--accent)]">索引</p>
+              <h2 className="mt-2 font-display text-2xl font-black text-[var(--foreground)]">
                 {query ? `“${query}”的匹配结果` : "全部日报"}
               </h2>
             </div>
@@ -96,13 +96,13 @@ export default async function DailyArchivePage({
                 <Link
                   key={issue.id}
                   href={`/daily/${issue.slug}`}
-                  className="hover-lift grid gap-4 rounded-[1.1rem] px-3 py-5 transition hover:bg-white/30 sm:grid-cols-[9rem_minmax(0,1fr)_auto]"
+                  className="ly-daily-issue-row hover-lift grid gap-4 rounded-[1.1rem] px-3 py-5 transition hover:bg-white/35 sm:grid-cols-[9rem_minmax(0,1fr)_auto]"
                 >
-                  <div className="text-[12px] font-black text-[#2563EB]">
+                  <div className="text-[12px] font-black text-[var(--accent)]">
                     {formatDailyDate(issue.issueDate)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-lg font-black leading-7 text-[#0F1A2B]">{issue.title}</p>
+                    <p className="text-lg font-black leading-7 text-[var(--foreground)]">{issue.title}</p>
                     <p className="mt-2 text-sm font-medium leading-7 text-slate-600">{getDailyIssueDek(issue)}</p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2 text-[12px] font-bold text-slate-500 sm:justify-end">

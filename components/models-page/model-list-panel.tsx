@@ -37,7 +37,7 @@ interface ModelListPanelProps {
 function renderEmptySteps(items: string[]) {
   return items.map((item, index) => (
     <div key={item} className="rounded-[1.35rem] bg-white/45 px-4 py-3">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#2563EB]">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">
         步骤 {index + 1}
       </p>
       <p className="mt-1 text-sm leading-6 text-stone-600">{item}</p>
@@ -177,10 +177,10 @@ export function ModelListPanel({
       {models.length === 0 ? (
         <div className="ly-empty-card grid gap-5 px-6 py-8 text-left lg:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.85fr)]">
           <div className="space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
               Model Hub
             </p>
-            <h3 className="text-2xl font-display font-bold tracking-tight text-[#0F1A2B]">
+            <h3 className="text-2xl font-display font-bold tracking-tight text-[var(--foreground)]">
               先把模型入口准备好，再开始搭建协作房间
             </h3>
             <p className="max-w-2xl text-[14px] leading-7 text-[var(--muted)]">

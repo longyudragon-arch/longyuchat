@@ -413,18 +413,18 @@ export function DailyAdminPage() {
 
           <div className="ly-surface-card grid gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">已发布</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.published}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">已发布</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{issueStats.published}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">对外可见的日报期数。</p>
             </div>
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">草稿</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.draft}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">草稿</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{issueStats.draft}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">已生成但尚未公开的日报。</p>
             </div>
             <div className="rounded-[1.4rem] bg-white/45 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">跳过</p>
-              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{issueStats.skipped}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">跳过</p>
+              <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[var(--foreground)]">{issueStats.skipped}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">未达到自动发布阈值的日期。</p>
             </div>
           </div>
@@ -437,7 +437,7 @@ export function DailyAdminPage() {
         ) : null}
         {feedback ? <FeedbackPanel feedback={feedback} /> : null}
 
-        <section className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
           <div className="ly-glass ly-panel-card space-y-4">
             <div>
               <h2 className="text-lg font-display font-bold tracking-tight">新增来源</h2>
@@ -616,19 +616,19 @@ export function DailyAdminPage() {
                 <span className="text-[12px] font-medium text-[var(--muted)]">{sources.length} 个来源</span>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {sources.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-stone-200 bg-white/30 px-4 py-8 text-center text-sm text-stone-500">
                     还没有日报来源，请先新增至少一个来源。
                   </div>
                 ) : (
                   sources.map((source) => (
-                    <article key={source.id} className="rounded-[1.35rem] bg-white/40 px-4 py-4">
-                      <div className="flex items-start justify-between gap-4">
+                    <article key={source.id} className="rounded-[1.2rem] bg-white/45 px-3.5 py-3.5 sm:px-4 sm:py-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#0F1A2B]">{source.name}</p>
-                            <span className="rounded-md bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2563EB]">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-[var(--foreground)]">{source.name}</p>
+                            <span className="rounded-md bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--accent)]">
                               {source.kind}
                             </span>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${source.enabled ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
@@ -645,7 +645,7 @@ export function DailyAdminPage() {
                             priority={source.priority} · 已抓取 {source.itemCount} 条 · 最近抓取 {source.lastFetchedAt ? formatDate(source.lastFetchedAt) : "暂无"}
                           </p>
                         </div>
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                           <button type="button" onClick={() => startTransition(() => void editSource(source))} className="ly-mini-action px-3 py-1.5 text-[11px] font-bold">
                             编辑
                           </button>
@@ -668,18 +668,18 @@ export function DailyAdminPage() {
                 <h2 className="text-lg font-display font-bold tracking-tight">兴趣配置</h2>
                 <span className="text-[12px] font-medium text-[var(--muted)]">{interestProfiles.length} 条</span>
               </div>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {interestProfiles.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-stone-200 bg-white/30 px-4 py-8 text-center text-sm text-stone-500">
                     还没有兴趣配置，保存一条后，日报扫描和发布会按你的偏好工作。
                   </div>
                 ) : (
                   interestProfiles.map((profile) => (
-                    <article key={profile.id} className="rounded-[1.35rem] bg-white/40 px-4 py-4">
-                      <div className="flex items-start justify-between gap-4">
+                    <article key={profile.id} className="rounded-[1.2rem] bg-white/45 px-3.5 py-3.5 sm:px-4 sm:py-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#0F1A2B]">{profile.name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-[var(--foreground)]">{profile.name}</p>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${profile.enabled ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
                               {profile.enabled ? "启用" : "停用"}
                             </span>
@@ -689,7 +689,7 @@ export function DailyAdminPage() {
                             <p className="mt-2 text-sm leading-6 text-stone-600">{profile.interestsText}</p>
                           ) : null}
                         </div>
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                           <button type="button" onClick={() => startTransition(() => void editInterestProfile(profile))} className="ly-mini-action px-3 py-1.5 text-[11px] font-bold">
                             编辑
                           </button>
@@ -712,18 +712,18 @@ export function DailyAdminPage() {
                 <h2 className="text-lg font-display font-bold tracking-tight">最近运行</h2>
                 <span className="text-[12px] font-medium text-[var(--muted)]">{runs.length} 条</span>
               </div>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {runs.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-stone-200 bg-white/30 px-4 py-8 text-center text-sm text-stone-500">
                     还没有运行记录。
                   </div>
                 ) : (
                   runs.map((run) => (
-                    <article key={run.id} className="rounded-[1.35rem] bg-white/40 px-4 py-4">
-                      <div className="flex items-center justify-between gap-4">
+                    <article key={run.id} className="rounded-[1.2rem] bg-white/45 px-3.5 py-3.5 sm:px-4 sm:py-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-[#0F1A2B]">{run.runType}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-[var(--foreground)]">{run.runType}</p>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${run.status === "SUCCESS" ? "bg-emerald-50 text-emerald-700" : run.status === "FAILED" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
                               {run.status}
                             </span>
@@ -745,12 +745,12 @@ export function DailyAdminPage() {
                 <h2 className="text-lg font-display font-bold tracking-tight">最近日报</h2>
                 <span className="text-[12px] font-medium text-[var(--muted)]">{issues.length} 期</span>
               </div>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {issues.map((issue) => (
-                  <article key={issue.id} className="rounded-[1.35rem] bg-white/40 px-4 py-4">
-                    <div className="flex items-start justify-between gap-4">
+                  <article key={issue.id} className="rounded-[1.2rem] bg-white/45 px-3.5 py-3.5 sm:px-4 sm:py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <Link href={`/daily/${issue.slug}`} className="font-bold text-[#0F1A2B] hover:text-[#2563EB]">
+                        <Link href={`/daily/${issue.slug}`} className="font-bold text-[var(--foreground)] hover:text-[var(--accent)]">
                           {issue.title}
                         </Link>
                         <p className="mt-1 text-[12px] text-[var(--muted)]">{issue.summary ?? "暂无导语"}</p>

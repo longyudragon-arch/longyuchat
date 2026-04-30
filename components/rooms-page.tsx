@@ -189,8 +189,7 @@ export function RoomsPage() {
   return (
     <main className="ly-page-wrap ly-page-chat">
       <div className="ly-shell page-rise flex flex-col gap-5">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] xl:items-stretch">
-        <div className="ly-glass flex h-full rounded-[1.75rem] px-5 py-6 sm:px-7 sm:py-7">
+      <div className="ly-glass rounded-[1.75rem] px-5 py-5 sm:px-7 sm:py-6">
           {/* ─ Header & Search ─ */}
           <header className="ly-chat-domain-header w-full">
             <div className="ly-chat-domain-top">
@@ -203,15 +202,19 @@ export function RoomsPage() {
               <ChatSectionNav />
             </div>
             <div className="ly-chat-domain-tools">
-              <div className="relative w-full sm:w-80">
+              <div className="relative w-full sm:max-w-md sm:flex-1">
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="搜索房间或模型..."
-                  className="ly-page-control w-full bg-white border border-stone-200 focus:border-[#2563EB] focus:ring focus:ring-[#60A5FA]/20 pl-12 pr-4 py-3 text-sm font-medium outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                  className="ly-page-control ly-themed-control w-full bg-white pl-12 pr-4 py-3 text-sm font-medium outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                 />
               </div>
+              <Link href="/rooms/new" className="ly-primary-action inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold sm:w-auto">
+                <span className="text-lg leading-none">+</span>
+                新建房间
+              </Link>
               {mockToolsEnabled && (
                   <button
                     type="button"
@@ -223,38 +226,25 @@ export function RoomsPage() {
                   </button>
               )}
             </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="ly-chat-stat-pill">群聊 {roomStats.groupCount}</span>
+              <span className="ly-chat-stat-pill">单聊 {roomStats.singleCount}</span>
+              <span className="ly-chat-stat-pill">协作节点 {roomStats.participantCount}</span>
+              <span className="ly-chat-stat-pill">当前显示 {filteredRooms.length}</span>
+            </div>
           </header>
-        </div>
-
-        <div className="ly-surface-card grid h-full gap-4 rounded-[1.75rem] p-5 sm:grid-cols-3 sm:p-6">
-          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">群聊房间</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.groupCount}</p>
-            <p className="mt-1 text-xs leading-5 text-stone-500">多个模型依次协作回复的房间数量。</p>
-          </div>
-          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">单聊房间</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.singleCount}</p>
-            <p className="mt-1 text-xs leading-5 text-stone-500">适合做单模型测试与快速追问的会话。</p>
-          </div>
-          <div className="flex min-h-full flex-col justify-center rounded-[1.4rem] bg-white/45 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563EB]">协作节点</p>
-            <p className="mt-2 text-3xl font-display font-bold tracking-tight text-[#0F1A2B]">{roomStats.participantCount}</p>
-            <p className="mt-1 text-xs leading-5 text-stone-500">当前所有房间中已编入协作链的模型总数。</p>
-          </div>
-        </div>
       </div>
 
       <div className="ly-glass rounded-[1.75rem] px-5 py-6 sm:rounded-[2rem] sm:px-7 sm:py-7">
 
         {/* ─ Filters ─ */}
-        <section className="flex flex-wrap items-center gap-3 mb-8">
+        <section className="mb-5 flex flex-wrap items-center gap-3">
           <span className="text-xs font-bold uppercase tracking-widest text-stone-400 mr-2">筛选</span>
           <div className="relative">
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value as RoomFilterType)}
-              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#60A5FA]/40"
+              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none"
             >
               <option value="ALL">全部类型</option>
               <option value="GROUP">群聊 (GROUP)</option>
@@ -266,7 +256,7 @@ export function RoomsPage() {
             <select
               value={providerFilter}
               onChange={(event) => setProviderFilter(event.target.value as ProviderType | "ALL")}
-              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none focus:ring-2 focus:ring-[#60A5FA]/40"
+              className="ly-pill-filter appearance-none pr-10 outline-none cursor-pointer border-none"
             >
               <option value="ALL">全部厂商</option>
               {providerOptions.map((provider) => (
@@ -291,16 +281,16 @@ export function RoomsPage() {
           />
         )}
 
-        {/* ─ Room Cards ─ */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* ─ Room list ─ */}
+        <section className="grid grid-cols-1 gap-3">
           {rooms.length === 0 ? (
-            <div className="ly-empty-card md:col-span-2 lg:col-span-3 mt-4 grid gap-6 p-8 text-left lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)] lg:p-10">
+            <div className="ly-empty-card mt-4 grid gap-6 p-8 text-left lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)] lg:p-10">
               <div className="space-y-4">
                 <div className="ly-surface-card flex h-16 w-16 items-center justify-center rounded-2xl">
-                  <svg className="w-8 h-8 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                  <svg className="w-8 h-8 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 </div>
-                <h2 className="text-3xl font-display font-bold tracking-tight text-[#2563EB]">准备开启新对话？</h2>
-                <p className="max-w-2xl text-[15px] leading-7 text-[#475569]">
+                <h2 className="text-3xl font-display font-bold tracking-tight text-[var(--accent)]">准备开启新对话？</h2>
+                <p className="max-w-2xl text-[15px] leading-7 text-slate-600">
                   {mockToolsEnabled
                     ? "当前还没有房间。你可以先去模型管理配置真实模型，或者直接生成本地测试工作区，先体验多模型顺序协作。"
                     : "当前还没有房间。建议先配置模型，再创建第一个单聊或群聊房间。"}
@@ -309,7 +299,7 @@ export function RoomsPage() {
                   <Link href="/rooms/new" className="ly-primary-action inline-flex px-6 py-3 font-bold">
                     现在创建房间
                   </Link>
-                  <Link href="/models" className="ly-secondary-action inline-flex px-6 py-3 font-bold text-[#0F1A2B]">
+                  <Link href="/models" className="ly-secondary-action inline-flex px-6 py-3 font-bold text-[var(--foreground)]">
                     先去配置模型
                   </Link>
                 </div>
@@ -322,15 +312,15 @@ export function RoomsPage() {
                   "发送一条消息，观察模型依次接力回复。",
                 ].map((item, index) => (
                   <div key={item} className="rounded-[1.35rem] bg-white/45 px-4 py-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#2563EB]">步骤 {index + 1}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">步骤 {index + 1}</p>
                     <p className="mt-1 text-sm leading-6 text-stone-600">{item}</p>
                   </div>
                 ))}
               </div>
             </div>
           ) : filteredRooms.length === 0 ? (
-            <div className="ly-surface-card md:col-span-2 lg:col-span-3 mt-8 p-12 text-center">
-              <p className="text-[#475569] text-sm font-medium">没有符合条件的房间，试试调整筛选条件。</p>
+            <div className="ly-surface-card mt-8 p-12 text-center">
+              <p className="text-slate-600 text-sm font-medium">没有符合条件的房间，试试调整筛选条件。</p>
             </div>
           ) : (
             filteredRooms.map((room) => {
@@ -339,56 +329,26 @@ export function RoomsPage() {
               return (
                 <article
                   key={room.id}
-                  className="group relative ly-surface-card ly-surface-card-hover overflow-hidden p-6"
+                  className="ly-room-row group relative"
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#60A5FA]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
-                  
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex flex-wrap items-center gap-1.5 z-10">
-                       <span className={`px-2.5 py-1 ${room.type === 'GROUP' ? 'bg-[#60A5FA]/20 text-[#2563EB]' : 'bg-[#2563EB]/20 text-[#2563EB]'} text-[10px] font-bold uppercase tracking-wider rounded-md`}>
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                       <span className="rounded-md bg-[var(--accent)]/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent)]">
                           {toRoomLabel(room.type)}
                        </span>
+                       <span className="text-[11px] font-semibold text-stone-400">
+                          {orderedModels.length} 个模型
+                       </span>
                     </div>
-                    <div className="relative z-10">
-                       <button
-                         type="button"
-                         title={`更多操作：${room.title}`}
-                         onClick={(e) => {
-                           e.preventDefault();
-                           setOpenMenuId(openMenuId === room.id ? null : room.id);
-                         }}
-                         className={`ly-icon-button rounded-lg ${openMenuId === room.id ? "bg-stone-100 text-[#0F1A2B]" : "text-stone-400 hover:bg-stone-50 hover:text-[#0F1A2B]"}`}
-                       >
-                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></svg>
-                       </button>
-                       {openMenuId === room.id && (
-                         <>
-                           <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); }} />
-                           <div className="ly-menu-panel absolute right-0 top-full z-50 mt-2 w-36 animate-chat-in py-2">
-                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); startTransition(() => void renameRoom(room)); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] transition hover:bg-stone-50">
-                               重命名
-                             </button>
-                             <Link href={`/rooms/${room.id}/edit`} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] transition hover:bg-stone-50">
-                               编辑配置
-                             </Link>
-                             <div className="my-1 border-t border-stone-100" />
-                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); setRoomToDelete(room); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-red-500 transition hover:bg-red-50">
-                               删除房间
-                             </button>
-                           </div>
-                         </>
-                       )}
-                    </div>
+
+                    <h3 className="truncate text-lg font-bold tracking-tight text-[var(--accent)] sm:text-xl">
+                      {room.title}
+                    </h3>
                   </div>
 
-                  <h3 className="text-xl font-bold tracking-tight text-[#2563EB] mb-2 truncate z-10 relative">
-                    {room.title}
-                  </h3>
-                  
-                  {/* Model preview dots */}
-                  <div className="flex items-center gap-2 mb-6 z-10 relative">
-                     <div className="flex -space-x-2">
-                     {orderedModels.slice(0, 3).map((rm) => {
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex -space-x-2">
+                      {orderedModels.slice(0, 4).map((rm) => {
                               const avatar = resolveModelAvatar(
                                 rm.model.provider,
                                 rm.model.baseUrl,
@@ -410,45 +370,74 @@ export function RoomsPage() {
                                 {avatar.avatarLabel}
                           </div>
                         );
-                     })}
-                     {orderedModels.length > 3 && (
+                      })}
+                     {orderedModels.length > 4 && (
                         <div className="w-8 h-8 rounded-full border-2 border-white bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-500">
-                           +{orderedModels.length - 3}
+                           +{orderedModels.length - 4}
                         </div>
                      )}
-                     </div>
-                     <span className="text-[10px] font-semibold text-stone-400">
-                        {orderedModels.length} 个组合模型
-                     </span>
+                    </div>
+                    <p className="min-w-0 truncate text-xs font-semibold text-stone-500">
+                      {orderedModels.map((rm) => rm.model.name).join(" · ")}
+                    </p>
                   </div>
 
                   {/* Message Preview */}
-                  <div className="ly-soft-card relative mb-6 h-20 overflow-hidden p-4">
-                     <p className="text-[10px] font-extrabold text-stone-400 uppercase tracking-tighter mb-1.5">最新消息预览</p>
+                  <div className="ly-room-preview">
                      {room.lastMessagePreview ? (
-                        <p className="text-xs text-stone-600 font-medium leading-relaxed truncate block">
+                        <p className="truncate text-sm text-stone-600 font-medium">
                            <span className="font-bold text-stone-500">{toRoleLabel(room.lastMessagePreview.role)}: </span>
                            {room.lastMessagePreview.content}
                         </p>
                      ) : (
-                        <p className="text-xs text-stone-400 italic font-medium">当前房间暂无历史消息</p>
+                        <p className="text-sm text-stone-400 italic font-medium">当前房间暂无历史消息</p>
                      )}
-                     {/* Gradient mask at the bottom for long texts */}
-                     <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[rgba(249,245,252,0.8)] to-transparent"></div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-5 border-t border-stone-100 z-10 relative">
-                    <div className="flex items-center gap-4 text-[11px] font-bold text-stone-400 uppercase tracking-widest">
-                       <span className="flex items-center gap-1.5">
-                          更新: {formatDate(room.updatedAt)}
-                       </span>
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400 sm:hidden">
+                      {formatDate(room.updatedAt)}
+                    </span>
+                    <div className="hidden text-right text-[11px] font-bold uppercase tracking-widest text-stone-400 sm:block">
+                      更新<br />{formatDate(room.updatedAt)}
                     </div>
                     <Link
                       href={`/rooms/${room.id}`}
-                      className="ly-icon-button flex h-10 w-10 items-center justify-center rounded-full bg-white/40 text-stone-400 shadow-sm group-hover:bg-gradient-to-br group-hover:from-[#2563EB] group-hover:to-[#60A5FA] group-hover:text-white"
+                      className="ly-icon-button flex h-10 w-10 items-center justify-center rounded-full bg-white/55 text-[var(--accent)] shadow-sm group-hover:bg-[var(--accent)] group-hover:text-white"
+                      aria-label={`进入房间：${room.title}`}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </Link>
+                    <div className="relative">
+                       <button
+                         type="button"
+                         title={`更多操作：${room.title}`}
+                         onClick={(e) => {
+                           e.preventDefault();
+                           setOpenMenuId(openMenuId === room.id ? null : room.id);
+                         }}
+                         className={`ly-icon-button rounded-lg ${openMenuId === room.id ? "bg-stone-100 text-[var(--foreground)]" : "text-stone-400 hover:bg-stone-50 hover:text-[var(--foreground)]"}`}
+                       >
+                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></svg>
+                       </button>
+                       {openMenuId === room.id && (
+                         <>
+                           <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); }} />
+                           <div className="ly-menu-panel absolute right-0 top-full z-50 mt-2 w-36 animate-chat-in py-2">
+                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); startTransition(() => void renameRoom(room)); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[var(--foreground)] transition hover:bg-stone-50">
+                               重命名
+                             </button>
+                             <Link href={`/rooms/${room.id}/edit`} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[var(--foreground)] transition hover:bg-stone-50">
+                               编辑配置
+                             </Link>
+                             <div className="my-1 border-t border-stone-100" />
+                             <button type="button" onClick={(e) => { e.preventDefault(); setOpenMenuId(null); setRoomToDelete(room); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-red-500 transition hover:bg-red-50">
+                               删除房间
+                             </button>
+                           </div>
+                         </>
+                       )}
+                    </div>
                   </div>
                 </article>
               );

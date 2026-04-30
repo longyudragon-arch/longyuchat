@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
+import { getDailyIssueDek } from "@/lib/daily-presentation";
 import { prisma } from "@/lib/prisma";
 import { getDailyIssueStats, listPublishedDailyIssues } from "@/server/services/daily-issue-service";
 
@@ -78,7 +80,7 @@ export async function HomeDashboard() {
   ]);
 
   const latestDailyIssue = dailyIssues[0] ?? null;
-  const latestDailyItems = latestDailyIssue?.items?.slice(0, 2) ?? [];
+  const latestDailyItems = latestDailyIssue?.items?.slice(0, 3) ?? [];
   const readMinutes = latestDailyIssue ? Math.max(3, Math.ceil(latestDailyIssue.itemCount * 0.75)) : null;
 
   const entries = [
@@ -96,7 +98,7 @@ export async function HomeDashboard() {
       href: "/rooms",
       icon: "chat" as const,
       color: "var(--chat-accent)",
-      bg: "rgba(20, 184, 166, 0.11)",
+      bg: "rgba(245, 158, 11, 0.16)",
     },
     {
       title: "项目推荐",
@@ -123,34 +125,29 @@ export async function HomeDashboard() {
           <div className="ly-portal-hero-photo" />
           <div className="ly-portal-hero-wash" />
 
-          <div className="relative z-10 grid min-h-[inherit] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,0.96fr)_minmax(300px,0.62fr)] lg:items-center lg:px-14">
-            <div className="max-w-[38rem]">
-              <div className="ly-hero-kicker mb-5">
-                <span className="ly-live-dot" />
-                <span>{modelStats._count._all} 个模型可用 · {roomStats._count._all} 个房间</span>
-              </div>
-
-              <h1 className="font-display text-[clamp(4.7rem,11vw,8rem)] font-black leading-[0.92] tracking-[-0.055em] text-[var(--foreground)]">
+          <div className="relative z-10 grid min-h-[inherit] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(340px,0.72fr)] lg:items-center lg:px-16 xl:px-20">
+            <div className="max-w-[46rem]">
+              <h1 className="font-display text-[clamp(5.6rem,12.5vw,10rem)] font-black leading-[0.88] tracking-[-0.06em] text-[var(--foreground)]">
                 AI 总站
               </h1>
-              <p className="mt-7 text-[clamp(1.25rem,2.4vw,1.75rem)] font-bold leading-tight tracking-[-0.02em] text-slate-700">
+              <p className="mt-8 max-w-2xl text-[clamp(1.35rem,2.2vw,2rem)] font-black leading-tight tracking-[-0.025em] text-slate-700">
                 看 AI 日报，和模型一起工作。
               </p>
               <p className="mt-3 max-w-xl text-[0.98rem] font-medium leading-7 text-slate-500">
                 日报、聊天室、项目推荐，集中在这里。
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-8 flex w-fit flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
                 <Link
                   href={latestDailyIssue ? `/daily/${latestDailyIssue.slug}` : "/daily"}
-                  className="ly-primary-action inline-flex items-center gap-2.5 px-6 py-3 text-[0.95rem] font-bold"
+                  className="ly-primary-action inline-flex h-12 w-40 items-center justify-center gap-2.5 whitespace-nowrap px-6 py-3 text-[0.95rem] font-bold"
                 >
                   <PortalIcon name="doc" className="h-5 w-5" />
                   进入 AI 日报
                 </Link>
                 <Link
                   href="/rooms"
-                  className="ly-secondary-action inline-flex min-h-12 items-center gap-2.5 px-6 py-3 text-[0.95rem] font-bold text-[var(--foreground)]"
+                  className="ly-hero-secondary-action inline-flex h-12 w-40 items-center justify-center gap-2.5 whitespace-nowrap px-6 py-3 text-[0.95rem] font-bold"
                 >
                   <PortalIcon name="chat" className="h-5 w-5" />
                   打开聊天室
@@ -160,13 +157,13 @@ export async function HomeDashboard() {
 
             <Link
               href={latestDailyIssue ? `/daily/${latestDailyIssue.slug}` : "/daily"}
-              className="ly-headline-card float-slow hidden p-5 transition hover:-translate-y-1 lg:block"
+              className="ly-headline-card float-slow hidden w-full max-w-[31rem] justify-self-end p-7 transition hover:-translate-y-1 lg:mt-28 lg:block lg:self-start xl:mt-32"
             >
               <div className="flex items-center justify-between gap-4 text-[0.78rem] font-bold text-slate-500">
                 <span>{latestDailyIssue?.issueDate?.replace(/-/g, ".") ?? "待发布"}</span>
                 <ArrowIcon className="h-4 w-4" />
               </div>
-              <h2 className="mt-4 font-display text-[1.85rem] font-black leading-tight tracking-[-0.03em] text-[var(--foreground)]">
+              <h2 className="mt-4 font-display text-[2.15rem] font-black leading-tight tracking-[-0.03em] text-[var(--foreground)]">
                 今日头版
               </h2>
               <p className="mt-3 text-[0.95rem] font-bold leading-7 text-slate-700">
@@ -187,9 +184,14 @@ export async function HomeDashboard() {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-4 px-3 sm:mt-6 sm:px-7 md:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-5 grid gap-4 px-1 sm:mt-6 sm:px-2 md:grid-cols-2 xl:grid-cols-4">
           {entries.map((entry) => (
-            <Link key={entry.href} href={entry.href} className="ly-entry-card group relative z-20">
+            <Link
+              key={entry.href}
+              href={entry.href}
+              className="ly-entry-card group relative z-20"
+              style={{ "--entry-accent": entry.color } as CSSProperties}
+            >
               <span className="ly-entry-icon" style={{ color: entry.color, background: entry.bg }}>
                 <PortalIcon name={entry.icon} />
               </span>
@@ -201,20 +203,20 @@ export async function HomeDashboard() {
                   {entry.description}
                 </span>
               </span>
-              <ArrowIcon className="h-5 w-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[var(--accent)]" />
+              <ArrowIcon className="h-5 w-5 text-[color:var(--entry-accent)] opacity-45 transition group-hover:translate-x-1 group-hover:opacity-100" />
             </Link>
           ))}
         </section>
 
-        <section className="mt-12 grid gap-5 lg:grid-cols-[minmax(0,1.32fr)_minmax(320px,0.68fr)] lg:items-start">
-          <div className="ly-surface-card p-5 sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
+        <section className="mt-8 grid gap-5 px-1 sm:px-2 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] lg:items-start">
+          <div className="ly-surface-card overflow-hidden p-5 sm:p-6">
+            <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">
-                  近期日报
+                  今日判断
                 </p>
                 <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--foreground)]">
-                  近期日报
+                  从最新一期开始看
                 </h2>
               </div>
               <Link href="/daily/archive" className="text-[0.86rem] font-bold text-[var(--accent)] hover:underline">
@@ -223,29 +225,54 @@ export async function HomeDashboard() {
             </div>
 
             {dailyIssues.length > 0 ? (
-              <div className="grid gap-3">
-                {dailyIssues.slice(0, 3).map((issue) => (
+              <div className="grid gap-4">
+                {latestDailyIssue ? (
                   <Link
-                    key={issue.id}
-                    href={`/daily/${issue.slug}`}
-                  className="hover-lift grid gap-2 rounded-[1.15rem] border border-white/60 bg-white/55 px-4 py-4 transition hover:bg-white sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:items-center"
+                    href={`/daily/${latestDailyIssue.slug}`}
+                    className="group rounded-[1.35rem] border border-[var(--accent)]/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.78),rgba(239,246,255,0.74))] p-4 transition hover:-translate-y-0.5 hover:border-[var(--accent)]/25 hover:bg-white sm:p-5"
                   >
-                    <span className="font-mono text-[0.78rem] font-bold text-slate-400">
-                      {issue.issueDate.slice(5).replace("-", ".")}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[0.95rem] font-bold text-[var(--foreground)]">
-                        {issue.title}
-                      </span>
-                      {issue.summary ? (
-                        <span className="mt-1 block truncate text-[0.78rem] font-medium text-slate-500">
-                          {issue.summary}
-                        </span>
+                    <div className="flex flex-wrap items-center gap-2 text-[0.78rem] font-bold text-slate-500">
+                      <span>{latestDailyIssue.issueDate.replace(/-/g, ".")}</span>
+                      <span>·</span>
+                      <span>{latestDailyIssue.itemCount} 条重点</span>
+                      {readMinutes ? (
+                        <>
+                          <span>·</span>
+                          <span>{readMinutes} 分钟读完</span>
+                        </>
                       ) : null}
-                    </span>
-                    <span className="text-[0.78rem] font-bold text-slate-400">{issue.itemCount} 条</span>
+                    </div>
+                    <h3 className="mt-3 text-balance font-display text-2xl font-black leading-tight text-[var(--foreground)] transition group-hover:text-[var(--accent)] sm:text-[1.75rem]">
+                      {latestDailyIssue.title}
+                    </h3>
+                    <p className="mt-2 max-w-3xl text-sm font-semibold leading-7 text-slate-600">
+                      {getDailyIssueDek(latestDailyIssue)}
+                    </p>
                   </Link>
-                ))}
+                ) : null}
+
+                <div className="grid gap-3">
+                  {dailyIssues.slice(1, 4).map((issue) => (
+                    <Link
+                      key={issue.id}
+                      href={`/daily/${issue.slug}`}
+                      className="ly-daily-issue-row grid gap-2 rounded-[1.05rem] px-3 py-3.5 transition sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <span className="font-mono text-[0.78rem] font-bold text-slate-400">
+                        {issue.issueDate.slice(5).replace("-", ".")}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[0.95rem] font-bold text-[var(--foreground)]">
+                          {issue.title}
+                        </span>
+                        <span className="mt-1 block truncate text-[0.78rem] font-medium text-slate-500">
+                          {getDailyIssueDek(issue)}
+                        </span>
+                      </span>
+                      <span className="text-[0.78rem] font-bold text-slate-400">{issue.itemCount} 条</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="rounded-[1.15rem] border border-dashed border-slate-300/70 bg-white/45 px-4 py-8 text-sm font-medium text-slate-500">
@@ -254,31 +281,34 @@ export async function HomeDashboard() {
             )}
           </div>
 
-          <div className="ly-surface-card p-5 sm:p-6">
-            <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">
-              站点速览
-            </p>
-            <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--foreground)]">
-              站点速览
-            </h2>
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              {[
-                { label: "累计日报", value: dailyStats.publishedIssueCount },
-                { label: "累计条目", value: dailyStats.publishedItemCount },
-                { label: "启用模型", value: modelStats._count._all },
-                { label: "聊天房间", value: roomStats._count._all },
-              ].map((item) => (
-                <div key={item.label} className="rounded-[1.15rem] bg-white/50 px-4 py-4">
-                  <p className="font-display text-3xl font-black tracking-tight text-[var(--foreground)]">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-[0.78rem] font-bold text-slate-500">{item.label}</p>
-                </div>
-              ))}
+          <div className="grid gap-5">
+            <div className="ly-surface-card p-5 sm:p-6">
+              <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">
+                运行状态
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--foreground)]">
+                站点速览
+              </h2>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {[
+                  { label: "累计日报", value: dailyStats.publishedIssueCount },
+                  { label: "累计条目", value: dailyStats.publishedItemCount },
+                  { label: "启用模型", value: modelStats._count._all },
+                  { label: "聊天房间", value: roomStats._count._all },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-[1.05rem] bg-white/50 px-4 py-4">
+                    <p className="font-display text-3xl font-black tracking-tight text-[var(--foreground)]">
+                      {item.value}
+                    </p>
+                    <p className="mt-1 text-[0.78rem] font-bold text-slate-500">{item.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
+
             {latestDailyItems.length > 0 ? (
-              <div className="mt-5 rounded-[1.15rem] bg-white/50 px-4 py-4">
-                <p className="text-[0.78rem] font-extrabold text-slate-500">今日焦点</p>
+              <div className="ly-surface-card p-5 sm:p-6">
+                <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--accent)]">今日焦点</p>
                 <div className="mt-3 grid gap-2">
                   {latestDailyItems.map((item) => (
                     <Link
@@ -292,6 +322,23 @@ export async function HomeDashboard() {
                 </div>
               </div>
             ) : null}
+
+            <div className="ly-surface-card p-5 sm:p-6">
+              <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-[var(--project-accent)]">
+                后续扩展
+              </p>
+              <h2 className="mt-1 font-display text-xl font-black tracking-tight text-[var(--foreground)]">
+                项目推荐与个人简介会继续沉淀
+              </h2>
+              <div className="mt-4 grid gap-2">
+                <Link href="/projects" className="rounded-[1rem] bg-white/50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:text-[var(--project-accent)]">
+                  查看项目推荐
+                </Link>
+                <Link href="/about" className="rounded-[1rem] bg-white/50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:text-[var(--about-accent)]">
+                  查看个人简介
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -182,7 +182,7 @@ export function ProviderConnectionPanel({
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-[13px] font-bold text-[#0F1A2B]">
+                <p className="truncate text-[13px] font-bold text-[var(--foreground)]">
                   {selectedConnectionTemplate?.name ?? getProviderOptionLabel(connectionForm.provider)}
                 </p>
                 <span className="rounded-full border border-[var(--accent)]/15 bg-[var(--accent)]/8 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">
@@ -256,7 +256,7 @@ export function ProviderConnectionPanel({
             className="h-4 w-4 rounded border-white/60 text-[var(--accent)] focus:ring-[var(--accent)]/30"
           />
           <div>
-            <p className="text-[12px] font-bold text-[#0F1A2B]">创建后立即启用</p>
+            <p className="text-[12px] font-bold text-[var(--foreground)]">创建后立即启用</p>
             <p className="text-[11px] leading-5 text-[var(--muted)]">停用后不会继续被模型复用。</p>
           </div>
         </label>
@@ -319,7 +319,7 @@ export function ProviderConnectionPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-[14px] font-bold text-[#0F1A2B]">{connection.name}</p>
+                      <p className="text-[14px] font-bold text-[var(--foreground)]">{connection.name}</p>
                       <span
                         className={`rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${getProviderBadgeClassName(connection.provider)}`}
                       >
@@ -417,7 +417,7 @@ export function ProviderConnectionPanel({
                           type="button"
                           data-testid={`connection-discovered-model-${connection.id}-${item.id}`}
                           onClick={() => onUseDiscoveredModel(connection, item.id)}
-                          className="rounded-lg border border-white/50 bg-white/70 px-2.5 py-1.5 text-left text-[11px] font-medium text-[#0F1A2B] transition hover:border-[var(--accent)]/30 hover:bg-white"
+                          className="rounded-lg border border-white/50 bg-white/70 px-2.5 py-1.5 text-left text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--accent)]/30 hover:bg-white"
                         >
                           {item.label}
                         </button>

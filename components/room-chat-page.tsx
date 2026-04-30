@@ -702,26 +702,26 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
   /* ─── Render ─── */
 
   return (
-    <main className="ly-page-bg ly-page-chat ly-shell h-[calc(100dvh-0.75rem)] py-3 text-[#0F1A2B] sm:h-[calc(100dvh-1.25rem)] sm:py-4">
+    <main className="ly-page-bg ly-page-chat ly-shell h-[calc(100dvh-0.75rem)] py-3 text-[var(--foreground)] sm:h-[calc(100dvh-1.25rem)] sm:py-4">
       <div className="ly-glass flex h-full flex-col overflow-hidden rounded-[1.75rem] border-white/40 sm:rounded-[2rem]">
       {/* ─ Top toolbar ─ */}
-      <header className="h-16 shrink-0 z-40 border-b border-white/35 bg-white/35 px-4 backdrop-blur-2xl sm:px-6">
+      <header className="h-14 shrink-0 z-40 border-b border-white/35 bg-white/35 px-4 backdrop-blur-2xl sm:h-16 sm:px-6">
         <div className="ly-reading-wrap flex h-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/rooms" className="ly-icon-button shrink-0 rounded-xl bg-[#60A5FA]/10 text-[#2563EB] hover:bg-white/40" title="返回房间列表">
+            <Link href="/rooms" className="ly-icon-button shrink-0 rounded-xl bg-amber-100/55 text-[var(--accent)] hover:bg-white/60" title="返回房间列表">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </Link>
             <div className="min-w-0">
-              <h1 className="truncate text-[15px] font-extrabold tracking-tight text-[#2563EB] sm:text-[17px]">{room?.title ?? "加载中..."}</h1>
+              <h1 className="truncate text-[15px] font-extrabold tracking-tight text-[var(--accent)] sm:text-[17px]">{room?.title ?? "加载中..."}</h1>
               <p className="truncate text-[11px] font-medium text-stone-500 sm:text-[12px]">{statusText}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {isSending && (
               <div className="mr-2 hidden items-center gap-1 sm:flex">
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
               </div>
             )}
 
@@ -730,7 +730,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
               onClick={() => setShowSidePanel((current) => !current)}
               className={`hidden items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-bold transition lg:inline-flex ${
                 showSidePanel
-                  ? "border-[#2563EB]/40 bg-[#60A5FA]/12 text-[#2563EB]"
+                  ? "border-amber-300/55 bg-amber-100/55 text-[var(--accent)]"
                   : "border-white/40 bg-white/45 text-stone-600 hover:bg-white/60"
               }`}
             >
@@ -752,13 +752,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                  <>
                    <div className="fixed inset-0 z-40" onClick={(e) => { e.preventDefault(); setShowMoreMenu(false); }}></div>
                    <div className="ly-menu-panel absolute right-0 top-full z-50 mt-2 w-48 py-2 animate-chat-in">
-                      <button type="button" onClick={() => { setShowMoreMenu(false); setShowSidePanel(!showSidePanel); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] hover:bg-stone-50">
+                      <button type="button" onClick={() => { setShowMoreMenu(false); setShowSidePanel(!showSidePanel); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[var(--foreground)] hover:bg-stone-50">
                         <svg className="h-4 w-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" /></svg> 模型顺序
                       </button>
-                      <button type="button" onClick={() => { setShowMoreMenu(false); startTransition(() => void renameRoom()); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] hover:bg-stone-50">
+                      <button type="button" onClick={() => { setShowMoreMenu(false); startTransition(() => void renameRoom()); }} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[var(--foreground)] hover:bg-stone-50">
                         <svg className="h-4 w-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg> 重命名
                       </button>
-                      <Link href={`/rooms/${roomId}/edit`} onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[#0F1A2B] hover:bg-stone-50">
+                      <Link href={`/rooms/${roomId}/edit`} onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 px-4 py-2 text-[13px] font-bold text-[var(--foreground)] hover:bg-stone-50">
                          <svg className="h-4 w-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> 编辑房间
                       </Link>
                       <div className="my-1 border-t border-stone-100"></div>
@@ -796,8 +796,8 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
           
           {orderDirty && (
             <div className="absolute top-4 left-0 right-0 z-10 px-4 flex justify-center pointer-events-none">
-              <div className="ly-soft-card pointer-events-auto animate-chat-in flex items-center gap-3 border-[#60A5FA]/50 bg-white/80 px-4 py-2 shadow-sm">
-                <span className="text-[12px] font-bold text-[#2563EB]">模型顺序已修改，请保存后再发送</span>
+              <div className="ly-soft-card pointer-events-auto animate-chat-in flex items-center gap-3 border-amber-300/50 bg-white/80 px-4 py-2 shadow-sm">
+                <span className="text-[12px] font-bold text-[var(--accent)]">模型顺序已修改，请保存后再发送</span>
                 <button
                   type="button"
                   onClick={() => startTransition(() => void saveOrder())}
@@ -813,13 +813,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
           {/* Messages Scroll Area */}
           <div 
             ref={messageListRef}
-            className="flex-1 overflow-y-auto px-4 sm:px-8 pt-6 pb-4 space-y-8 scrollbar-thin scrollbar-thumb-stone-300"
+            className="flex-1 overflow-y-auto px-4 pb-4 pt-4 sm:px-8 sm:pt-5 space-y-6 scrollbar-thin scrollbar-thumb-stone-300"
             onScroll={(e) => {
               const target = e.target as HTMLDivElement;
               isNearBottomRef.current = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
             }}
           >
-            <div className="ly-reading-wrap space-y-10">
+            <div className="ly-chat-thread-wrap space-y-6">
                {roomModelAlerts.length > 0 && (
                  <div className="space-y-3">
                    {roomModelAlerts.map(({ modelName, insight }) => (
@@ -840,9 +840,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                {messages.length === 0 && !pendingUserContent && (
                  <div className="flex flex-col items-center justify-center py-24 text-center">
                    <div className="ly-surface-card mb-6 flex h-16 w-16 items-center justify-center rounded-3xl">
-                      <svg className="w-8 h-8 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                      <svg className="w-8 h-8 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                    </div>
-                   <h2 className="text-2xl font-extrabold text-[#0F1A2B] tracking-tight">开始多模型排演</h2>
+                   <h2 className="text-2xl font-extrabold text-[var(--foreground)] tracking-tight">开始多模型排演</h2>
                     <p className="mt-3 max-w-sm text-sm text-stone-500 leading-relaxed font-medium">
                       发送消息，当前可运行的 {runnableRoomModels.length} 个模型将依次分析并回复。
                       {coolingDownRoomModels.length > 0 ? ` 另有 ${coolingDownRoomModels.length} 个模型处于冷却中，会在后续轮次自动跳过。` : ""}
@@ -856,12 +856,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                {messages.map((message) => {
                   if (message.role === "USER") {
                      return (
-                       <article key={message.id} className="flex flex-col items-end gap-2 max-w-[85%] sm:max-w-2xl ml-auto animate-chat-in">
+                       <article key={message.id} className="ly-chat-message-user ml-auto flex flex-col items-end gap-2 animate-chat-in">
                          <div className="flex items-center gap-2 px-1">
                            <span className="text-[10px] text-stone-400 font-bold tracking-widest uppercase">{formatDate(message.createdAt)}</span>
-                           <span className="px-2.5 py-0.5 rounded-full bg-[#60A5FA]/20 text-[10px] font-extrabold text-[#2563EB] tracking-wider uppercase">用户</span>
+                           <span className="px-2.5 py-0.5 rounded-full bg-amber-100/70 text-[10px] font-extrabold text-[var(--accent)] tracking-wider uppercase">用户</span>
                          </div>
-                         <div className="bg-gradient-to-br from-[#2563EB] to-[#60A5FA] p-4 sm:p-5 rounded-3xl rounded-tr-md text-white shadow-xl shadow-[rgba(220,117,165,0.15)]">
+                         <div className="rounded-[1.35rem] rounded-tr-md bg-gradient-to-br from-[var(--accent)] to-[var(--accent-light)] p-4 text-white shadow-xl shadow-amber-700/15 sm:p-5">
                            <p className="whitespace-pre-wrap text-[14px] sm:text-[15px] leading-relaxed break-words">{message.content}</p>
                          </div>
                        </article>
@@ -912,9 +912,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                     : null;
 
                   return (
-                     <article key={message.id} className="flex flex-col items-start gap-2 max-w-[90%] sm:max-w-3xl animate-chat-in">
+                     <article key={message.id} className="ly-chat-message-ai flex flex-col items-start gap-2 animate-chat-in">
                         <div className="flex items-center gap-2 px-1">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-[#0F1A2B] tracking-wider uppercase flex items-center gap-1.5 shadow-sm border ${providerBadgeClassName}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-[var(--foreground)] tracking-wider uppercase flex items-center gap-1.5 shadow-sm border ${providerBadgeClassName}`}>
                             {provider && (
                               <span
                                 className="inline-flex items-center justify-center rounded px-1 text-[8px] font-bold"
@@ -939,7 +939,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             </span>
                           )}
                         </div>
-                        <div className={`rounded-3xl rounded-tl-md border p-4 text-[#0F1A2B] sm:p-6 ${providerSoftClassName} ${providerSurfaceClassName}`}>
+                        <div className={`w-full rounded-[1.35rem] rounded-tl-md border p-4 text-[var(--foreground)] sm:p-5 ${providerSoftClassName} ${providerSurfaceClassName}`}>
                           <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/50 pb-3">
                             <div className="flex items-center gap-2">
                               {provider && (
@@ -959,7 +959,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                 </span>
                               )}
                               <div className="min-w-0">
-                                <p className="truncate text-[12px] font-bold tracking-tight text-[#0F1A2B]">
+                                <p className="truncate text-[12px] font-bold tracking-tight text-[var(--foreground)]">
                                   {messageModel?.name ?? "AI 助手"}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium text-stone-500">
@@ -996,12 +996,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                {/* Pending User Msg */}
                {pendingUserContent && (
-                  <article className="flex flex-col items-end gap-2 max-w-[85%] sm:max-w-2xl ml-auto animate-chat-in opacity-80">
+                  <article className="ly-chat-message-user ml-auto flex flex-col items-end gap-2 animate-chat-in opacity-80">
                     <div className="flex items-center gap-2 px-1">
                       <span className="text-[10px] text-stone-400 font-bold tracking-widest uppercase">刚刚</span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#60A5FA]/20 text-[10px] font-extrabold text-[#2563EB] tracking-wider uppercase">用户</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100/70 text-[10px] font-extrabold text-[var(--accent)] tracking-wider uppercase">用户</span>
                     </div>
-                    <div className="bg-gradient-to-br from-[#2563EB] to-[#60A5FA] p-4 sm:p-5 rounded-3xl rounded-tr-md text-white shadow-xl shadow-[rgba(220,117,165,0.15)]">
+                    <div className="rounded-[1.35rem] rounded-tr-md bg-gradient-to-br from-[var(--accent)] to-[var(--accent-light)] p-4 text-white shadow-xl shadow-amber-700/15 sm:p-5">
                       <p className="whitespace-pre-wrap text-[14px] sm:text-[15px] leading-relaxed break-words">{pendingUserContent}</p>
                     </div>
                   </article>
@@ -1009,13 +1009,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                {/* Typing AI Msg */}
                 {isSending && (
-                  <article className="flex flex-col items-start gap-2 max-w-[90%] sm:max-w-3xl animate-chat-in">
+                  <article className="ly-chat-message-ai flex flex-col items-start gap-2 animate-chat-in">
                     <div className="flex items-center gap-2 px-1">
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase flex items-center gap-1.5 border ${
                           activeTimelineModel?.provider
                             ? getProviderBadgeClassName(activeTimelineModel.provider)
-                            : "border-[#60A5FA]/50 bg-[#60A5FA]/10 text-[#2563EB]"
+                            : "border-amber-300/50 bg-amber-100/60 text-[var(--accent)]"
                         }`}
                       >
                         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -1024,13 +1024,13 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                       <span className="text-[10px] text-stone-400 font-bold tracking-widest uppercase">处理中...</span>
                     </div>
                     <div
-                      className={`overflow-hidden rounded-3xl rounded-tl-md border p-6 backdrop-blur-md relative ${
+                      className={`relative w-full overflow-hidden rounded-[1.35rem] rounded-tl-md border p-5 backdrop-blur-md ${
                         activeTimelineModel?.provider
                           ? `${getProviderSoftClassName(activeTimelineModel.provider)} ${getProviderMessageSurfaceClassName(activeTimelineModel.provider)}`
-                          : "border-[#60A5FA]/50 bg-white/80 shadow-[0_8px_32px_rgba(220,117,165,0.08)]"
+                          : "border-amber-300/50 bg-white/80 shadow-[0_8px_32px_rgba(217,119,6,0.08)]"
                       }`}
                     >
-                      <div className="absolute top-0 left-0 h-1 w-full animate-pulse bg-gradient-to-r from-transparent via-[#2563EB] to-transparent"></div>
+                      <div className="absolute top-0 left-0 h-1 w-full animate-pulse bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent"></div>
                       <p className="text-[14px] sm:text-[15px] font-medium text-stone-500 animate-pulse italic">思考中，请稍候...</p>
                     </div>
                   </article>
@@ -1040,7 +1040,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
           {/* Chat Input Area */}
           <div className="px-4 sm:px-8 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 bg-gradient-to-t from-[rgba(249,245,252,0.92)] via-[rgba(249,245,252,0.82)] to-transparent z-20">
-             <div className="ly-reading-wrap">
+             <div className="ly-chat-thread-wrap">
                <div className="ly-chat-input rounded-3xl p-2.5 flex flex-col gap-2">
                 <div className="flex items-end gap-3 px-3 py-1">
                    <textarea
@@ -1054,7 +1054,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                      onKeyDown={handleComposerKeyDown}
                      placeholder="输入您的指令，回车发送..."
                      rows={1}
-                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] py-3 resize-none outline-none font-medium placeholder:text-stone-400 min-h-[48px] max-h-[160px] scrollbar-thin overflow-y-auto text-[#0F1A2B]"
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] py-3 resize-none outline-none font-medium placeholder:text-stone-400 min-h-[48px] max-h-[160px] scrollbar-thin overflow-y-auto text-[var(--foreground)]"
                      disabled={isBusy && !isSending}
                    />
                    <button
@@ -1073,7 +1073,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                 </div>
                </div>
              </div>
-              <p className="mt-4 text-center text-[10px] font-bold tracking-widest uppercase text-stone-400">Shift+Enter 换行 • 模型由人工智能驱动，可能存在不确切描述</p>
+              <p className="mt-2 text-center text-[10px] font-bold tracking-widest uppercase text-stone-400">Shift+Enter 换行 • 模型由人工智能驱动，可能存在不确切描述</p>
           </div>
         </section>
 
@@ -1085,12 +1085,12 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
              
               <aside
                 data-testid="room-execution-chain"
-                className="ly-glass absolute inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-white/45 shadow-2xl md:static md:z-10 md:shadow-none animate-slide-in"
+                className="ly-glass absolute inset-y-0 right-0 z-40 flex w-[19rem] flex-col border-l border-white/45 shadow-2xl md:static md:z-10 md:shadow-none xl:w-80 animate-slide-in"
               >
                 <div className="ly-soft-card m-4 mb-0 flex shrink-0 items-center justify-between p-4 sm:p-5">
                   <div className="min-w-0">
-                    <h2 className="font-extrabold text-[#0F1A2B] flex items-center gap-2 text-[14px] tracking-widest uppercase">
-                      <svg className="w-5 h-5 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    <h2 className="font-extrabold text-[var(--foreground)] flex items-center gap-2 text-[14px] tracking-widest uppercase">
+                      <svg className="w-5 h-5 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
                       当前执行模型
                     </h2>
                     {sidebarHeadline && (
@@ -1101,7 +1101,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             sidebarHeadline.tone === "failed"
                               ? "text-rose-500"
                               : sidebarHeadline.tone === "active"
-                                ? "text-[#2563EB]"
+                                ? "text-[var(--accent)]"
                                 : "text-stone-400"
                           }`}
                         >
@@ -1113,7 +1113,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             sidebarHeadline.tone === "failed"
                               ? "text-rose-700"
                               : sidebarHeadline.tone === "active"
-                                ? "text-[#0F1A2B]"
+                                ? "text-[var(--foreground)]"
                                 : "text-stone-600"
                           }`}
                         >
@@ -1129,9 +1129,9 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
 
                 <div className="flex-1 overflow-y-auto scrollbar-thin bg-transparent p-5">
                   {orderDirty && (
-                    <div className="ly-soft-card mb-6 border-[#60A5FA]/50 bg-white/60 px-4 py-3 shadow-[0_4px_12px_rgba(220,117,165,0.06)]">
-                      <span className="text-[13px] font-extrabold text-[#2563EB] block mb-1">等待保存新顺序</span>
-                      <p className="text-[11px] text-[#2563EB]/80 font-medium">保存后，新顺序将在下一轮对话中生效。</p>
+                    <div className="ly-soft-card mb-6 border-amber-300/50 bg-white/60 px-4 py-3 shadow-[0_4px_12px_rgba(217,119,6,0.06)]">
+                      <span className="text-[13px] font-extrabold text-[var(--accent)] block mb-1">等待保存新顺序</span>
+                      <p className="text-[11px] font-medium text-[var(--accent)] opacity-80">保存后，新顺序将在下一轮对话中生效。</p>
                       <button
                         type="button"
                         onClick={() => startTransition(() => void saveOrder())}
@@ -1211,7 +1211,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                                   : failedDuringCurrentRound || failedThisRound || hasPersistentFailure
                                     ? "bg-red-100 text-red-700"
                                   : isDone || wasRepliedLastRound
-                                    ? "bg-[#60A5FA]/20 text-[#2563EB]"
+                                    ? "bg-amber-100/70 text-[var(--accent)]"
                                   : "bg-stone-100 text-stone-500";
                       const statusLabel = isCurrent
                         ? "正在思考"
@@ -1286,7 +1286,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                           
                           <div className={`relative p-4 rounded-2xl border transition-all duration-300 ${
                             dragOverModelId === roomModel.modelId && draggedModelId !== roomModel.modelId
-                              ? "border-[#2563EB] bg-white/50 scale-[1.02]"
+                              ? "border-[var(--accent)] bg-white/50 scale-[1.02]"
                               : isCurrent 
                               ? `${providerSoftClassName} ${providerSurfaceClassName} ring-1 ring-white/40`
                               : showFailureOverlay
@@ -1299,7 +1299,7 @@ export function RoomChatPage({ roomId }: RoomChatPageProps) {
                             )}
                             <div className="relative">
                             <div className="flex items-start justify-between mb-2">
-                               <h4 className="text-[12px] font-extrabold uppercase tracking-tighter text-[#0F1A2B]">
+                               <h4 className="text-[12px] font-extrabold uppercase tracking-tighter text-[var(--foreground)]">
                                   {index + 1}. {roomModel.model.name}
                                </h4>
                                <span
