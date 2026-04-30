@@ -75,6 +75,7 @@ export function AppNavigation() {
                 height={36}
                 className="h-8 w-8 object-contain"
                 priority
+                unoptimized
               />
             </span>
             <span className="hidden text-[15px] font-display font-bold tracking-tight text-[var(--foreground)] sm:block">
