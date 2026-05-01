@@ -146,6 +146,13 @@ export function isUnprotectedAccessAllowedInProduction(
   return parseBooleanEnv(explicitValue) ?? false;
 }
 
+export type AppAuthScope = "all" | "chat";
+
+export function getAppAuthScope(explicitValue = process.env.APP_AUTH_SCOPE): AppAuthScope {
+  const normalized = explicitValue?.trim().toLowerCase();
+  return normalized === "chat" ? "chat" : "all";
+}
+
 export function areDevMocksEnabledForClient(
   nodeEnv = process.env.NODE_ENV,
   explicitValue = process.env.NEXT_PUBLIC_ENABLE_DEV_MOCKS,

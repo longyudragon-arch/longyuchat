@@ -4,6 +4,7 @@ import {
   areApiRateLimitsEnabled,
   areDevMocksEnabledForClient,
   areDevMocksEnabledForServer,
+  getAppAuthScope,
   getAppLogDir,
   getApiRateLimitMaxMessagePosts,
   getApiRateLimitMaxLoginAttempts,
@@ -106,6 +107,16 @@ describe("production access escape hatch", () => {
   it("stays disabled by default and accepts explicit opt-in", () => {
     expect(isUnprotectedAccessAllowedInProduction(undefined)).toBe(false);
     expect(isUnprotectedAccessAllowedInProduction("true")).toBe(true);
+  });
+});
+
+describe("app auth scope runtime helper", () => {
+  it("defaults to whole-site protection and accepts chat-only protection", () => {
+    expect(getAppAuthScope(undefined)).toBe("all");
+    expect(getAppAuthScope("all")).toBe("all");
+    expect(getAppAuthScope("chat")).toBe("chat");
+    expect(getAppAuthScope("CHAT")).toBe("chat");
+    expect(getAppAuthScope("invalid")).toBe("all");
   });
 });
 

@@ -1,251 +1,224 @@
-# 部署说明
+# LongyuChat 部署手册
 
-## 1. 当前推荐部署形态
+本文是本项目的权威部署 runbook。后续线程如果需要部署、排障或切换分支，优先看这份文档，不要猜目录、用户或服务名。
 
-本项目当前最适合下面两种部署方式：
+## 1. 统一约定
 
-- 个人低并发使用：`Node.js 20 LTS + Next.js + SQLite + Nginx + PM2/systemd`
-- 计划长期稳定运行：`Node.js 20 LTS + Next.js + PostgreSQL + Nginx + PM2/systemd`
+所有示例默认使用下面这套服务器布局：
 
-如果你只是自己使用、访问量很低，第一阶段可以继续使用 SQLite。
+- 应用用户：`longyuchat`
+- 应用根目录：`/srv/longyuchat`
+- 代码目录：`/srv/longyuchat/app`
+- SQLite 数据目录：`/srv/longyuchat/data`
+- 日志目录：`/srv/longyuchat/var/log`
+- SQLite 备份目录：`/srv/longyuchat/backups/sqlite`
+- systemd 服务名：`longyuchat`
+- Node 监听地址：`127.0.0.1:3000`
+- Nginx 对公网提供 HTTPS，再反代到 `127.0.0.1:3000`
 
-## 2. 上线前必须完成的设置
+如果你的服务器不是这个布局，部署命令里的 `APP_DIR`、`APP_USER`、`SERVICE_NAME` 和 systemd 文件必须同步改成真实值。
 
-### 2.1 环境变量
+## 2. 当前推荐访问策略
 
-复制 `.env.example` 到服务器环境变量或 `.env.production`，至少配置：
+公网部署推荐：
 
-```bash
-DATABASE_URL="file:/srv/longyuchat/data/app.db"
-ENABLE_DEV_MOCKS="false"
-NEXT_PUBLIC_ENABLE_DEV_MOCKS="false"
-BASIC_AUTH_ENABLED="true"
-BASIC_AUTH_USERNAME="your-admin-user"
-BASIC_AUTH_PASSWORD="replace-with-a-long-random-password"
-HEALTHCHECK_BEARER_TOKEN="replace-with-a-random-health-token"
-MODEL_SECRET_ENCRYPTION_KEY="replace-with-openssl-rand-base64-32"
-ENABLE_API_RATE_LIMITS="true"
-API_RATE_LIMIT_WINDOW_SECONDS="60"
-API_RATE_LIMIT_MAX_MESSAGE_POSTS="12"
-API_RATE_LIMIT_MAX_MODEL_TESTS="10"
-API_RATE_LIMIT_MAX_MODEL_DISCOVERY="20"
-ENABLE_FILE_LOGGING="true"
-APP_LOG_DIR="/srv/longyuchat/var/log"
-SQLITE_BACKUP_DIR="/srv/longyuchat/backups/sqlite"
-SQLITE_BACKUP_RETENTION_DAYS="7"
-ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION="false"
-APP_LISTEN_HOST="127.0.0.1"
-AI_DAILY_ENABLED="true"
-AI_DAILY_MODEL_ID=""
-AI_DAILY_AUTOMATION_TOKEN="replace-with-a-random-daily-token"
-AI_DAILY_CANDIDATE_LIMIT="12"
-AI_DAILY_PUBLISH_ITEM_LIMIT="6"
-AI_DAILY_MINIMUM_ITEM_COUNT="3"
-AI_DAILY_HEURISTIC_SCORE_THRESHOLD="4.5"
-AI_DAILY_PUBLISH_WINDOW_HOURS="24"
-AI_DAILY_FEED_BASE_URL="https://your-domain.com"
-AI_DAILY_TIMEZONE="Asia/Shanghai"
+- 首页、AI 日报、归档、简历、项目页公开访问
+- AI 聊天室、模型管理、后台管理接口需要站内登录
+- 不使用浏览器 Basic Auth 弹窗
+
+对应环境变量：
+
+```env
+APP_LOGIN_ENABLED=true
+APP_LOGIN_USERNAME=your-admin-user
+APP_LOGIN_PASSWORD=replace-with-a-long-random-password
+APP_LOGIN_SESSION_SECRET=replace-with-openssl-rand-base64-32
+APP_AUTH_SCOPE=chat
+BASIC_AUTH_ENABLED=false
+ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION=false
 ```
 
-说明：
+`APP_AUTH_SCOPE` 可选值：
 
-- 生产环境建议把 SQLite 文件放到项目目录之外的持久化目录
-- `ENABLE_DEV_MOCKS` 和 `NEXT_PUBLIC_ENABLE_DEV_MOCKS` 在服务器上都应设为 `false`
-- `BASIC_AUTH_ENABLED` 建议在公网服务器上设为 `true`
-- `BASIC_AUTH_PASSWORD` 和 `HEALTHCHECK_BEARER_TOKEN` 请使用高强度随机值
-- `MODEL_SECRET_ENCRYPTION_KEY` 建议使用 `openssl rand -base64 32` 生成
-- `ENABLE_API_RATE_LIMITS` 建议在公网服务器上保持为 `true`
-- 如需更保守地控制 token 消耗，可以下调 3 个 `API_RATE_LIMIT_MAX_*` 上限
-- `ENABLE_FILE_LOGGING` 建议在公网服务器上保持为 `true`
-- `APP_LOG_DIR` 建议放到项目目录之外或独立的持久化目录
-- 使用 SQLite 时，建议显式配置 `SQLITE_BACKUP_DIR`
-- `ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION` 仅在你已经通过其他网关做了访问保护时才建议设为 `true`
-- `APP_LISTEN_HOST` 建议在使用 Nginx 反代时保持为 `127.0.0.1`
-- `AI_DAILY_FEED_BASE_URL` 应指向你的站点对外域名，RSS 会据此生成条目链接
-- `AI_DAILY_AUTOMATION_TOKEN` 建议设置为长随机值，用于 cron/脚本安全触发日报扫描和发布
-- 如果不设置 `AI_DAILY_MODEL_ID`，日报会回退到当前第一个已启用模型
+- `chat`：只保护聊天室、模型管理、后台和会消耗模型 API 的接口
+- `all`：保护整站
 
-### 2.2 数据库
+`APP_AUTH_SCOPE=chat` 时：
 
-当前项目默认使用 SQLite。
+- 公开页面：`/`、`/daily`、`/daily/*`、`/about`、`/projects`
+- 需要登录页面：`/rooms`、`/rooms/*`、`/models`、`/admin/*`
+- 需要登录 API：`/api/rooms/*`、`/api/models/*`、`/api/provider-catalog`、`/api/provider-connections/*`、`/api/providers/*`、`/api/daily/admin/*`
 
-上线时请至少做到：
+## 3. 首次部署
 
-- 使用固定绝对路径保存数据库文件
-- 给数据库目录单独做读写权限
-- 定期备份数据库文件
+### 3.1 安装系统依赖
 
-如果后面要支持更高并发或多人访问，建议迁移到 PostgreSQL。
-
-### 2.3 模型 API Key 加密
-
-项目现在支持把模型 `API Key` 加密后再存入数据库。
-
-规则：
-
-- 当 `MODEL_SECRET_ENCRYPTION_KEY` 已配置时，新创建和新更新的模型密钥会自动加密存储
-- 旧的明文密钥仍然能兼容读取，避免现有数据立刻失效
-- 生产环境如果没有配置 `MODEL_SECRET_ENCRYPTION_KEY`，将不能新增或更新模型密钥
-
-建议：
-
-- 在正式服务器上始终配置 `MODEL_SECRET_ENCRYPTION_KEY`
-- 不要随意轮换该值，除非你已经准备好重新加密现有数据
-
-### 2.4 网络入口
-
-建议用 Nginx 做反向代理，并强制 HTTPS。
-
-至少要有：
-
-- TLS 证书
-- 反向代理到 `127.0.0.1:3000`
-- 请求体大小限制
-- 基础访问控制
-
-### 2.5 最小访问保护
-
-项目已经内置 Basic Auth 中间件。
-
-当以下变量配置完成后：
-
-- `BASIC_AUTH_ENABLED=true`
-- `BASIC_AUTH_USERNAME`
-- `BASIC_AUTH_PASSWORD`
-
-页面和 API 默认都会要求 Basic Auth。
-
-说明：
-
-- `/_next/*`、`favicon.ico` 这类静态资源不会被拦
-- `/api/health` 默认也受保护
-- 如果额外配置了 `HEALTHCHECK_BEARER_TOKEN`，则 `/api/health` 也支持 `Authorization: Bearer <token>`
-
-### 2.6 生产启动自检
-
-项目现在会在 `NODE_ENV=production` 启动时自动检查以下配置：
-
-- `DATABASE_URL`
-- `ENABLE_DEV_MOCKS=false`
-- `NEXT_PUBLIC_ENABLE_DEV_MOCKS=false`
-- `MODEL_SECRET_ENCRYPTION_KEY`
-- `ENABLE_API_RATE_LIMITS=true`
-- `ENABLE_FILE_LOGGING=true`
-- `APP_LOG_DIR`
-- `SQLITE_BACKUP_DIR`（当 `DATABASE_URL` 使用 SQLite 时）
-- Basic Auth 已启用，或你显式设置了 `ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION=true`
-
-如果这些关键项缺失，应用会在启动阶段直接失败，而不是等到上线后再暴露问题。
-
-## 3. 生产构建与启动
-
-### 3.1 安装依赖
+Ubuntu 示例：
 
 ```bash
+sudo apt update
+sudo apt install -y git curl nginx
+```
+
+Node.js 推荐使用 Node 20 LTS。若服务器还没有 Node，请先安装 Node 20，再确认：
+
+```bash
+node -v
+npm -v
+```
+
+### 3.2 创建应用用户和目录
+
+```bash
+sudo mkdir -p /srv/longyuchat
+sudo useradd --system --create-home --home-dir /srv/longyuchat --shell /bin/bash longyuchat || true
+sudo mkdir -p /srv/longyuchat/data /srv/longyuchat/var/log /srv/longyuchat/backups/sqlite
+sudo chown -R longyuchat:longyuchat /srv/longyuchat
+```
+
+如果你之前遇到 `sudo: unknown user longyuchat`，说明这一步没有执行或服务器用了别的用户。
+
+### 3.3 克隆代码
+
+部署指定分支：
+
+```bash
+sudo -u longyuchat bash -lc '
+cd /srv/longyuchat
+git clone --branch codex/huashu-frontend-deep-optimization git@github.com:longyudragon-arch/longyuchat.git app
+'
+```
+
+如果服务器不能用 SSH 拉 GitHub，也可以改 HTTPS：
+
+```bash
+sudo -u longyuchat bash -lc '
+cd /srv/longyuchat
+git clone --branch codex/huashu-frontend-deep-optimization https://github.com/longyudragon-arch/longyuchat.git app
+'
+```
+
+### 3.4 写入生产环境变量
+
+生成两个随机值：
+
+```bash
+openssl rand -base64 32
+openssl rand -base64 32
+```
+
+编辑环境文件：
+
+```bash
+sudo -u longyuchat nano /srv/longyuchat/app/.env
+```
+
+最小生产模板：
+
+```env
+NODE_ENV=production
+PORT=3000
+DATABASE_URL=file:/srv/longyuchat/data/app.db
+
+ENABLE_DEV_MOCKS=false
+NEXT_PUBLIC_ENABLE_DEV_MOCKS=false
+
+APP_LOGIN_ENABLED=true
+APP_LOGIN_USERNAME=your-admin-user
+APP_LOGIN_PASSWORD=replace-with-a-long-random-password
+APP_LOGIN_SESSION_SECRET=replace-with-openssl-rand-base64-32
+APP_AUTH_SCOPE=chat
+BASIC_AUTH_ENABLED=false
+ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION=false
+
+HEALTHCHECK_BEARER_TOKEN=replace-with-a-random-health-token
+MODEL_SECRET_ENCRYPTION_KEY=replace-with-openssl-rand-base64-32
+
+ENABLE_API_RATE_LIMITS=true
+API_RATE_LIMIT_WINDOW_SECONDS=60
+API_RATE_LIMIT_MAX_LOGIN_ATTEMPTS=5
+API_RATE_LIMIT_MAX_MESSAGE_POSTS=12
+API_RATE_LIMIT_MAX_MODEL_TESTS=10
+API_RATE_LIMIT_MAX_MODEL_DISCOVERY=20
+
+ENABLE_FILE_LOGGING=true
+APP_LOG_DIR=/srv/longyuchat/var/log
+SQLITE_BACKUP_DIR=/srv/longyuchat/backups/sqlite
+SQLITE_BACKUP_RETENTION_DAYS=7
+APP_LISTEN_HOST=127.0.0.1
+
+AI_DAILY_ENABLED=true
+AI_DAILY_MODEL_ID=
+AI_DAILY_AUTOMATION_TOKEN=replace-with-a-random-daily-token
+AI_DAILY_CANDIDATE_LIMIT=12
+AI_DAILY_PUBLISH_ITEM_LIMIT=6
+AI_DAILY_MINIMUM_ITEM_COUNT=3
+AI_DAILY_HEURISTIC_SCORE_THRESHOLD=4.5
+AI_DAILY_PUBLISH_WINDOW_HOURS=24
+AI_DAILY_FEED_BASE_URL=https://your-domain.com
+AI_DAILY_TIMEZONE=Asia/Shanghai
+```
+
+注意：
+
+- `APP_LOGIN_SESSION_SECRET` 和 `MODEL_SECRET_ENCRYPTION_KEY` 都要用长随机值
+- `MODEL_SECRET_ENCRYPTION_KEY` 设置后不要随意换，否则已有加密 API Key 无法解密
+- `AI_DAILY_FEED_BASE_URL` 要改成真实域名，否则 RSS 链接会不正确
+
+### 3.5 安装依赖、迁移和构建
+
+```bash
+sudo -u longyuchat bash -lc '
+cd /srv/longyuchat/app
 npm ci
-```
-
-项目已经在 `postinstall` 中自动执行 Prisma Client 生成。
-
-### 3.2 执行数据库迁移
-
-```bash
 npm run prisma:migrate:deploy
-```
-
-### 3.3 构建
-
-```bash
 npm run build
+'
 ```
 
-### 3.4 启动
+### 3.6 创建 systemd 服务
 
 ```bash
-npm run start:prod
-```
-
-默认监听 `127.0.0.1`，可配合 `PORT` 与 `APP_LISTEN_HOST` 环境变量使用。
-
-如果你使用 Nginx 或其他反向代理，建议通过 `APP_LISTEN_HOST=127.0.0.1` 只监听本机回环地址。
-
-如果你明确需要让 Node 进程直接对公网提供服务，则显式设置：
-
-```bash
-APP_LISTEN_HOST=0.0.0.0
-```
-
-### 3.5 SQLite 手动备份
-
-如果当前部署仍然使用 SQLite，可以随时执行：
-
-```bash
-npm run sqlite:backup
-```
-
-该命令会：
-
-- 把当前 SQLite 数据库复制到 `SQLITE_BACKUP_DIR`
-- 同时复制存在的 `-wal` / `-shm` 文件
-- 按 `SQLITE_BACKUP_RETENTION_DAYS` 清理过旧备份
-
-## 4. 建议的 systemd 配置
-
-下面是一个基础示例：
-
-```ini
+sudo tee /etc/systemd/system/longyuchat.service >/dev/null <<'EOF'
 [Unit]
 Description=LongyuChat
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/srv/longyuchat
-Environment=NODE_ENV=production
-Environment=PORT=3000
-Environment=DATABASE_URL=file:/srv/longyuchat/data/app.db
-Environment=ENABLE_DEV_MOCKS=false
-Environment=NEXT_PUBLIC_ENABLE_DEV_MOCKS=false
-Environment=BASIC_AUTH_ENABLED=true
-Environment=BASIC_AUTH_USERNAME=your-admin-user
-Environment=BASIC_AUTH_PASSWORD=replace-with-a-long-random-password
-Environment=HEALTHCHECK_BEARER_TOKEN=replace-with-a-random-health-token
-Environment=MODEL_SECRET_ENCRYPTION_KEY=replace-with-openssl-rand-base64-32
-Environment=ENABLE_API_RATE_LIMITS=true
-Environment=API_RATE_LIMIT_WINDOW_SECONDS=60
-Environment=API_RATE_LIMIT_MAX_MESSAGE_POSTS=12
-Environment=API_RATE_LIMIT_MAX_MODEL_TESTS=10
-Environment=API_RATE_LIMIT_MAX_MODEL_DISCOVERY=20
-Environment=ENABLE_FILE_LOGGING=true
-Environment=APP_LOG_DIR=/srv/longyuchat/var/log
-Environment=SQLITE_BACKUP_DIR=/srv/longyuchat/backups/sqlite
-Environment=SQLITE_BACKUP_RETENTION_DAYS=7
-Environment=APP_LISTEN_HOST=127.0.0.1
+WorkingDirectory=/srv/longyuchat/app
+EnvironmentFile=/srv/longyuchat/app/.env
 ExecStart=/usr/bin/npm run start:prod
 Restart=always
 RestartSec=5
-User=www-data
-Group=www-data
+User=longyuchat
+Group=longyuchat
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable longyuchat
+sudo systemctl restart longyuchat
+sudo systemctl --no-pager --full status longyuchat
 ```
 
-## 5. Nginx 反向代理示例
+如果服务启动失败，先看日志：
 
-```nginx
+```bash
+sudo journalctl -u longyuchat -n 120 --no-pager
+```
+
+### 3.7 配置 Nginx
+
+创建站点配置：
+
+```bash
+sudo tee /etc/nginx/sites-available/longyuchat >/dev/null <<'EOF'
 server {
     listen 80;
     server_name your-domain.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate /etc/letsencrypt/live/your-domain/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
 
     client_max_body_size 10m;
 
@@ -256,131 +229,222 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
     }
 }
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/longyuchat /etc/nginx/sites-enabled/longyuchat
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-## 6. 健康检查
+HTTPS 证书可以用 Certbot 或云厂商证书。启用 HTTPS 后，保留反代到 `127.0.0.1:3000` 即可。
 
-项目已提供：
-
-- `GET /api/health`
-
-成功时返回：
-
-- `status`
-- `timestamp`
-- `environment`
-- `database`
-- `devMocksEnabled`
-- `apiRateLimitsEnabled`
-- `fileLoggingEnabled`
-- `logDirectory`
-- `sqliteBackupConfigured`
-- `sqliteBackupDirectory`
-- `modelSecretEncryptionConfigured`
-- `productionReadiness`
-
-每个 API 响应头还会带上：
-
-- `X-Request-Id`
-
-如果数据库不可用，会返回 `503`。
-
-示例：
+### 3.8 首次部署验证
 
 ```bash
-curl -u your-admin-user:your-password https://your-domain.com/api/health
+sudo systemctl --no-pager --full status longyuchat
+curl -fsS -H "Authorization: Bearer $(sudo grep '^HEALTHCHECK_BEARER_TOKEN=' /srv/longyuchat/app/.env | cut -d= -f2-)" http://127.0.0.1:3000/api/health
+curl -I http://127.0.0.1:3000/
 ```
 
-或者：
+浏览器检查：
+
+- `https://your-domain.com/` 应公开访问
+- `https://your-domain.com/daily` 应公开访问
+- `https://your-domain.com/rooms` 应跳到站内 `/login`
+- 不应出现浏览器 Basic Auth 弹窗
+
+## 4. 更新已有部署
+
+### 4.1 更新当前分支
+
+如果服务器已经部署好，并且当前 checkout 的就是目标分支：
 
 ```bash
-curl -H "Authorization: Bearer your-health-token" https://your-domain.com/api/health
+sudo BRANCH_NAME="$(sudo -u longyuchat bash -lc 'cd /srv/longyuchat/app && git branch --show-current')" \
+  APP_DIR="/srv/longyuchat/app" \
+  APP_USER="longyuchat" \
+  SERVICE_NAME="longyuchat" \
+  BACKUP_BEFORE_UPDATE="true" \
+  bash /srv/longyuchat/app/scripts/update-prod.sh
 ```
 
-说明：
+### 4.2 部署指定分支
 
-- 线上报错时，可以先从响应头里的 `X-Request-Id` 找到对应服务端日志
-- 服务端错误日志会自动脱敏常见的 `apiKey` 和 `Authorization: Bearer ...` 内容
-- 当 `ENABLE_FILE_LOGGING=true` 时，错误和启动日志会按天写入 `APP_LOG_DIR`
+部署 `codex/huashu-frontend-deep-optimization`：
 
-## 6.1 最小请求限流
+```bash
+sudo -u longyuchat bash -lc '
+cd /srv/longyuchat/app
+git fetch origin codex/huashu-frontend-deep-optimization
+git checkout -B codex/huashu-frontend-deep-optimization origin/codex/huashu-frontend-deep-optimization
+'
 
-项目现在已经内置了面向单服务器部署的固定窗口限流，用于保护 3 类最容易消耗额度或被误触发的 POST 接口：
+sudo BRANCH_NAME="codex/huashu-frontend-deep-optimization" \
+  APP_DIR="/srv/longyuchat/app" \
+  APP_USER="longyuchat" \
+  SERVICE_NAME="longyuchat" \
+  BACKUP_BEFORE_UPDATE="true" \
+  bash /srv/longyuchat/app/scripts/update-prod.sh
+```
 
-- `POST /api/rooms/:id/messages`
-- `POST /api/models/:id/test`
-- `POST /api/providers/discover-models`
+`scripts/update-prod.sh` 会自动执行：
 
-当前策略：
+- SQLite 备份
+- `git fetch`
+- `git checkout`
+- `git pull --ff-only`
+- `npm ci`
+- `npm run prisma:migrate:deploy`
+- `npm run build`
+- `systemctl restart longyuchat`
+- `/api/health` 健康检查
 
-- 生产环境默认开启，开发环境默认关闭
-- 优先按 `Basic Auth` 用户名限流；如果没有认证用户名，则回退到请求 IP
-- 触发上限时会返回 `429 Too Many Requests`
-- 返回体会带上 `retryAfterSeconds`、`limit` 和 `windowSeconds`
+## 5. 日常运维命令
 
-说明：
+查看服务：
 
-- 这是最小可用的单进程限流，适合你当前单机部署的场景
-- 如果后面改成多进程或多实例部署，建议再切换到 Redis 一类的共享限流存储
+```bash
+sudo systemctl --no-pager --full status longyuchat
+```
 
-## 7. 当前仍建议优先优化的点
+查看实时日志：
 
-以下能力还没有完全产品化，部署到公网前建议继续补：
+```bash
+sudo journalctl -u longyuchat -f
+```
 
-- 访问控制或登录鉴权
-- 多实例部署时的 Redis 限流或更细的配额策略
-- 外部监控告警和日志采集
-- SQLite 备份定时调度（例如 cron / systemd timer）
+手动备份 SQLite：
 
-## 7.2 建议的 AI 日报定时任务
+```bash
+sudo -u longyuchat bash -lc 'cd /srv/longyuchat/app && npm run sqlite:backup'
+```
 
-如果你已经在后台导入了默认来源，建议为 AI 日报增加 2 个 cron：
+安装 SQLite 自动备份：
+
+```bash
+cd /srv/longyuchat/app
+sudo APP_USER=longyuchat APP_LOG_DIR=/srv/longyuchat/var/log bash scripts/install-sqlite-backup-cron.sh
+```
+
+安装日志轮转：
+
+```bash
+cd /srv/longyuchat/app
+sudo APP_USER=longyuchat APP_GROUP=longyuchat APP_LOG_DIR=/srv/longyuchat/var/log bash scripts/install-logrotate.sh
+```
+
+## 6. AI 日报定时任务
+
+如果已经配置好 `AI_DAILY_AUTOMATION_TOKEN`、至少一个可用模型和日报来源，添加 cron：
+
+```bash
+sudo crontab -u longyuchat -e
+```
+
+写入：
 
 ```cron
 0 */2 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:scan >> /srv/longyuchat/var/log/daily-scan.log 2>&1
 0 8 * * * cd /srv/longyuchat/app && /usr/bin/npm run daily:publish >> /srv/longyuchat/var/log/daily-publish.log 2>&1
 ```
 
-说明：
+## 7. 常见故障
 
-- `daily:scan` 负责抓取、去重和聚类
-- `daily:publish` 负责生成并发布当天日报
-- 这两个脚本会通过本地 HTTP API 触发，需要本地服务已运行
-- 如果配置了 `AI_DAILY_AUTOMATION_TOKEN`，脚本会自动附带 Bearer Token
+### 7.1 unknown user longyuchat
 
-## 7.1 建议的 SQLite 备份定时任务
+原因：服务器没有创建应用用户。
 
-可以在服务器上每天定时执行：
+修复：
 
 ```bash
-cd /srv/longyuchat && /usr/bin/npm run sqlite:backup
+sudo useradd --system --create-home --home-dir /srv/longyuchat --shell /bin/bash longyuchat || true
+sudo chown -R longyuchat:longyuchat /srv/longyuchat
 ```
 
-例如 `cron`：
+### 7.2 update-prod.sh 不存在
 
-```cron
-15 3 * * * cd /srv/longyuchat && /usr/bin/npm run sqlite:backup >> /srv/longyuchat/var/log/sqlite-backup.log 2>&1
+原因：项目没有克隆到 `/srv/longyuchat/app`，或服务器实际目录不同。
+
+排查：
+
+```bash
+sudo find /srv /home -maxdepth 5 -type d -name .git 2>/dev/null | sed 's#/.git##'
+```
+
+如果这是首次部署，回到 `3.3 克隆代码`。
+
+### 7.3 生产启动自检失败
+
+看日志：
+
+```bash
+sudo journalctl -u longyuchat -n 120 --no-pager
+```
+
+常见原因：
+
+- `DATABASE_URL` 未配置
+- `ENABLE_DEV_MOCKS` 或 `NEXT_PUBLIC_ENABLE_DEV_MOCKS` 不是 `false`
+- 没有配置 `APP_LOGIN_*` 且没有显式允许无保护访问
+- `MODEL_SECRET_ENCRYPTION_KEY` 缺失
+- SQLite 里仍有明文 API Key，需要先重新保存模型密钥让系统加密
+
+### 7.4 仍然出现浏览器账号密码弹窗
+
+检查 `.env`：
+
+```bash
+sudo grep -E '^(APP_LOGIN|APP_AUTH_SCOPE|BASIC_AUTH)' /srv/longyuchat/app/.env
+```
+
+应为：
+
+```env
+APP_LOGIN_ENABLED=true
+APP_AUTH_SCOPE=chat
+BASIC_AUTH_ENABLED=false
+```
+
+改完后：
+
+```bash
+sudo systemctl restart longyuchat
+```
+
+### 7.5 健康检查 401
+
+如果 `/api/health` 受登录保护，使用 Bearer token：
+
+```bash
+curl -fsS -H "Authorization: Bearer your-health-token" http://127.0.0.1:3000/api/health
+```
+
+确保 `.env` 里有：
+
+```env
+HEALTHCHECK_BEARER_TOKEN=your-health-token
 ```
 
 ## 8. 上线检查清单
 
-- `.env.production` 已配置且没有真实密钥提交到仓库
+- `/srv/longyuchat/app` 是真实代码目录
+- `longyuchat` 用户存在
+- `/srv/longyuchat/app/.env` 已配置且没有提交到 Git
 - `ENABLE_DEV_MOCKS=false`
 - `NEXT_PUBLIC_ENABLE_DEV_MOCKS=false`
-- `BASIC_AUTH_ENABLED=true`
-- `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` 已配置
-- `MODEL_SECRET_ENCRYPTION_KEY` 已配置
+- `APP_LOGIN_ENABLED=true`
+- `APP_AUTH_SCOPE=chat` 或 `APP_AUTH_SCOPE=all`
+- `BASIC_AUTH_ENABLED=false`，除非明确要浏览器 Basic Auth
+- `MODEL_SECRET_ENCRYPTION_KEY` 已配置且不会随意轮换
 - `ENABLE_API_RATE_LIMITS=true`
 - `ENABLE_FILE_LOGGING=true`
-- `APP_LOG_DIR` 已配置
-- `SQLITE_BACKUP_DIR` 已配置（SQLite 部署）
+- `APP_LOG_DIR=/srv/longyuchat/var/log`
+- `SQLITE_BACKUP_DIR=/srv/longyuchat/backups/sqlite`
 - `npm run prisma:migrate:deploy` 已执行
 - `npm run build` 通过
-- `npm run sqlite:backup` 已验证可执行（SQLite 部署）
-- `GET /api/health` 返回 `200`
-- Nginx HTTPS 已生效
-- 服务器目录和数据库文件权限已收紧
+- `systemctl status longyuchat` 正常
+- `/api/health` 返回 200
+- Nginx `nginx -t` 通过

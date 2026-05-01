@@ -1,5 +1,16 @@
 # 服务器访问与更新说明
 
+## 统一部署约定
+
+本项目服务器部署以 [deployment.md](./deployment.md) 为准。常用路径固定为：
+
+- 代码目录：`/srv/longyuchat/app`
+- 应用用户：`longyuchat`
+- systemd 服务：`longyuchat`
+- 环境文件：`/srv/longyuchat/app/.env`
+
+如果服务器上没有 `longyuchat` 用户或 `/srv/longyuchat/app` 目录，说明还没有按首次部署流程初始化，不要直接跑更新脚本。
+
 ## 四条常用命令分别做什么
 
 ### 1. 查看服务状态
@@ -61,25 +72,41 @@ sudo -u longyuchat -H bash -lc 'cd /srv/longyuchat/app && npm run sqlite:backup'
 直接执行：
 
 ```bash
-cd /srv/longyuchat/app
-sudo bash scripts/update-prod.sh
+sudo BRANCH_NAME="$(sudo -u longyuchat bash -lc 'cd /srv/longyuchat/app && git branch --show-current')" \
+  APP_DIR="/srv/longyuchat/app" \
+  APP_USER="longyuchat" \
+  SERVICE_NAME="longyuchat" \
+  BACKUP_BEFORE_UPDATE="true" \
+  bash /srv/longyuchat/app/scripts/update-prod.sh
 ```
 
-或者如果你已经把全局命令装好了，也可以执行：
+部署指定分支，例如 `codex/huashu-frontend-deep-optimization`：
 
 ```bash
-sudo /usr/local/bin/longyuchat-update
+sudo -u longyuchat bash -lc '
+cd /srv/longyuchat/app
+git fetch origin codex/huashu-frontend-deep-optimization
+git checkout -B codex/huashu-frontend-deep-optimization origin/codex/huashu-frontend-deep-optimization
+'
+
+sudo BRANCH_NAME="codex/huashu-frontend-deep-optimization" \
+  APP_DIR="/srv/longyuchat/app" \
+  APP_USER="longyuchat" \
+  SERVICE_NAME="longyuchat" \
+  BACKUP_BEFORE_UPDATE="true" \
+  bash /srv/longyuchat/app/scripts/update-prod.sh
 ```
 
-## 切换到站内登录
+## 只给 AI 聊天室加登录
 
-如果你要去掉 Basic Auth，改成应用自己的登录页，请在服务器 `.env` 里这样改：
+如果你要去掉浏览器 Basic Auth 弹窗，并且只保护 AI 聊天室、模型管理和后台接口，请在服务器 `.env` 里这样改：
 
 ```env
 APP_LOGIN_ENABLED="true"
 APP_LOGIN_USERNAME="owner"
 APP_LOGIN_PASSWORD="replace-with-a-strong-password"
 APP_LOGIN_SESSION_SECRET="replace-with-a-random-secret"
+APP_AUTH_SCOPE="chat"
 BASIC_AUTH_ENABLED="false"
 ```
 
@@ -97,8 +124,8 @@ sudo systemctl restart longyuchat
 
 完成后：
 
-- 浏览器访问站点会进入 `/login`
-- 微信或手机浏览器打开时，也会看到应用自己的登录页
+- 访问 `/`、`/daily`、`/about`、`/projects` 不需要登录
+- 访问 `/rooms`、`/models`、`/admin/*` 会进入应用自己的登录页
 - 不会再出现浏览器级的 `Authentication required` 弹窗
 
 ## 手机浏览器 / 微信打开不稳定时

@@ -6,7 +6,7 @@ import {
   isAppSessionAuthorized,
   resolveSafeNextPath,
 } from "@/lib/app-auth";
-import { isUnprotectedAccessAllowedInProduction } from "@/lib/runtime";
+import { getAppAuthScope, isUnprotectedAccessAllowedInProduction, type AppAuthScope } from "@/lib/runtime";
 import {
   isBearerTokenAuthorized,
   isBasicAuthAuthorized,
@@ -22,9 +22,32 @@ const APP_LOGIN_PUBLIC_PATHS = new Set([
   "/api/auth/session",
 ]);
 const MUTATING_API_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const CHAT_AUTH_PROTECTED_PREFIXES = [
+  "/rooms",
+  "/models",
+  "/admin",
+  "/api/rooms",
+  "/api/models",
+  "/api/provider-catalog",
+  "/api/provider-connections",
+  "/api/providers",
+  "/api/daily/admin",
+];
 
 function isAppLoginPublicPath(pathname: string) {
   return APP_LOGIN_PUBLIC_PATHS.has(pathname);
+}
+
+function matchesPathPrefix(pathname: string, prefix: string) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+function isPathProtectedByAuthScope(pathname: string, scope: AppAuthScope) {
+  if (scope === "all") {
+    return true;
+  }
+
+  return CHAT_AUTH_PROTECTED_PREFIXES.some((prefix) => matchesPathPrefix(pathname, prefix));
 }
 
 function createBasicUnauthorizedResponse(request: NextRequest) {
@@ -189,6 +212,29 @@ export async function proxy(request: NextRequest) {
   }
 
   const protectionMode = getAccessProtectionMode();
+  const authScope = getAppAuthScope();
+
+  if (isAppLoginPublicPath(pathname)) {
+    if (protectionMode === "app" && pathname === "/login") {
+      const isAuthenticated = await isAppSessionAuthorized(
+        request.cookies.get(APP_SESSION_COOKIE_NAME)?.value,
+      );
+
+      if (isAuthenticated) {
+        const targetUrl = new URL(
+          resolveSafeNextPath(request.nextUrl.searchParams.get("next") ?? "/"),
+          request.url,
+        );
+        return NextResponse.redirect(targetUrl);
+      }
+    }
+
+    return NextResponse.next();
+  }
+
+  if (!isPathProtectedByAuthScope(pathname, authScope)) {
+    return NextResponse.next();
+  }
 
   if (
     process.env.NODE_ENV === "production" &&
@@ -208,24 +254,6 @@ export async function proxy(request: NextRequest) {
     }
 
     return createBasicUnauthorizedResponse(request);
-  }
-
-  if (isAppLoginPublicPath(pathname)) {
-    if (pathname === "/login") {
-      const isAuthenticated = await isAppSessionAuthorized(
-        request.cookies.get(APP_SESSION_COOKIE_NAME)?.value,
-      );
-
-      if (isAuthenticated) {
-        const targetUrl = new URL(
-          resolveSafeNextPath(request.nextUrl.searchParams.get("next") ?? "/"),
-          request.url,
-        );
-        return NextResponse.redirect(targetUrl);
-      }
-    }
-
-    return NextResponse.next();
   }
 
   const isAuthenticated = await isAppSessionAuthorized(
