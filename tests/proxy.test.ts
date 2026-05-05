@@ -82,6 +82,36 @@ describe("proxy access protection", () => {
     expect(response.status).toBe(403);
   });
 
+  it("accepts same-host HTTPS mutations behind a proxy", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.APP_LOGIN_ENABLED = "true";
+    process.env.APP_LOGIN_USERNAME = "longyu";
+    process.env.APP_LOGIN_PASSWORD = "secret";
+    process.env.APP_LOGIN_SESSION_SECRET = "session-secret";
+    process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION = "false";
+    vi.resetModules();
+
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(
+      new NextRequest("http://longyu.chat/api/auth/login", {
+        method: "POST",
+        headers: {
+          host: "longyu.chat",
+          origin: "https://longyu.chat",
+          "x-forwarded-proto": "https",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          username: "longyu",
+          password: "secret",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("rejects non-JSON API mutations before they reach the route", async () => {
     process.env.NODE_ENV = "production";
     process.env.APP_LOGIN_ENABLED = "true";

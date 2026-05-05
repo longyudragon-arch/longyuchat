@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
@@ -59,41 +58,8 @@ export function LoginPage({ nextPath = "/" }: { nextPath?: string }) {
   }
 
   return (
-    <main className="ly-page-bg ly-page-chat min-h-dvh px-4 py-5 sm:px-6 sm:py-7">
-      <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-6xl flex-col">
-        <header className="ly-glass flex items-center justify-between gap-3 rounded-[1.35rem] px-3 py-2 sm:px-4">
-          <Link href="/" className="group inline-flex items-center gap-2.5">
-            <span className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-white/70 transition-transform duration-300 group-hover:scale-105">
-              <Image
-                src="/portal/feather-logo-transparent.png"
-                alt=""
-                width={36}
-                height={36}
-                className="h-8 w-8 object-contain"
-                priority
-                unoptimized
-              />
-            </span>
-            <span className="text-[15px] font-display font-bold tracking-tight text-[var(--foreground)]">
-              LongyuChat
-            </span>
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Link
-              href="/daily"
-              className="hidden rounded-xl px-3 py-2 text-[12px] font-bold text-[var(--muted)] transition hover:bg-white/50 hover:text-[var(--foreground)] sm:inline-flex"
-            >
-              AI 日报
-            </Link>
-            <Link
-              href="/"
-              className="rounded-xl bg-white/70 px-3.5 py-2 text-[12px] font-bold text-[var(--foreground)] shadow-sm ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white"
-            >
-              返回首页
-            </Link>
-          </nav>
-        </header>
-
+    <main className="ly-page-wrap ly-page-chat px-4 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-8rem)] w-full max-w-6xl flex-col">
         <section className="grid flex-1 items-center gap-7 py-8 lg:grid-cols-[minmax(0,1fr)_28rem] lg:py-12">
           <div className="max-w-2xl">
             <p className="text-[12px] font-black tracking-[0.18em] text-[var(--accent)] uppercase">

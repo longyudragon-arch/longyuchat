@@ -121,6 +121,28 @@ function hasJsonRequestContentType(request: NextRequest) {
   return contentLength === null || contentLength === "0";
 }
 
+function getTrustedRequestOrigins(request: NextRequest) {
+  const trustedOrigins = new Set([request.nextUrl.origin]);
+  const host = request.headers.get("host");
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? host;
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+
+  for (const nextHost of [host, forwardedHost]) {
+    if (!nextHost) {
+      continue;
+    }
+
+    trustedOrigins.add(`http://${nextHost}`);
+    trustedOrigins.add(`https://${nextHost}`);
+
+    if (forwardedProto) {
+      trustedOrigins.add(`${forwardedProto.split(",")[0].trim()}://${nextHost}`);
+    }
+  }
+
+  return trustedOrigins;
+}
+
 function isTrustedMutationOrigin(request: NextRequest) {
   const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase();
 
@@ -129,9 +151,10 @@ function isTrustedMutationOrigin(request: NextRequest) {
   }
 
   const origin = request.headers.get("origin");
+  const trustedOrigins = getTrustedRequestOrigins(request);
 
   if (origin) {
-    return origin === request.nextUrl.origin;
+    return trustedOrigins.has(origin);
   }
 
   const referer = request.headers.get("referer");
@@ -141,7 +164,7 @@ function isTrustedMutationOrigin(request: NextRequest) {
   }
 
   try {
-    return new URL(referer).origin === request.nextUrl.origin;
+    return trustedOrigins.has(new URL(referer).origin);
   } catch {
     return false;
   }

@@ -57,10 +57,9 @@ export function AppNavigation() {
     }
   }
 
-  // Hide nav on chat pages and login page
+  // Hide nav only on the active chat room surface, where the thread owns the chrome.
   const isChatPage = /^\/rooms\/[^/]+$/.test(pathname) && pathname !== "/rooms/new";
-  const isLoginPage = pathname === "/login";
-  if (isChatPage || isLoginPage) return null;
+  if (isChatPage) return null;
 
   return (
     <header className="ly-app-header sticky top-0 z-50 px-0 pb-2 pt-3 sm:pt-4">
