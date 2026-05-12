@@ -16,6 +16,17 @@ interface FeedItem {
   metaJson?: string | null;
 }
 
+interface AihotPublicItem {
+  id: string;
+  title: string;
+  title_en?: string | null;
+  url: string;
+  source: string;
+  publishedAt?: string | null;
+  summary?: string | null;
+  category?: string | null;
+}
+
 function decodeXmlEntities(value: string) {
   return value
     .replace(/&lt;/g, "<")
@@ -177,6 +188,23 @@ async function fetchJson<T>(url: string) {
   return (await response.json()) as T;
 }
 
+async function fetchAihotJson<T>(url: string) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new ApiError(502, `Failed to fetch AI HOT source: ${url} (${response.status})`);
+  }
+
+  return (await response.json()) as T;
+}
+
 function resolveFeedUrl(source: DailySourceRuntimeConfig) {
   if (source.feedUrl) {
     return source.feedUrl;
@@ -208,6 +236,65 @@ async function fetchFeedSource(source: DailySourceRuntimeConfig) {
   const items = xml.includes("<feed") ? parseAtomEntries(xml) : parseRssItems(xml);
   const limit = typeof source.config.limit === "number" ? source.config.limit : 20;
   return items.slice(0, limit);
+}
+
+function normalizeAihotMode(value: unknown) {
+  return value === "all" ? "all" : "selected";
+}
+
+function normalizeAihotTake(value: unknown) {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return 50;
+  }
+
+  return Math.min(100, Math.max(1, value));
+}
+
+function normalizeAihotLookbackHours(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 48;
+  }
+
+  return Math.min(24 * 7, Math.max(1, value));
+}
+
+async function fetchAihotSource(source: DailySourceRuntimeConfig) {
+  const baseUrl = (source.baseUrl ?? "https://aihot.virxact.com").replace(/\/+$/, "");
+  const url = new URL(`${baseUrl}/api/public/items`);
+  const lookbackHours = normalizeAihotLookbackHours(source.config.lookbackHours);
+  const since = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
+  const category = typeof source.config.category === "string" ? source.config.category.trim() : "";
+
+  url.searchParams.set("mode", normalizeAihotMode(source.config.mode));
+  url.searchParams.set("take", String(normalizeAihotTake(source.config.take)));
+  url.searchParams.set("since", since);
+
+  if (category) {
+    url.searchParams.set("category", category);
+  }
+
+  const payload = await fetchAihotJson<{
+    items?: AihotPublicItem[];
+  }>(url.toString());
+
+  return (payload.items ?? [])
+    .filter((item) => item.title?.trim() && item.url?.trim())
+    .map((item) => ({
+      externalId: item.id,
+      canonicalUrl: normalizeUrl(item.url),
+      title: item.title.trim(),
+      author: item.source?.trim() || null,
+      publishedAt: parseDate(item.publishedAt),
+      language: "zh-CN",
+      contentText: item.summary?.trim() || null,
+      summaryRaw: item.summary?.trim() || null,
+      metaJson: JSON.stringify({
+        provider: "aihot",
+        sourceName: item.source?.trim() || null,
+        category: item.category ?? null,
+        titleEn: item.title_en ?? null,
+      }),
+    } satisfies FeedItem));
 }
 
 async function fetchHackerNewsSource(source: DailySourceRuntimeConfig) {
@@ -317,6 +404,9 @@ export async function fetchDailySourceItems(source: DailySourceRuntimeConfig) {
   let items: FeedItem[];
 
   switch (source.kind) {
+    case "AIHOT":
+      items = await fetchAihotSource(source);
+      break;
     case "RSS":
     case "WEB_FEED":
     case "GITHUB_RELEASES":

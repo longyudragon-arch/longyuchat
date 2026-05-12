@@ -14,6 +14,7 @@ import type {
 
 const sourceKindOptions: DailySourceKind[] = [
   "RSS",
+  "AIHOT",
   "GITHUB_RELEASES",
   "GITHUB_REPO_EVENTS",
   "HACKERNEWS",
@@ -272,6 +273,34 @@ export function DailyAdminPage() {
     }
   }
 
+  async function seedMajorEvents() {
+    setActiveAction("seeding-major-events");
+    setFeedback(null);
+    try {
+      const data = await fetchJson<{
+        seeded: unknown[];
+        aihot: unknown[];
+        aihotError: string | null;
+      }>("/api/daily/admin/events/seed", {
+        method: "POST",
+        body: JSON.stringify({
+          includeAihot: true,
+          take: 30,
+          maxEventsPerDay: 1,
+        }),
+      });
+      setNotice(
+        data.aihotError
+          ? `已导入基础 AI 大事件，AI HOT 回填失败：${data.aihotError}`
+          : `已导入/更新 ${data.seeded.length + data.aihot.length} 条 AI 大事件。`,
+      );
+    } catch (error: unknown) {
+      setFeedback(describeClientError(error));
+    } finally {
+      setActiveAction(null);
+    }
+  }
+
   async function submitInterestProfile() {
     setActiveAction("saving-interest-profile");
     setFeedback(null);
@@ -390,6 +419,14 @@ export function DailyAdminPage() {
                   className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold"
                 >
                   默认来源
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startTransition(() => void seedMajorEvents())}
+                  disabled={isBusy}
+                  className="ly-page-action ly-secondary-action px-4 text-[13px] font-bold"
+                >
+                  AI 大事件
                 </button>
                 <button
                   type="button"

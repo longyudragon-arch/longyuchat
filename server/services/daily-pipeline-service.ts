@@ -21,12 +21,10 @@ import {
 import {
   createDailyIssueDraft,
   getDailyIssueByDate,
-  getDailyIssueById,
   listPublishedDailyIssues,
   publishDailyIssue,
   replaceDailyIssueItems,
   setDailyIssueStatus,
-  updateDailyIssueItemText,
   updateDailyIssueDraft,
 } from "@/server/services/daily-issue-service";
 import { getActiveDailyInterestProfile } from "@/server/services/daily-interest-service";
@@ -112,6 +110,7 @@ function calculateHeuristicScore(input: {
   const haystack = `${input.title}\n${input.contentText ?? ""}`.toLowerCase();
   let score = 4;
 
+  if (input.sourceKind === "AIHOT") score += 2.4;
   if (input.sourceKind === "GITHUB_RELEASES") score += 1.5;
   if (input.sourceKind === "HACKERNEWS") score += 1.2;
   if (input.sourceKind === "RSS") score += 0.8;
@@ -133,6 +132,10 @@ function calculateHeuristicScore(input: {
     "inference",
     "copilot",
     "mcp",
+    "大模型",
+    "发布",
+    "开源",
+    "上线",
   ];
 
   for (const keyword of hotKeywords) {
@@ -387,6 +390,7 @@ interface PublishClusterCandidate {
   score: number | null;
   summaryDraft: string | null;
   sourceName: string | null;
+  sourceCategory: string | null;
   sourceKind: DailySourceRuntimeConfig["kind"] | null;
   sourceLinks: Array<{
     url: string;
@@ -408,9 +412,16 @@ const categoryDescriptions: Record<DailyIssueCategory, string> = {
 function inferIssueCategory(input: {
   title: string;
   sourceName: string | null;
+  sourceCategory?: string | null;
   sourceKind: DailySourceRuntimeConfig["kind"] | null;
 }): DailyIssueCategory {
   const haystack = `${input.title}\n${input.sourceName ?? ""}`.toLowerCase();
+
+  if (input.sourceCategory === "ai-models") return "MODEL_RELEASES";
+  if (input.sourceCategory === "ai-products") return "PRODUCT_UPDATES";
+  if (input.sourceCategory === "paper") return "TECH_INSIGHTS";
+  if (input.sourceCategory === "tip") return "DEV_ECOSYSTEM";
+  if (input.sourceCategory === "industry") return "HEADLINES";
 
   if (/\brumou?r\b|传闻|消息称|内测|邀测|preview|即将|will|watchlist/.test(haystack)) {
     return "RUMORS";
@@ -439,6 +450,10 @@ function inferIssueCategory(input: {
 }
 
 function inferIssueCertainty(category: DailyIssueCategory, title: string): DailyIssueItemCertainty {
+  if (/传闻|rumou?r|消息称|unauthorized|内测|邀测|即将|融资|估值|raising|valuation/i.test(title)) {
+    return category === "RUMORS" ? "RUMOR" : "WATCHLIST";
+  }
+
   if (category === "RUMORS") {
     return /传闻|rumou?r|消息称|unauthorized|内测|邀测|即将/.test(title.toLowerCase()) ? "RUMOR" : "WATCHLIST";
   }
@@ -448,6 +463,132 @@ function inferIssueCertainty(category: DailyIssueCategory, title: string): Daily
 
 function formatCategoryLabel(category: DailyIssueCategory) {
   return `${category}：${categoryDescriptions[category]}`;
+}
+
+function hasChineseText(value: string | null | undefined) {
+  return /[\u4e00-\u9fff]/.test(value ?? "");
+}
+
+function isWeakCandidateTitle(title: string) {
+  const normalized = title.trim();
+
+  if (!normalized) {
+    return true;
+  }
+
+  if (normalized.length < 8 && !hasChineseText(normalized)) {
+    return true;
+  }
+
+  return /^v?\d+(?:\.\d+){1,4}(?:[-+][\w.]+)?$/i.test(normalized);
+}
+
+function scorePublishCandidateQuality(candidate: PublishClusterCandidate, index: number) {
+  const category = inferIssueCategory({
+    title: candidate.title,
+    sourceName: candidate.sourceName,
+    sourceCategory: candidate.sourceCategory,
+    sourceKind: candidate.sourceKind,
+  });
+  let score = candidate.score ?? 0;
+
+  if (candidate.sourceKind === "AIHOT") score += 4;
+  if (candidate.sourceCategory) score += 1.5;
+  if (hasChineseText(candidate.title)) score += 1;
+  if (hasChineseText(candidate.summaryDraft)) score += 0.6;
+  if (candidate.summaryDraft && candidate.summaryDraft.trim().length >= 40) score += 0.8;
+  if (candidate.sourceLinks.length > 1) score += 0.6;
+  if (category === "HEADLINES") score += 0.5;
+  if (isWeakCandidateTitle(candidate.title)) score -= 5;
+
+  return score - index * 0.01;
+}
+
+function curatePublishCandidates(candidates: PublishClusterCandidate[], limit: number) {
+  const ranked = candidates
+    .map((candidate, index) => ({
+      candidate,
+      category: inferIssueCategory({
+        title: candidate.title,
+        sourceName: candidate.sourceName,
+        sourceCategory: candidate.sourceCategory,
+        sourceKind: candidate.sourceKind,
+      }),
+      qualityScore: scorePublishCandidateQuality(candidate, index),
+    }))
+    .sort((a, b) => b.qualityScore - a.qualityScore);
+
+  const selected: PublishClusterCandidate[] = [];
+  const categoryCounts = new Map<DailyIssueCategory, number>();
+
+  for (const entry of ranked) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    const categoryCount = categoryCounts.get(entry.category) ?? 0;
+    if (categoryCount >= 2 && selected.length < Math.max(3, Math.floor(limit * 0.75))) {
+      continue;
+    }
+
+    selected.push(entry.candidate);
+    categoryCounts.set(entry.category, categoryCount + 1);
+  }
+
+  for (const entry of ranked) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    if (!selected.some((candidate) => candidate.id === entry.candidate.id)) {
+      selected.push(entry.candidate);
+    }
+  }
+
+  return selected;
+}
+
+function getSourceItemDisplayName(item: {
+  source: {
+    name: string;
+  };
+  metaJson: string | null;
+}) {
+  if (item.metaJson?.trim()) {
+    try {
+      const parsed = JSON.parse(item.metaJson);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const sourceName = (parsed as { sourceName?: unknown }).sourceName;
+        if (typeof sourceName === "string" && sourceName.trim()) {
+          return sourceName.trim();
+        }
+      }
+    } catch {
+      // Fall back to the configured source name when metadata is not valid JSON.
+    }
+  }
+
+  return item.source.name;
+}
+
+function getSourceItemCategory(item: {
+  metaJson: string | null;
+}) {
+  if (!item.metaJson?.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(item.metaJson);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const category = (parsed as { category?: unknown }).category;
+      return typeof category === "string" && category.trim() ? category.trim() : null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function buildIssueSelectionPrompt(candidates: PublishClusterCandidate[], itemLimit: number) {
@@ -521,25 +662,30 @@ function buildChineseLocalizationPrompt(draft: {
 
 function buildFallbackIssue(issueDate: string, candidates: PublishClusterCandidate[], itemLimit: number) {
   const selected = candidates.slice(0, itemLimit);
+  const leadTitle = selected[0]?.title ? truncateText(selected[0].title, 34) : issueDate;
   return {
-    title: `AI 日报 ${issueDate}`,
-    summary: selected.length > 0 ? `今日重点：${selected.slice(0, 3).map((item) => item.title).join("；")}` : "今日暂无值得发布的高质量条目。",
+    title: selected.length > 0 ? `AI 日报：${leadTitle}` : `AI 日报 ${issueDate}`,
+    summary: selected.length > 0
+      ? `今日精选 ${selected.length} 条 AI 变化，重点关注${selected.slice(0, 3).map((item) => item.title).join("、")}。`
+      : "今日暂无值得发布的高质量条目。",
     items: selected.map((item, index) => ({
       clusterId: item.id,
       category: inferIssueCategory({
         title: item.title,
         sourceName: item.sourceName,
+        sourceCategory: item.sourceCategory,
         sourceKind: item.sourceKind,
       }),
       certainty: inferIssueCertainty(
         inferIssueCategory({
           title: item.title,
           sourceName: item.sourceName,
+          sourceCategory: item.sourceCategory,
           sourceKind: item.sourceKind,
         }),
         item.title,
       ),
-      title: item.title,
+      title: hasChineseText(item.title) ? item.title : `关注：${item.title}`,
       summary: truncateText(item.summaryDraft ?? item.title, 88),
       content:
         truncateText(item.summaryDraft ?? item.title, 220) ||
@@ -578,61 +724,6 @@ function shouldRelocalizeDraftToChinese(draft: {
   }
 
   return englishLikeCount >= 3;
-}
-
-async function relocalizeDailyIssueItemsToChinese(issueId: string) {
-  const issue = await getDailyIssueById(issueId);
-
-  if (!issue?.items || issue.items.length === 0) {
-    return;
-  }
-
-  for (const item of issue.items) {
-    const englishLike =
-      isMostlyAscii(item.title) ||
-      isMostlyAscii(item.summary ?? "") ||
-      isMostlyAscii(item.content);
-
-    if (!englishLike) {
-      continue;
-    }
-
-    try {
-      const localized = await generateAiDailyJson<{
-        title: string;
-        summary?: string;
-        content: string;
-      }>({
-        system:
-          "你是中文 AI 日报编辑。请把输入条目改写为适合中文读者阅读的版本。除非是品牌名、模型名、项目名或技术术语，否则默认使用简体中文。只返回合法 JSON。",
-        user: [
-          "请把以下条目的 title、summary、content 改写成简体中文：",
-          JSON.stringify(
-            {
-              title: item.title,
-              summary: item.summary,
-              content: item.content,
-            },
-            null,
-            2,
-          ),
-        ].join("\n"),
-        defaultReplyLength: 1800,
-      });
-
-      if (!localized?.title?.trim() || !localized?.content?.trim()) {
-        continue;
-      }
-
-      await updateDailyIssueItemText(item.id, {
-        title: localized.title.trim(),
-        summary: localized.summary?.trim() || item.summary,
-        content: localized.content.trim(),
-      });
-    } catch {
-      // Keep the existing copy if localization fails.
-    }
-  }
 }
 
 function buildInterestPromptAppendix(interestsText: string | null | undefined, includeKeywords: string[], excludeKeywords: string[]) {
@@ -676,7 +767,7 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         },
       },
       orderBy: [{ score: "desc" }, { publishedAt: "desc" }],
-      take: candidateLimit,
+      take: Math.max(candidateLimit * 4, 30),
       include: {
         items: {
           orderBy: {
@@ -693,26 +784,28 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
       },
     });
 
-    const candidates: PublishClusterCandidate[] = candidatesRaw.map((cluster) => ({
+    const rawCandidates: PublishClusterCandidate[] = candidatesRaw.map((cluster) => ({
       id: cluster.id,
       title: cluster.title,
       canonicalUrl: cluster.canonicalUrl,
       publishedAt: cluster.publishedAt?.toISOString() ?? null,
       score: cluster.score ?? null,
       summaryDraft: cluster.summaryDraft,
-      sourceName: cluster.items[0]?.sourceItem.source.name ?? null,
+      sourceName: cluster.items[0] ? getSourceItemDisplayName(cluster.items[0].sourceItem) : null,
+      sourceCategory: cluster.items[0] ? getSourceItemCategory(cluster.items[0].sourceItem) : null,
       sourceKind: cluster.items[0]?.sourceItem.source.kind ?? null,
       sourceLinks: cluster.items
         .map((item, index) => ({
           url: item.sourceItem.canonicalUrl,
-          label: item.sourceItem.source.name ?? `来源 ${index + 1}`,
-          sourceName: item.sourceItem.source.name ?? null,
+          label: getSourceItemDisplayName(item.sourceItem) ?? `来源 ${index + 1}`,
+          sourceName: getSourceItemDisplayName(item.sourceItem) ?? null,
           sortOrder: index + 1,
         }))
         .filter((sourceLink, index, sourceLinks) =>
           sourceLinks.findIndex((candidate) => candidate.url === sourceLink.url) === index,
         ),
     }));
+    const candidates = curatePublishCandidates(rawCandidates, candidateLimit);
     const activeInterestProfile = await getActiveDailyInterestProfile();
     const includeKeywords = normalizeKeywordList(activeInterestProfile?.includeKeywordsJson);
     const excludeKeywords = normalizeKeywordList(activeInterestProfile?.excludeKeywordsJson);
@@ -805,11 +898,12 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
       aiDraft = null;
     }
 
-    let draft = aiDraft && Array.isArray(aiDraft.items) && aiDraft.items.length > 0
-      ? aiDraft
+    const hasUsableAiDraft = Boolean(aiDraft && Array.isArray(aiDraft.items) && aiDraft.items.length > 0);
+    let draft = hasUsableAiDraft
+      ? aiDraft!
       : buildFallbackIssue(issueDate, candidates, itemLimit);
 
-    if (shouldRelocalizeDraftToChinese(draft)) {
+    if (hasUsableAiDraft && shouldRelocalizeDraftToChinese(draft)) {
       try {
         const relocalizedDraft = await generateAiDailyJson<{
           title: string;
@@ -871,6 +965,7 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         const fallbackCategory = inferIssueCategory({
           title: item.title?.trim() || cluster.title,
           sourceName: cluster.sourceName,
+          sourceCategory: cluster.sourceCategory,
           sourceKind: cluster.sourceKind,
         });
         return {
@@ -892,8 +987,6 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         };
       }),
     });
-
-    await relocalizeDailyIssueItemsToChinese(issue.id);
 
     const publishedIssue = await publishDailyIssue(issue.id);
 

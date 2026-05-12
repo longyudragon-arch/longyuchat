@@ -79,6 +79,7 @@ enum ProviderConnectionCheckStatus {
 
 enum DailySourceKind {
   RSS
+  AIHOT
   GITHUB_RELEASES
   GITHUB_REPO_EVENTS
   HACKERNEWS
@@ -475,6 +476,26 @@ model DailyIssueItemSource {
   @@unique([issueItemId, url])
   @@index([sourceName])
   @@map("daily_issue_item_sources")
+}
+
+model DailyMajorEvent {
+  id              String   @id @default(cuid())
+  eventDate       String   @map("event_date")
+  title           String
+  summary         String
+  category        String   @default("industry")
+  sourceUrl       String   @map("source_url")
+  sourceName      String?  @map("source_name")
+  importanceScore Int      @default(80) @map("importance_score")
+  tagsJson        String?  @map("tags_json")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([eventDate, title])
+  @@index([eventDate])
+  @@index([category, eventDate])
+  @@index([importanceScore])
+  @@map("daily_major_events")
 }
 
 model DailyRun {

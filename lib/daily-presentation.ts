@@ -30,12 +30,28 @@ export const dailyCertaintyBadgeClassNames: Record<DailyIssueItemCertainty, stri
   RUMOR: "bg-rose-50 text-rose-700 border-rose-200/60",
 };
 
+export const dailyMajorEventCategoryLabels: Record<string, string> = {
+  model: "模型",
+  product: "产品",
+  developer: "开发者",
+  research: "研究",
+  industry: "行业",
+};
+
 export function buildDailyAnchorId(item: DailyIssueItemView) {
   return `item-${item.sortOrder}-${item.id}`;
 }
 
 export function formatDailyDate(value: string | null | undefined) {
   return value ? value.replace(/-/g, ".") : "暂无";
+}
+
+export function formatDailyYear(value: string | null | undefined) {
+  return value?.slice(0, 4) ?? "未知年份";
+}
+
+export function getDailyMajorEventCategoryLabel(category: string) {
+  return dailyMajorEventCategoryLabels[category] ?? "大事件";
 }
 
 export function estimateDailyReadMinutes(itemCount: number | null | undefined) {

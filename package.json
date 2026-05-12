@@ -12,6 +12,7 @@
     "start:prod": "node scripts/start-prod.mjs",
     "sqlite:backup": "node scripts/sqlite-backup.mjs",
     "daily:seed-defaults": "node scripts/daily-seed-defaults.mjs",
+    "daily:seed-events": "node scripts/daily-seed-events.mjs",
     "daily:scan": "node scripts/daily-scan.mjs",
     "daily:publish": "node scripts/daily-publish.mjs",
     "lint": "eslint .",

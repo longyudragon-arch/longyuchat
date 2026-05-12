@@ -1,6 +1,6 @@
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
-import { getAiDailyModelId } from "@/server/services/daily-config-service";
+import { getAiDailyGenerationTimeoutMs, getAiDailyModelId } from "@/server/services/daily-config-service";
 import { getModelConfigById, listModelConfigs, toModelRuntimeConfig } from "@/server/services/model-config-service";
 import type { ChatMessage, ModelRuntimeConfig } from "@/types/chat";
 
@@ -30,6 +30,29 @@ function extractJsonBlock(value: string) {
   }
 
   return normalized;
+}
+
+async function withAiDailyGenerationTimeout<T>(operation: Promise<T>) {
+  const timeoutMs = getAiDailyGenerationTimeoutMs();
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  operation.catch(() => {
+    // The caller handles the timeout path. Keep late provider failures from becoming unhandled rejections.
+  });
+
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_resolve, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new ApiError(504, `AI daily generation timed out after ${timeoutMs}ms.`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 async function resolveAiDailyModelRuntimeConfig(): Promise<ModelRuntimeConfig | null> {
@@ -79,13 +102,15 @@ export async function generateAiDailyText(input: {
     { role: "system", content: input.system.trim() },
     { role: "user", content: input.user.trim() },
   ];
-  const reply = await adapter.generateReply({
-    config: {
-      ...runtimeConfig,
-      defaultReplyLength: Math.max(runtimeConfig.defaultReplyLength, input.defaultReplyLength ?? 2400),
-    },
-    messages,
-  });
+  const reply = await withAiDailyGenerationTimeout(
+    adapter.generateReply({
+      config: {
+        ...runtimeConfig,
+        defaultReplyLength: Math.max(runtimeConfig.defaultReplyLength, input.defaultReplyLength ?? 2400),
+      },
+      messages,
+    }),
+  );
 
   return reply.content.trim();
 }

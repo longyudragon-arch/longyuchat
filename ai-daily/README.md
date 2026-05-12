@@ -42,3 +42,4 @@
 - [API-STRATEGY.md](./API-STRATEGY.md)：大模型 API、成本与提供商策略
 - [SYSTEM-DESIGN.md](./SYSTEM-DESIGN.md)：表设计、目录结构、调度方案
 - [PRISMA-SCHEMA-DRAFT.prisma](./PRISMA-SCHEMA-DRAFT.prisma)：可并入主项目的 Prisma 草案
+- [REFERENCE-PROJECTS.md](./REFERENCE-PROJECTS.md)：值得学习的 AI 日报/新闻雷达项目清单

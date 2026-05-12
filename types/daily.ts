@@ -1,5 +1,6 @@
 export type DailySourceKind =
   | "RSS"
+  | "AIHOT"
   | "GITHUB_RELEASES"
   | "GITHUB_REPO_EVENTS"
   | "HACKERNEWS"
@@ -180,6 +181,20 @@ export interface DailyRunView {
   createdAt: string;
   stepCount: number;
   steps?: DailyRunStepView[];
+}
+
+export interface DailyMajorEventView {
+  id: string;
+  eventDate: string;
+  title: string;
+  summary: string;
+  category: string;
+  sourceUrl: string;
+  sourceName: string | null;
+  importanceScore: number;
+  tagsJson: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateDailySourceInput {

@@ -218,7 +218,12 @@ export async function proxy(request: NextRequest) {
   }
 
   if (
-    (pathname === "/api/daily/admin/runs/scan" || pathname === "/api/daily/admin/runs/publish") &&
+    (
+      pathname === "/api/daily/admin/runs/scan" ||
+      pathname === "/api/daily/admin/runs/publish" ||
+      pathname === "/api/daily/admin/sources/seed" ||
+      pathname === "/api/daily/admin/events/seed"
+    ) &&
     isBearerTokenAuthorized(authorization, getAiDailyAutomationToken())
   ) {
     return NextResponse.next();

@@ -10,7 +10,7 @@ import {
 
 const updateDailySourceSchema = z.object({
   name: z.string().min(1).optional(),
-  kind: z.enum(["RSS", "GITHUB_RELEASES", "GITHUB_REPO_EVENTS", "HACKERNEWS", "REDDIT", "WEB_FEED"]).optional(),
+  kind: z.enum(["RSS", "AIHOT", "GITHUB_RELEASES", "GITHUB_REPO_EVENTS", "HACKERNEWS", "REDDIT", "WEB_FEED"]).optional(),
   baseUrl: z.string().trim().min(1).optional().nullable(),
   feedUrl: z.string().trim().min(1).optional().nullable(),
   configJson: z.string().trim().optional().nullable(),

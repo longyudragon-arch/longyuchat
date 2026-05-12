@@ -85,7 +85,7 @@ export function isAiDailyFeatureEnabled(explicitValue = process.env.AI_DAILY_ENA
 }
 
 export function getAiDailyGenerationTimeoutMs(explicitValue = process.env.AI_DAILY_GENERATION_TIMEOUT_MS) {
-  return parsePositiveIntegerEnv(explicitValue, getProviderRequestTimeoutMs());
+  return parsePositiveIntegerEnv(explicitValue, Math.min(getProviderRequestTimeoutMs(), 45_000));
 }
 
 export function getAiDailyTimezone(explicitValue = process.env.AI_DAILY_TIMEZONE) {

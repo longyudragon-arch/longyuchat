@@ -11,6 +11,7 @@ const originalEnv = {
   BASIC_AUTH_ENABLED: process.env.BASIC_AUTH_ENABLED,
   BASIC_AUTH_USERNAME: process.env.BASIC_AUTH_USERNAME,
   BASIC_AUTH_PASSWORD: process.env.BASIC_AUTH_PASSWORD,
+  AI_DAILY_AUTOMATION_TOKEN: process.env.AI_DAILY_AUTOMATION_TOKEN,
   ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION: process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION,
 };
 
@@ -199,6 +200,33 @@ describe("proxy access protection", () => {
 
     const { proxy } = await import("@/proxy");
     const response = await proxy(new NextRequest("https://example.com/api/daily/issues"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("allows daily automation seed endpoints with the automation token", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.APP_LOGIN_ENABLED = "true";
+    process.env.APP_LOGIN_USERNAME = "longyu";
+    process.env.APP_LOGIN_PASSWORD = "secret";
+    process.env.APP_LOGIN_SESSION_SECRET = "session-secret";
+    process.env.APP_AUTH_SCOPE = "chat";
+    process.env.AI_DAILY_AUTOMATION_TOKEN = "daily-token";
+    process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION = "false";
+    vi.resetModules();
+
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(
+      new NextRequest("https://example.com/api/daily/admin/sources/seed", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer daily-token",
+          "content-type": "application/json",
+        },
+        body: "{}",
+      }),
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");

@@ -4,6 +4,14 @@ import type { CreateDailySourceInput, DailySourceView } from "@/types/daily";
 
 const defaultDailySources: CreateDailySourceInput[] = [
   {
+    name: "AI HOT 精选",
+    kind: "AIHOT",
+    baseUrl: "https://aihot.virxact.com",
+    configJson: JSON.stringify({ mode: "selected", take: 80, lookbackHours: 48 }),
+    priority: 5,
+    enabled: true,
+  },
+  {
     name: "OpenAI News",
     kind: "RSS",
     baseUrl: "https://openai.com/news",
@@ -28,6 +36,33 @@ const defaultDailySources: CreateDailySourceInput[] = [
     feedUrl: "https://blog.google/technology/ai/rss/",
     configJson: JSON.stringify({ limit: 20 }),
     priority: 14,
+    enabled: true,
+  },
+  {
+    name: "Anthropic News",
+    kind: "RSS",
+    baseUrl: "https://www.anthropic.com/news",
+    feedUrl: "https://www.anthropic.com/news/rss.xml",
+    configJson: JSON.stringify({ limit: 20 }),
+    priority: 16,
+    enabled: true,
+  },
+  {
+    name: "Hugging Face Daily Papers",
+    kind: "RSS",
+    baseUrl: "https://huggingface.co/papers",
+    feedUrl: "https://huggingface.co/papers/rss",
+    configJson: JSON.stringify({ limit: 20 }),
+    priority: 18,
+    enabled: true,
+  },
+  {
+    name: "arXiv cs.AI",
+    kind: "RSS",
+    baseUrl: "https://arxiv.org/list/cs.AI/recent",
+    feedUrl: "https://export.arxiv.org/rss/cs.AI",
+    configJson: JSON.stringify({ limit: 20 }),
+    priority: 19,
     enabled: true,
   },
   {
@@ -69,6 +104,22 @@ const defaultDailySources: CreateDailySourceInput[] = [
     baseUrl: "https://github.com/vercel/ai",
     configJson: JSON.stringify({ limit: 10 }),
     priority: 32,
+    enabled: true,
+  },
+  {
+    name: "GitHub Releases / anthropics/claude-code",
+    kind: "GITHUB_RELEASES",
+    baseUrl: "https://github.com/anthropics/claude-code",
+    configJson: JSON.stringify({ limit: 10 }),
+    priority: 34,
+    enabled: true,
+  },
+  {
+    name: "GitHub Releases / openai/codex",
+    kind: "GITHUB_RELEASES",
+    baseUrl: "https://github.com/openai/codex",
+    configJson: JSON.stringify({ limit: 10 }),
+    priority: 36,
     enabled: true,
   },
 ];

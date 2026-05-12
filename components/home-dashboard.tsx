@@ -177,7 +177,7 @@ export async function HomeDashboard() {
                     <span>{readMinutes} 分钟读完</span>
                   </>
                 ) : (
-                  <span>连接日报后台后自动更新</span>
+                  <span>发布后自动更新</span>
                 )}
               </div>
             </Link>
@@ -276,7 +276,7 @@ export async function HomeDashboard() {
               </div>
             ) : (
               <div className="rounded-[1.15rem] border border-dashed border-slate-300/70 bg-white/45 px-4 py-8 text-sm font-medium text-slate-500">
-                还没有已发布日报。运行日报后台发布流程后，首页会自动展示最新内容。
+                还没有已发布日报。完成发布流程后，首页会自动展示最新内容。
               </div>
             )}
           </div>
