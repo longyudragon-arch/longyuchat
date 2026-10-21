@@ -217,13 +217,43 @@ export async function markConversationRoundStepFailed(
 
 export async function finishConversationRound(roundId: string, status: `${ConversationRoundStatus}`) {
   await prisma.$transaction(async (transaction) => {
+    const finishedAt = getNow();
+
+    if (status === ConversationRoundStatus.PARTIAL || status === ConversationRoundStatus.FAILED) {
+      // Finalize the unstarted steps in the same transaction as the completion
+      // event so SSE consumers cannot observe a finished round with pending work.
+      await transaction.conversationRoundStep.updateMany({
+        where: { roundId, status: ConversationRoundStepStatus.PENDING },
+        data: {
+          status: ConversationRoundStepStatus.SKIPPED,
+          finishedAt,
+          errorKind: status === ConversationRoundStatus.PARTIAL ? "previous_failure" : "round_interrupted",
+          errorMessage: status === ConversationRoundStatus.PARTIAL
+            ? "A previous model failed; this model was not called."
+            : "The round stopped before this model was called.",
+        },
+      });
+    }
+
+    if (status === ConversationRoundStatus.FAILED) {
+      await transaction.conversationRoundStep.updateMany({
+        where: { roundId, status: ConversationRoundStepStatus.RUNNING },
+        data: {
+          status: ConversationRoundStepStatus.FAILED,
+          finishedAt,
+          errorKind: "round_interrupted",
+          errorMessage: "The round stopped before this step completed.",
+        },
+      });
+    }
+
     const round = await transaction.conversationRound.update({
       where: {
         id: roundId,
       },
       data: {
         status,
-        finishedAt: getNow(),
+        finishedAt,
       },
       select: {
         id: true,

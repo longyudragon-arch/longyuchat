@@ -25,11 +25,12 @@ describe("proxy access protection", () => {
       }
     }
 
+    vi.unstubAllEnvs();
     vi.resetModules();
   });
 
   it("fails closed in production when no protection mode is configured", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "false";
     process.env.BASIC_AUTH_ENABLED = "false";
     process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION = "false";
@@ -43,7 +44,7 @@ describe("proxy access protection", () => {
   });
 
   it("keeps the explicit production bypass working when allowed", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "false";
     process.env.BASIC_AUTH_ENABLED = "false";
     process.env.ALLOW_UNPROTECTED_ACCESS_IN_PRODUCTION = "true";
@@ -57,7 +58,7 @@ describe("proxy access protection", () => {
   });
 
   it("rejects cross-site API mutations in app-login mode", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -84,7 +85,7 @@ describe("proxy access protection", () => {
   });
 
   it("accepts same-host HTTPS mutations behind a proxy", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -114,7 +115,7 @@ describe("proxy access protection", () => {
   });
 
   it("rejects non-JSON API mutations before they reach the route", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -138,7 +139,7 @@ describe("proxy access protection", () => {
   });
 
   it("allows public daily pages when auth scope is limited to chat", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -155,7 +156,7 @@ describe("proxy access protection", () => {
   });
 
   it("redirects chat pages to app login when auth scope is limited to chat", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -172,7 +173,7 @@ describe("proxy access protection", () => {
   });
 
   it("keeps model APIs protected when auth scope is limited to chat", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -189,7 +190,7 @@ describe("proxy access protection", () => {
   });
 
   it("keeps public daily APIs open when auth scope is limited to chat", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";
@@ -206,7 +207,7 @@ describe("proxy access protection", () => {
   });
 
   it("allows daily automation seed endpoints with the automation token", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.APP_LOGIN_ENABLED = "true";
     process.env.APP_LOGIN_USERNAME = "longyu";
     process.env.APP_LOGIN_PASSWORD = "secret";

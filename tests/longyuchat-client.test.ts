@@ -343,7 +343,7 @@ describe("describePartialSendResult", () => {
       title: "Mock Beta 本轮请求超时",
       tone: "warning",
     });
-    expect(feedback?.description).toContain("其他健康模型已经继续完成本轮回复");
+    expect(feedback?.description).toContain("已成功的 1 条回复已保留，本轮后续模型不再执行");
     expect(feedback?.suggestion).toContain("停用它");
   });
 
@@ -480,7 +480,7 @@ describe("describePartialSendResult", () => {
     expect(feedback?.suggestion).toContain("冷却到");
   });
 
-  it("summarizes mixed rounds when multiple models fail but others still reply", () => {
+  it("summarizes persisted legacy mixed rounds without claiming a complete round", () => {
     const feedback = describePartialSendResult({
       roomId: "room-1",
       status: "partial",
@@ -511,10 +511,10 @@ describe("describePartialSendResult", () => {
     });
 
     expect(feedback).toMatchObject({
-      title: "本轮已降级完成，2 个模型失败",
+      title: "本轮未完整完成，2 个模型失败",
       tone: "warning",
     });
-    expect(feedback?.description).toContain("1 个健康模型已继续完成回复");
+    expect(feedback?.description).toContain("1 个模型的成功回复已保留");
     expect(feedback?.description).toContain("Mock Beta");
     expect(feedback?.description).toContain("Mock Gamma");
     expect(feedback?.suggestion).toContain("自动暂停");
@@ -545,12 +545,26 @@ describe("describePartialSendResult", () => {
       tone: "warning",
     });
     expect(feedback?.description).toContain("Claude 原生接口");
-    expect(feedback?.description).toContain("其他健康模型已经继续完成本轮回复");
+    expect(feedback?.description).toContain("已成功的 1 条回复已保留，本轮后续模型不再执行");
     expect(feedback?.suggestion).toContain("Provider 模板");
   });
 });
 
 describe("describeSkippedModelsResult", () => {
+  it("distinguishes models stopped by an earlier failure from disabled models", () => {
+    const feedback = describeSkippedModelsResult({
+      roomId: "room-stopped",
+      status: "partial",
+      roundOutcomes: [{ modelId: "a", modelName: "Alpha", outcome: "failed" }],
+      skippedModels: [{ modelId: "b", name: "Beta", reason: "previous_failure", availableAt: null }],
+    });
+
+    expect(feedback?.title).toBe("本轮后续模型未执行");
+    expect(feedback?.description).toContain("Beta（因前序模型失败未执行）");
+    expect(feedback?.description).not.toContain("已停用");
+    expect(feedback?.suggestion).toContain("用户消息和已成功的回复均已保存");
+  });
+
   it("tells the user when cooled-down models were skipped so healthy models could continue", () => {
     const feedback = describeSkippedModelsResult({
       roomId: "room-1",
@@ -622,6 +636,8 @@ describe("message round helpers", () => {
       role: "USER",
       modelId: null,
       model: null,
+      replyDurationMs: null,
+      replyTiming: null,
       content: "Hello",
       createdAt: "2026-03-23T10:00:00.000Z",
     },
@@ -632,6 +648,8 @@ describe("message round helpers", () => {
       role: "ASSISTANT",
       modelId: "model-a",
       model: null,
+      replyDurationMs: null,
+      replyTiming: null,
       content: "Reply A",
       createdAt: "2026-03-23T10:00:01.000Z",
     },
@@ -642,6 +660,8 @@ describe("message round helpers", () => {
       role: "USER",
       modelId: null,
       model: null,
+      replyDurationMs: null,
+      replyTiming: null,
       content: "Next",
       createdAt: "2026-03-23T10:00:02.000Z",
     },
@@ -652,6 +672,8 @@ describe("message round helpers", () => {
       role: "ASSISTANT",
       modelId: "model-a",
       model: null,
+      replyDurationMs: null,
+      replyTiming: null,
       content: "Reply B",
       createdAt: "2026-03-23T10:00:03.000Z",
     },
@@ -710,6 +732,8 @@ describe("message round helpers", () => {
             role: "ASSISTANT",
             modelId: "model-b",
             model: null,
+      replyDurationMs: null,
+      replyTiming: null,
             content: "Reply C",
             createdAt: "2026-03-23T10:00:04.000Z",
           },

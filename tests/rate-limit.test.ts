@@ -113,7 +113,7 @@ describe("assertRateLimit", () => {
         enabled: true,
       }),
     ).toThrowError(
-      expect.objectContaining<ApiError>({
+      expect.objectContaining<Pick<ApiError, "status" | "message">>({
         status: 429,
         message: "Too many requests. Please wait and try again.",
       }),

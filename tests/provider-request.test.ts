@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { execFileMock, lookupMock } = vi.hoisted(() => ({
   execFileMock: vi.fn(),
@@ -35,12 +35,15 @@ function createConnectTimeoutError() {
 }
 
 describe("requestProvider", () => {
+  beforeEach(() => {
+    lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     execFileMock.mockReset();
     lookupMock.mockReset();
-    lookupMock.mockResolvedValue({ address: "198.51.100.7", family: 4 });
     Object.defineProperty(process, "platform", {
       configurable: true,
       value: originalPlatform,
@@ -63,7 +66,7 @@ describe("requestProvider", () => {
       }),
     ).rejects.toThrow("Provider URL is not allowed");
 
-    lookupMock.mockResolvedValueOnce({ address: "10.0.0.8", family: 4 });
+    lookupMock.mockResolvedValueOnce([{ address: "10.0.0.8", family: 4 }]);
 
     await expect(
       requestProvider({
@@ -75,7 +78,7 @@ describe("requestProvider", () => {
   });
 
   it("forces fetch requests to use manual redirect handling", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response('{"object":"list","data":[]}', {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -126,10 +129,25 @@ describe("requestProvider", () => {
     });
 
     const options = execFileMock.mock.calls[0]?.[2];
+    expect(execFileMock.mock.calls[0]?.[1]?.[2]).toContain("$handler.AllowAutoRedirect = $false");
 
     expect(options?.env).toEqual({
       CODEX_PROVIDER_REQUEST_PAYLOAD: expect.any(String),
       SystemRoot: "C:\\Windows",
     });
+  });
+
+  it("rejects unresolved and mixed public/private DNS results without a transport fallback", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    lookupMock.mockRejectedValueOnce(new Error("ENOTFOUND"));
+    await expect(requestProvider({ url: "https://missing.example/v1" })).rejects.toThrow("Could not resolve");
+    lookupMock.mockResolvedValueOnce([
+      { address: "93.184.216.34", family: 4 },
+      { address: "127.0.0.1", family: 4 },
+    ]);
+    await expect(requestProvider({ url: "https://mixed.example/v1" })).rejects.toThrow("Provider URL is not allowed");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(execFileMock).not.toHaveBeenCalled();
   });
 });

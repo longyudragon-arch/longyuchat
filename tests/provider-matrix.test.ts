@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ModelConfig, ProviderConnection } from "@/generated/prisma/client";
+import type { ModelConfig, ProviderConnection, Message } from "@/generated/prisma/client";
 import { getProviderProbeModelName } from "@/lib/provider-catalog";
 import {
   discoverModelsByConnectionId,
@@ -61,28 +61,7 @@ function buildModel(id: string, overrides: Partial<ModelConfig> = {}): ModelConf
 }
 
 function createHistoryStore() {
-  const history: Array<{
-    id: string;
-    roomId: string;
-    sequence: number;
-    role: "USER" | "ASSISTANT";
-    modelId: string | null;
-    content: string;
-    replyDurationMs: number | null;
-    queueDurationMs: number | null;
-    providerRequestDurationMs: number | null;
-    providerAttemptCount: number | null;
-    recoveryRequestDurationMs: number | null;
-    rewriteRequestDurationMs: number | null;
-    persistenceDurationMs: number | null;
-    model: null;
-    speakerName: string | null;
-    speakerProvider: string | null;
-    speakerModelName: string | null;
-    speakerAvatarLabel: string | null;
-    speakerAvatarColor: string | null;
-    createdAt: Date;
-  }> = [];
+  const history: Array<Message & { model?: ModelConfig | null }> = [];
 
   return {
     listMessagesByRoomId: async () => [...history],
@@ -119,7 +98,7 @@ function createHistoryStore() {
       replyDurationMs?: number | null,
       speaker?: {
         name: string;
-        provider: string;
+        provider: ModelConfig["provider"];
         modelName: string;
         avatarLabel: string;
         avatarColor: string;
@@ -165,6 +144,7 @@ function createRoomFromModels(roomId: string, models: ModelConfig[]) {
   return {
     id: roomId,
     title: `Room ${roomId}`,
+    nextMessageSequence: 1,
     type: "GROUP" as const,
     createdAt: new Date("2026-03-25T03:00:00.000Z"),
     updatedAt: new Date("2026-03-25T03:00:00.000Z"),

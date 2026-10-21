@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import Database from "better-sqlite3";
 
 function parsePositiveInteger(value, fallback) {
   if (!value) {
@@ -35,14 +37,16 @@ function getBackupDirectory() {
 }
 
 function buildTimestamp() {
-  return new Date().toISOString().replaceAll(":", "").replaceAll(".", "").replace("T", "-").slice(0, 15);
+  return new Date().toISOString().replaceAll(/[-:.]/g, "");
 }
 
-function pruneExpiredBackups(directory, retentionDays) {
+function pruneExpiredBackups(directory, retentionDays, sourceFileName) {
   const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const escapedName = sourceFileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ownedBackupPattern = new RegExp(`^sqlite-backup-\\d{8}T\\d{9}Z-[a-f0-9-]{36}-${escapedName}$`);
 
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (!entry.isFile()) {
+    if (!entry.isFile() || !ownedBackupPattern.test(entry.name)) {
       continue;
     }
 
@@ -55,16 +59,7 @@ function pruneExpiredBackups(directory, retentionDays) {
   }
 }
 
-function copyIfExists(sourcePath, destinationPath) {
-  if (!fs.existsSync(sourcePath)) {
-    return false;
-  }
-
-  fs.copyFileSync(sourcePath, destinationPath);
-  return true;
-}
-
-function main() {
+async function main() {
   const sourceDatabasePath = resolveSqlitePath(process.env.DATABASE_URL);
   const backupDirectory = getBackupDirectory();
   const retentionDays = parsePositiveInteger(process.env.SQLITE_BACKUP_RETENTION_DAYS, 7);
@@ -77,15 +72,29 @@ function main() {
 
   const sourceFileName = path.basename(sourceDatabasePath);
   const timestamp = buildTimestamp();
-  const destinationDatabasePath = path.join(backupDirectory, `${timestamp}-${sourceFileName}`);
-  const destinationWalPath = `${destinationDatabasePath}-wal`;
-  const destinationShmPath = `${destinationDatabasePath}-shm`;
+  const destinationDatabasePath = path.join(backupDirectory, `sqlite-backup-${timestamp}-${randomUUID()}-${sourceFileName}`);
+  const temporaryPath = `${destinationDatabasePath}.partial`;
+  const database = new Database(sourceDatabasePath, { readonly: true, fileMustExist: true });
+  try {
+    fs.closeSync(fs.openSync(temporaryPath, "wx", 0o600));
+    // SQLite's online backup API includes committed WAL pages in one consistent
+    // database image. Never copy the live database and sidecars separately.
+    await database.backup(temporaryPath);
+    const snapshot = new Database(temporaryPath, { readonly: true, fileMustExist: true });
+    try {
+      if (snapshot.pragma("quick_check", { simple: true }) !== "ok") {
+        throw new Error("SQLite backup integrity verification failed.");
+      }
+    } finally {
+      snapshot.close();
+    }
+    fs.renameSync(temporaryPath, destinationDatabasePath);
+  } finally {
+    database.close();
+    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
 
-  fs.copyFileSync(sourceDatabasePath, destinationDatabasePath);
-  const copiedWal = copyIfExists(`${sourceDatabasePath}-wal`, destinationWalPath);
-  const copiedShm = copyIfExists(`${sourceDatabasePath}-shm`, destinationShmPath);
-
-  pruneExpiredBackups(backupDirectory, retentionDays);
+  pruneExpiredBackups(backupDirectory, retentionDays, sourceFileName);
 
   process.stdout.write(
     JSON.stringify({
@@ -93,15 +102,15 @@ function main() {
       sourceDatabasePath,
       backupDirectory,
       destinationDatabasePath,
-      copiedWal,
-      copiedShm,
+      method: "sqlite-online-backup",
+      integrity: "ok",
       retentionDays,
     }) + "\n",
   );
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
   const message = error instanceof Error ? error.message : "SQLite backup failed.";
   process.stderr.write(`${message}\n`);

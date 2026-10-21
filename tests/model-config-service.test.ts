@@ -12,7 +12,6 @@ import {
   updateModelConfigWithDependencies,
 } from "@/server/services/model-config-service";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
-import { ApiError } from "@/server/http/api-error";
 import { encryptModelSecret } from "@/server/security/model-secret-crypto";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
@@ -43,7 +42,7 @@ function buildModel(id: string): ModelConfig {
 describe("testModelConnectionById", () => {
   afterEach(() => {
     delete process.env.MODEL_SECRET_ENCRYPTION_KEY;
-    delete process.env.NODE_ENV;
+    vi.unstubAllEnvs();
   });
 
   it("persists the latest successful test result", async () => {
@@ -155,7 +154,7 @@ describe("testModelConnectionById", () => {
   });
 
   it("rejects plaintext stored API keys in production", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MODEL_SECRET_ENCRYPTION_KEY = base64Key;
 
     expect(() =>
@@ -316,7 +315,7 @@ describe("updateModelConfigWithDependencies", () => {
           updateModel: vi.fn(),
         },
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 400,
       message:
         "Model 受连接保护的模型 is linked to a provider connection. Please update the connection or switch the model to another connection first.",
@@ -478,7 +477,7 @@ describe("deleteModelConfig", () => {
         ],
         deleteById: vi.fn(),
       }),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 409,
       message: "Model Gemini 主模型 is still used by 2 chat room(s).",
       details: expect.objectContaining({

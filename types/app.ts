@@ -292,7 +292,7 @@ export interface SendRoomMessageResult {
   skippedModels?: Array<{
     modelId: string;
     name: string;
-    reason: "disabled" | "cooldown";
+    reason: "disabled" | "cooldown" | "previous_failure";
     availableAt: string | null;
   }>;
   failedModelId?: string;

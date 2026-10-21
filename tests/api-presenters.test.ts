@@ -13,6 +13,7 @@ describe("presentRoom", () => {
     const room = presentRoom({
       id: "room-1",
       title: "产品讨论",
+      nextMessageSequence: 3,
       type: RoomType.GROUP,
       createdAt: new Date("2026-03-10T10:00:00.000Z"),
       updatedAt: new Date("2026-03-11T02:30:00.000Z"),
@@ -176,6 +177,7 @@ describe("presentRoom", () => {
     const room = presentRoom({
       id: "room-2",
       title: "空房间",
+      nextMessageSequence: 3,
       type: RoomType.SINGLE,
       createdAt: new Date("2026-03-11T03:00:00.000Z"),
       updatedAt: new Date("2026-03-11T03:00:00.000Z"),

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { z } from "zod";
+import { ApiError } from "@/server/http/api-error";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -19,13 +21,10 @@ import {
   upsertDailyStoryCluster,
 } from "@/server/services/daily-cluster-service";
 import {
-  createDailyIssueDraft,
   getDailyIssueByDate,
   listPublishedDailyIssues,
-  publishDailyIssue,
-  replaceDailyIssueItems,
-  setDailyIssueStatus,
-  updateDailyIssueDraft,
+  replaceAndPublishDailyIssue,
+  skipUnpublishedDailyIssue,
 } from "@/server/services/daily-issue-service";
 import { getActiveDailyInterestProfile } from "@/server/services/daily-interest-service";
 import {
@@ -49,6 +48,25 @@ import type {
   DailyScanResult,
   DailySourceRuntimeConfig,
 } from "@/types/daily";
+
+const dailyDraftSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  summary: z.string().max(5000),
+  items: z.array(z.object({
+    clusterId: z.string().min(1),
+    category: z.enum(["HEADLINES", "MODEL_RELEASES", "DEV_ECOSYSTEM", "PRODUCT_UPDATES", "TECH_INSIGHTS", "RUMORS"]).optional(),
+    certainty: z.enum(["CONFIRMED", "WATCHLIST", "RUMOR"]).optional(),
+    title: z.string().trim().min(1).max(500),
+    summary: z.string().max(5000).optional(),
+    content: z.string().trim().min(1).max(20000),
+    isFeatured: z.boolean().optional(),
+    sourceLinks: z.array(z.object({
+      url: z.string().url().regex(/^https?:\/\//),
+      label: z.string().optional(), sourceName: z.string().nullable().optional(),
+      sortOrder: z.number().int().positive(),
+    })).max(30).optional(),
+  })).min(1).max(100),
+});
 
 function normalizeUrlForCluster(value: string) {
   try {
@@ -249,6 +267,8 @@ export async function runDailyScan(): Promise<DailyScanResult> {
     summary: "AI daily scan started.",
   });
 
+  let successfulSourceCount = 0;
+  let failedSourceCount = 0;
   let fetchedSourceCount = 0;
   let fetchedItemCount = 0;
   let upsertedItemCount = 0;
@@ -259,6 +279,8 @@ export async function runDailyScan(): Promise<DailyScanResult> {
     const activeInterestProfile = await getActiveDailyInterestProfile();
     const includeKeywords = normalizeKeywordList(activeInterestProfile?.includeKeywordsJson);
     const excludeKeywords = normalizeKeywordList(activeInterestProfile?.excludeKeywordsJson);
+
+    if (sources.length === 0) throw new ApiError(400, "No enabled daily sources are configured.");
 
     for (const source of sources) {
       const step = await createDailyRunStep({
@@ -351,7 +373,9 @@ export async function runDailyScan(): Promise<DailyScanResult> {
         }
 
         await markDailyRunStepSuccess(step.id, `Fetched ${fetchedItems.length} items from ${source.name}`);
+        successfulSourceCount += 1;
       } catch (error) {
+        failedSourceCount += 1;
         await markDailyRunStepFailed(
           step.id,
           error instanceof Error ? error.message : `Failed to scan source ${source.name}`,
@@ -359,25 +383,29 @@ export async function runDailyScan(): Promise<DailyScanResult> {
       }
     }
 
-    await finishDailyRunSuccess(run.id, {
-      summary: `AI daily scan completed. ${fetchedItemCount} items processed.`,
-      statsJson: JSON.stringify({
-        fetchedSourceCount,
-        fetchedItemCount,
-        upsertedItemCount,
-        affectedClusterCount,
-      }),
-    });
-
-    return {
+    const result: DailyScanResult = {
       runId: run.id,
-      fetchedSourceCount,
-      fetchedItemCount,
-      upsertedItemCount,
-      affectedClusterCount,
+      outcome: failedSourceCount > 0 ? "PARTIAL" : "SUCCESS",
+      successfulSourceCount, failedSourceCount, fetchedSourceCount,
+      fetchedItemCount, upsertedItemCount, affectedClusterCount,
     };
+    if (failedSourceCount > 0) {
+      if (successfulSourceCount === 0) throw new ApiError(502, "All daily sources failed. Check the run steps.");
+      await finishDailyRunFailure(run.id, `${failedSourceCount} sources failed.`, {
+        summary: `Partial scan: ${successfulSourceCount} succeeded, ${failedSourceCount} failed.`,
+        statsJson: JSON.stringify(result),
+      });
+    } else {
+      await finishDailyRunSuccess(run.id, {
+        summary: `AI daily scan completed. ${fetchedItemCount} items processed.`,
+        statsJson: JSON.stringify(result),
+      });
+    }
+    return result;
   } catch (error) {
-    await finishDailyRunFailure(run.id, error instanceof Error ? error.message : "AI daily scan failed.");
+    await finishDailyRunFailure(run.id, error instanceof Error ? error.message : "AI daily scan failed.", {
+      statsJson: JSON.stringify({ successfulSourceCount, failedSourceCount, fetchedSourceCount, fetchedItemCount, upsertedItemCount, affectedClusterCount }),
+    });
     throw error;
   }
 }
@@ -813,21 +841,15 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
     const existingIssue = await getDailyIssueByDate(issueDate);
 
     if (candidates.length < minimumItemCount) {
-      const skippedIssue =
-        existingIssue ??
-        (await createDailyIssueDraft({
-          issueDate,
-          slug: `daily-${issueDate}`,
-          title: `AI 日报 ${issueDate}`,
-          summary: "今天没有达到自动发布阈值的足够条目。",
-          sourceWindowStart: windowStart,
-          sourceWindowEnd: windowEnd,
-          metaJson: JSON.stringify({ reason: "insufficient_candidates" }),
-        }));
-
-      await setDailyIssueStatus(skippedIssue.id, "SKIPPED");
+      const skippedIssue = await skipUnpublishedDailyIssue({
+        issueDate, slug: `daily-${issueDate}`, title: `AI 日报 ${issueDate}`,
+        summary: "今天没有达到自动发布阈值的足够条目。",
+        sourceWindowStart: windowStart, sourceWindowEnd: windowEnd,
+        metaJson: JSON.stringify({ reason: "insufficient_candidates" }),
+      });
+      const preserved = skippedIssue.status === "PUBLISHED";
       await finishDailyRunSuccess(run.id, {
-        summary: `AI daily publish skipped for ${issueDate}.`,
+        summary: preserved ? `Existing publication preserved for ${issueDate}.` : `AI daily publish skipped for ${issueDate}.`,
         statsJson: JSON.stringify({
           issueId: skippedIssue.id,
           selectedClusterCount: 0,
@@ -839,9 +861,10 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         runId: run.id,
         issueId: skippedIssue.id,
         issueDate,
-        status: "SKIPPED",
+        status: skippedIssue.status,
+        outcome: preserved ? "PRESERVED" : "SKIPPED",
         selectedClusterCount: 0,
-        publishedItemCount: 0,
+        publishedItemCount: preserved ? skippedIssue.itemCount : 0,
       };
     }
 
@@ -866,25 +889,8 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
     } | null = null;
 
     try {
-      aiDraft = await generateAiDailyJson<{
-        title: string;
-        summary: string;
-        items: Array<{
-          clusterId: string;
-          category?: DailyIssueCategory;
-          certainty?: DailyIssueItemCertainty;
-          title: string;
-          summary?: string;
-          content: string;
-          isFeatured?: boolean;
-          sourceLinks?: Array<{
-            url: string;
-            label?: string;
-            sourceName?: string | null;
-            sortOrder: number;
-          }>;
-        }>;
-      }>({
+      aiDraft = await generateAiDailyJson({
+        schema: dailyDraftSchema,
         system:
           "你是 LongyuChat 的 AI 日报编辑。请只返回合法 JSON，不要输出额外解释。",
         user: [
@@ -894,36 +900,23 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         ].join("\n"),
         defaultReplyLength: 3800,
       });
-    } catch {
+    } catch (error) {
+      if (existingIssue?.status === "PUBLISHED") throw error;
       aiDraft = null;
     }
 
     const hasUsableAiDraft = Boolean(aiDraft && Array.isArray(aiDraft.items) && aiDraft.items.length > 0);
+    if (!hasUsableAiDraft && existingIssue?.status === "PUBLISHED") {
+      throw new ApiError(502, "No usable AI draft was generated; the existing publication was preserved.");
+    }
     let draft = hasUsableAiDraft
       ? aiDraft!
       : buildFallbackIssue(issueDate, candidates, itemLimit);
 
     if (hasUsableAiDraft && shouldRelocalizeDraftToChinese(draft)) {
       try {
-        const relocalizedDraft = await generateAiDailyJson<{
-          title: string;
-          summary: string;
-          items: Array<{
-            clusterId: string;
-            category?: DailyIssueCategory;
-            certainty?: DailyIssueItemCertainty;
-            title: string;
-            summary?: string;
-            content: string;
-            isFeatured?: boolean;
-            sourceLinks?: Array<{
-              url: string;
-              label?: string;
-              sourceName?: string | null;
-              sortOrder: number;
-            }>;
-          }>;
-        }>({
+        const relocalizedDraft = await generateAiDailyJson({
+          schema: dailyDraftSchema,
           system: "你是 LongyuChat 的中文日报润色编辑。请只返回合法 JSON。",
           user: buildChineseLocalizationPrompt(draft),
           defaultReplyLength: 4200,
@@ -932,34 +925,24 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
         if (relocalizedDraft && Array.isArray(relocalizedDraft.items) && relocalizedDraft.items.length > 0) {
           draft = relocalizedDraft;
         }
-      } catch {
+      } catch (error) {
+        if (existingIssue?.status === "PUBLISHED") throw error;
         // Keep the first draft when localization retry fails.
       }
     }
 
     const selectedItems = draft.items
-      .filter((item) => candidates.some((candidate) => candidate.id === item.clusterId))
+      .filter((item, index, items) => candidates.some((candidate) => candidate.id === item.clusterId) && items.findIndex((other) => other.clusterId === item.clusterId) === index)
       .slice(0, itemLimit);
 
-    const issue = existingIssue
-      ? await updateDailyIssueDraft(existingIssue.id, {
-          title: draft.title?.trim() || `AI 日报 ${issueDate}`,
-          summary: draft.summary?.trim() || null,
-          sourceWindowStart: windowStart,
-          sourceWindowEnd: windowEnd,
-          metaJson: null,
-        })
-      : await createDailyIssueDraft({
-          issueDate,
-          slug: `daily-${issueDate}`,
-          title: draft.title?.trim() || `AI 日报 ${issueDate}`,
-          summary: draft.summary?.trim() || null,
-          sourceWindowStart: windowStart,
-          sourceWindowEnd: windowEnd,
-        });
-
-    await replaceDailyIssueItems({
-      issueId: issue.id,
+    if (selectedItems.length < minimumItemCount) {
+      throw new ApiError(502, "The generated issue has too few valid items; the existing publication was preserved.");
+    }
+    const publishedIssue = await replaceAndPublishDailyIssue({
+      issueDate, slug: `daily-${issueDate}`,
+      title: draft.title.trim() || `AI 日报 ${issueDate}`,
+      summary: draft.summary.trim() || null,
+      sourceWindowStart: windowStart, sourceWindowEnd: windowEnd,
       items: selectedItems.map((item, index) => {
         const cluster = candidates.find((candidate) => candidate.id === item.clusterId)!;
         const fallbackCategory = inferIssueCategory({
@@ -980,15 +963,11 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
           tagsJson: null,
           sortOrder: index + 1,
           isFeatured: item.isFeatured ?? index === 0,
-          sourceLinks:
-            item.sourceLinks && item.sourceLinks.length > 0
-              ? item.sourceLinks
-              : cluster.sourceLinks,
+          sourceLinks: cluster.sourceLinks,
         };
       }),
     });
 
-    const publishedIssue = await publishDailyIssue(issue.id);
 
     await finishDailyRunSuccess(run.id, {
       summary: `AI daily publish completed for ${issueDate}.`,
@@ -1004,6 +983,7 @@ export async function runDailyPublish(input?: { issueDate?: string }): Promise<D
       issueId: publishedIssue.id,
       issueDate,
       status: "PUBLISHED",
+      outcome: "PUBLISHED",
       selectedClusterCount: selectedItems.length,
       publishedItemCount: selectedItems.length,
     };

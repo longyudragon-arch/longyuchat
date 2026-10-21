@@ -293,19 +293,10 @@ export async function setDailyIssueStatus(id: string, status: DailyIssueStatus) 
   return presentDailyIssue(issue);
 }
 
-export async function replaceDailyIssueItems(input: ReplaceDailyIssueItemsInput) {
-  const issue = await prisma.dailyIssue.findUnique({
-    where: { id: input.issueId },
-    select: { id: true },
-  });
-
-  if (!issue) {
-    throw new ApiError(404, `Daily issue ${input.issueId} was not found.`, {
-      reasonCode: "record_not_found",
-      retryable: false,
-    });
-  }
-
+async function validateDailyIssueItems(
+  transaction: Prisma.TransactionClient,
+  input: ReplaceDailyIssueItemsInput,
+) {
   const uniqueClusterIds = new Set<string>();
   const sortOrders = new Set<number>();
 
@@ -328,7 +319,7 @@ export async function replaceDailyIssueItems(input: ReplaceDailyIssueItemsInput)
     sortOrders.add(item.sortOrder);
   }
 
-  const existingClusters = await prisma.dailyStoryCluster.findMany({
+  const existingClusters = await transaction.dailyStoryCluster.findMany({
     where: {
       id: {
         in: Array.from(uniqueClusterIds),
@@ -344,7 +335,12 @@ export async function replaceDailyIssueItems(input: ReplaceDailyIssueItemsInput)
     });
   }
 
-  const nextIssue = await prisma.$transaction(async (transaction) => {
+}
+
+async function writeDailyIssueItems(
+  transaction: Prisma.TransactionClient,
+  input: ReplaceDailyIssueItemsInput,
+) {
     await transaction.dailyIssueItemSource.deleteMany({
       where: {
         issueItem: {
@@ -413,13 +409,90 @@ export async function replaceDailyIssueItems(input: ReplaceDailyIssueItemsInput)
       }
     }
 
+}
+
+export async function replaceDailyIssueItems(input: ReplaceDailyIssueItemsInput) {
+  const issue = await prisma.$transaction(async (transaction) => {
+    await transaction.dailyIssue.findUniqueOrThrow({ where: { id: input.issueId } });
+    await validateDailyIssueItems(transaction, input);
+    await writeDailyIssueItems(transaction, input);
     return transaction.dailyIssue.findUniqueOrThrow({
       where: { id: input.issueId },
       include: dailyIssueInclude,
     });
   });
+  return presentDailyIssue(issue);
+}
 
-  return presentDailyIssue(nextIssue);
+// Title, items, sources and publication status become visible together, or not at all.
+export async function replaceAndPublishDailyIssue(input: CreateDailyIssueDraftInput & {
+  items: ReplaceDailyIssueItemsInput["items"];
+}) {
+  if (input.items.length === 0) {
+    throw new ApiError(400, "Cannot publish an empty daily issue.");
+  }
+
+  const issue = await prisma.$transaction(async (transaction) => {
+    const data = {
+      title: requireNonEmpty(input.title, "Daily issue title"),
+      summary: input.summary ?? null,
+      sourceWindowStart: input.sourceWindowStart ?? null,
+      sourceWindowEnd: input.sourceWindowEnd ?? null,
+      metaJson: input.metaJson ?? null,
+    };
+    const nextIssue = await transaction.dailyIssue.upsert({
+      where: { issueDate: input.issueDate },
+      create: {
+        ...data,
+        issueDate: requireNonEmpty(input.issueDate, "Issue date"),
+        slug: requireNonEmpty(input.slug, "Daily issue slug"),
+        status: "DRAFT",
+      },
+      update: data,
+    });
+    const replacement = { issueId: nextIssue.id, items: input.items };
+    await validateDailyIssueItems(transaction, replacement);
+    await writeDailyIssueItems(transaction, replacement);
+    return transaction.dailyIssue.update({
+      where: { id: nextIssue.id },
+      data: {
+        status: "PUBLISHED",
+        publishedAt: nextIssue.publishedAt ?? new Date(),
+      },
+      include: dailyIssueInclude,
+    });
+  });
+
+  return presentDailyIssue(issue);
+}
+
+// Guard in the transaction as another publish may complete after the scan.
+export async function skipUnpublishedDailyIssue(input: CreateDailyIssueDraftInput) {
+  const issue = await prisma.$transaction(async (transaction) => {
+    const existing = await transaction.dailyIssue.upsert({
+      where: { issueDate: input.issueDate },
+      create: {
+        issueDate: requireNonEmpty(input.issueDate, "Issue date"),
+        slug: requireNonEmpty(input.slug, "Daily issue slug"),
+        title: requireNonEmpty(input.title, "Daily issue title"),
+        summary: input.summary ?? null,
+        sourceWindowStart: input.sourceWindowStart ?? null,
+        sourceWindowEnd: input.sourceWindowEnd ?? null,
+        metaJson: input.metaJson ?? null,
+        status: "SKIPPED",
+      },
+      update: {},
+    });
+    await transaction.dailyIssue.updateMany({
+      where: { id: existing.id, status: { not: "PUBLISHED" } },
+      data: { status: "SKIPPED" },
+    });
+    return transaction.dailyIssue.findUniqueOrThrow({
+      where: { id: existing.id },
+      include: dailyIssueInclude,
+    });
+  });
+  return presentDailyIssue(issue);
 }
 
 export async function updateDailyIssueItemText(

@@ -19,33 +19,37 @@
     "test": "vitest run",
     "test:ui:smoke": "node scripts/ui-smoke.mjs",
     "test:watch": "vitest",
-    "check": "npm run lint && npm test",
+    "check": "npm run lint && npm run typecheck && npm test",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "typecheck": "tsc --noEmit --incremental false",
+    "secrets:encrypt": "node scripts/encrypt-stored-secrets.mjs",
+    "test:production": "node scripts/production-smoke.mjs"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "7.4.2",
-    "@prisma/client": "7.4.2",
+    "@prisma/adapter-better-sqlite3": "7.10.0",
+    "@prisma/client": "7.10.0",
     "dotenv": "17.3.1",
-    "next": "16.1.6",
+    "next": "16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "25.4.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.1.6",
-    "postcss": "8.5.8",
+    "eslint-config-next": "16.3.5",
     "playwright": "1.56.1",
-    "prisma": "7.4.2",
+    "postcss": "8.5.28",
+    "prisma": "7.10.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
-    "vitest": "4.0.18"
+    "vitest": "4.1.11"
   }
 }

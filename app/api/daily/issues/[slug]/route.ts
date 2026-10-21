@@ -10,7 +10,7 @@ export async function GET(
     const { slug } = await context.params;
     const issue = await getDailyIssueBySlug(slug);
 
-    if (!issue) {
+    if (!issue || issue.status !== "PUBLISHED") {
       throw new ApiError(404, "The requested record was not found.", {
         reasonCode: "record_not_found",
         retryable: false,

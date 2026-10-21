@@ -71,7 +71,7 @@ export function DailyAdminPage() {
       fetchJson<{ sources: DailySourceView[] }>("/api/daily/admin/sources"),
       fetchJson<{ profiles: DailyInterestProfileView[] }>("/api/daily/admin/interests"),
       fetchJson<{ runs: DailyRunView[] }>("/api/daily/admin/runs"),
-      fetchJson<{ issues: DailyIssueView[] }>("/api/daily/issues?limit=20"),
+      fetchJson<{ issues: DailyIssueView[] }>("/api/daily/admin/issues?limit=20"),
     ]);
 
     setSources(sourcesData.sources);
@@ -216,16 +216,18 @@ export function DailyAdminPage() {
   async function runScan() {
     setActiveAction("running-scan");
     setFeedback(null);
+    setNotice("");
     try {
-      const data = await fetchJson("/api/daily/admin/runs/scan", {
+      const data = await fetchJson<{ result: { outcome: string; failedSourceCount: number } }>("/api/daily/admin/runs/scan", {
         method: "POST",
         body: JSON.stringify({}),
       });
       await loadState();
-      setNotice("已执行日报扫描。");
-      console.log(data);
+      setNotice(data.result.outcome === "PARTIAL" ? `扫描部分完成：${data.result.failedSourceCount} 个来源失败，请查看运行记录。` : "日报扫描完成。");
+
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
+      await loadState().catch(() => {});
     } finally {
       setActiveAction(null);
     }
@@ -234,16 +236,18 @@ export function DailyAdminPage() {
   async function runPublish() {
     setActiveAction("running-publish");
     setFeedback(null);
+    setNotice("");
     try {
-      const data = await fetchJson("/api/daily/admin/runs/publish", {
+      const data = await fetchJson<{ result: { outcome?: string; status: string } }>("/api/daily/admin/runs/publish", {
         method: "POST",
         body: JSON.stringify({}),
       });
       await loadState();
-      setNotice("已执行日报发布。");
-      console.log(data);
+      setNotice(data.result.outcome === "PRESERVED" ? "候选不足，已保留原来的已发布日报。" : data.result.status === "SKIPPED" ? "候选不足，本次未发布。" : "日报发布完成。");
+
     } catch (error: unknown) {
       setFeedback(describeClientError(error));
+      await loadState().catch(() => {});
     } finally {
       setActiveAction(null);
     }
@@ -766,6 +770,12 @@ export function DailyAdminPage() {
                             </span>
                           </div>
                           <p className="mt-1 text-[12px] text-[var(--muted)]">{run.summary ?? "暂无摘要"}</p>
+                          {run.errorMessage && <p className="mt-1 text-[12px] text-red-700">{run.errorMessage}</p>}
+                          {run.steps?.filter((step) => step.status === "FAILED").map((step) => (
+                            <p key={step.id} className="mt-1 text-[12px] text-red-700">
+                              {step.stepName}：{step.message ?? "执行失败"}
+                            </p>
+                          ))}
                           <p className="mt-1 text-[11px] text-stone-500">
                             开始于 {formatDate(run.startedAt)} · 步骤 {run.stepCount}
                           </p>

@@ -510,6 +510,15 @@ export async function sendRoomMessage(
 
       const firstFailedOutcome = roundOutcomes.find((outcome) => outcome.outcome === "failed");
       const firstFailureProviderErrorKind = firstFailedOutcome?.providerErrorKind;
+      const attemptedModelIds = new Set(roundOutcomes.map((outcome) => outcome.modelId));
+      const stoppedModels = runnableRoomModels
+        .filter((roomModel) => !attemptedModelIds.has(roomModel.modelId))
+        .map((roomModel) => ({
+          modelId: roomModel.modelId,
+          name: roomModel.model.name,
+          reason: "previous_failure" as const,
+          availableAt: null,
+        }));
 
       return {
         roomId: input.roomId,
@@ -517,7 +526,7 @@ export async function sendRoomMessage(
         userMessage,
         assistantMessages: result.messages,
         roundOutcomes,
-        skippedModels: skippedRoomModels,
+        skippedModels: [...skippedRoomModels, ...stoppedModels],
         failedModelId: firstFailedOutcome?.modelId,
         error: firstFailedOutcome?.error,
         providerErrorKind: firstFailureProviderErrorKind,

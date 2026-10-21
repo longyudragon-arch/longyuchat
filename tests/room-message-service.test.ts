@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ChatRoom, ChatRoomModel, Message, ModelConfig } from "@/generated/prisma/client";
 
 import { ApiError } from "@/server/http/api-error";
 import { sendRoomMessage } from "@/server/services/room-message-service";
@@ -6,7 +7,7 @@ import type { ModelAdapter } from "@/server/adapters/model-adapter";
 import { buildParticipantRosterInstruction, buildParticipationInstruction, buildReplyLengthInstruction } from "@/server/orchestrators/conversation-orchestrator";
 import type { ChatMessage, ModelRuntimeConfig } from "@/types/chat";
 
-function buildConfig(id: string, enabled = true) {
+function buildConfig(id: string, enabled = true): ModelConfig {
   return {
     id,
     name: id,
@@ -28,31 +29,7 @@ function buildConfig(id: string, enabled = true) {
 }
 
 function createHistoryStore() {
-  const history: Array<{
-    roomId: string;
-    sequence: number;
-    role: "USER" | "ASSISTANT";
-    content: string;
-    modelId: string | null;
-    replyDurationMs: number | null;
-    providerRequestDurationMs: number | null;
-    providerAttemptCount: number | null;
-    recoveryRequestDurationMs: number | null;
-    rewriteRequestDurationMs: number | null;
-    model?: {
-      id: string;
-      name: string;
-      provider: string;
-      modelName: string;
-    } | null;
-    speakerName: string | null;
-    speakerProvider: string | null;
-    speakerModelName: string | null;
-    speakerAvatarLabel: string | null;
-    speakerAvatarColor: string | null;
-    createdAt: Date;
-    id: string;
-  }> = [];
+  const history: Array<Message & { model?: ModelConfig | null }> = [];
 
   return {
     history,
@@ -65,6 +42,8 @@ function createHistoryStore() {
         modelId: null,
         content,
         replyDurationMs: null,
+        queueDurationMs: null,
+        persistenceDurationMs: null,
         providerRequestDurationMs: null,
         providerAttemptCount: null,
         recoveryRequestDurationMs: null,
@@ -87,7 +66,7 @@ function createHistoryStore() {
       replyDurationMs?: number | null,
       speaker?: {
         name: string;
-        provider: string;
+        provider: ModelConfig["provider"];
         modelName: string;
         avatarLabel: string;
         avatarColor: string;
@@ -145,10 +124,11 @@ function createDeferred<T>() {
   };
 }
 
-function createRoom(roomId: string, models = [buildConfig("model-a"), buildConfig("model-b")]) {
+function createRoom(roomId: string, models = [buildConfig("model-a"), buildConfig("model-b")]): ChatRoom & { roomModels: Array<ChatRoomModel & { model: ModelConfig }> } {
   return {
     id: roomId,
     title: `Room ${roomId}`,
+    nextMessageSequence: 1,
     type: "GROUP" as const,
     createdAt: new Date("2026-03-10T00:00:00.000Z"),
     updatedAt: new Date("2026-03-10T00:00:00.000Z"),
@@ -253,6 +233,8 @@ describe("sendRoomMessage", () => {
         modelId: null,
         content: "先继续刚才那个判断",
         replyDurationMs: null,
+        queueDurationMs: null,
+        persistenceDurationMs: null,
         providerRequestDurationMs: null,
         providerAttemptCount: null,
         recoveryRequestDurationMs: null,
@@ -273,6 +255,8 @@ describe("sendRoomMessage", () => {
         modelId: "model-a",
         content: "这是 model-a 在上一轮的结论",
         replyDurationMs: 1800,
+        queueDurationMs: null,
+        persistenceDurationMs: null,
         providerRequestDurationMs: null,
         providerAttemptCount: null,
         recoveryRequestDurationMs: null,
@@ -326,7 +310,7 @@ describe("sendRoomMessage", () => {
     );
   });
 
-  it("returns partial success while allowing later healthy models to continue", async () => {
+  it("preserves the user and earlier replies while stopping later models after failure", async () => {
     const store = createHistoryStore();
     const recordRoomModelTimeout = vi.fn();
     const recordRoomModelFailure = vi.fn();
@@ -382,9 +366,8 @@ describe("sendRoomMessage", () => {
     expect(result.failedModelId).toBe("model-b");
     expect(result.providerErrorKind).toBe("network");
     expect(result.failedModelPaused).toBe(false);
-    expect(result.assistantMessages).toHaveLength(2);
+    expect(result.assistantMessages).toHaveLength(1);
     expect(result.assistantMessages[0]?.modelId).toBe("model-a");
-    expect(result.assistantMessages[1]?.modelId).toBe("model-c");
     expect(result.assistantMessages[0]?.replyDurationMs).toBeTypeOf("number");
     expect(result.roundOutcomes).toEqual([
       {
@@ -403,14 +386,10 @@ describe("sendRoomMessage", () => {
         pauseReason: undefined,
         cooldownUntil: "2026-03-30T10:10:00.000Z",
       },
-      {
-        modelId: "model-c",
-        modelName: "model-c",
-        outcome: "replied",
-      },
     ]);
     expect(result.failedModelCooldownUntil).toBe("2026-03-30T10:10:00.000Z");
-    expect(store.history).toHaveLength(3);
+    expect(store.history.map((message) => [message.role, message.modelId])).toEqual([["USER", null], ["ASSISTANT", "model-a"]]);
+    expect(result.skippedModels).toEqual([{ modelId: "model-c", name: "model-c", reason: "previous_failure", availableAt: null }]);
     expect(recordRoomModelTimeout).toHaveBeenCalledWith("room-2", "model-b");
     expect(markRoomModelInCooldown).toHaveBeenCalledWith(
       "room-2",
@@ -439,8 +418,8 @@ describe("sendRoomMessage", () => {
       errorKind: "network",
       errorMessage: "Provider timeout",
     });
-    expect(markConversationRoundStepRunning).toHaveBeenNthCalledWith(3, "round-1", "rm-3");
-    expect(markConversationRoundStepReplied).toHaveBeenNthCalledWith(2, "round-1", "rm-3", "model-c-3");
+    expect(markConversationRoundStepRunning).toHaveBeenCalledTimes(2);
+    expect(markConversationRoundStepReplied).toHaveBeenCalledTimes(1);
     expect(finishConversationRound).toHaveBeenCalledWith("round-1", "PARTIAL");
   });
 
@@ -565,7 +544,7 @@ describe("sendRoomMessage", () => {
     expect(result.providerErrorKind).toBe("quota");
     expect(result.failedModelPaused).toBe(true);
     expect(result.failedModelPauseReason).toContain("quota or token exhaustion");
-    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-c"]);
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a"]);
     expect(result.roundOutcomes).toEqual([
       {
         modelId: "model-a",
@@ -594,11 +573,6 @@ describe("sendRoomMessage", () => {
         paused: true,
         pauseReason: expect.stringContaining("automatically paused after the provider reported quota or token exhaustion"),
         cooldownUntil: undefined,
-      },
-      {
-        modelId: "model-c",
-        modelName: "model-c",
-        outcome: "replied",
       },
     ]);
     expect(pauseModel).toHaveBeenCalledWith(
@@ -675,7 +649,7 @@ describe("sendRoomMessage", () => {
           clearRoomModelFailure: vi.fn(),
         },
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 404,
       message: "Room missing-room was not found.",
     });
@@ -703,7 +677,7 @@ describe("sendRoomMessage", () => {
           clearRoomModelFailure: vi.fn(),
         },
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 409,
       message: "Room room-disabled does not currently have any runnable models. All models are disabled or cooling down.",
     });
@@ -734,7 +708,7 @@ describe("sendRoomMessage", () => {
           clearRoomModelFailure: vi.fn(),
         },
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 400,
       message: "Room room-empty does not have any bound models.",
       details: expect.objectContaining({
@@ -781,7 +755,7 @@ describe("sendRoomMessage", () => {
         },
         dependencies,
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 409,
       message: "Room room-busy is already processing another message. Please wait for the current round to finish.",
       details: expect.objectContaining({
@@ -994,7 +968,7 @@ describe("sendRoomMessage", () => {
     expect(createAdapter).toHaveBeenCalledTimes(3);
   });
 
-  it("re-cools half-open models when the recovery probe fails while later healthy models continue", async () => {
+  it("re-cools a failed half-open probe and stops the remaining models", async () => {
     const store = createHistoryStore();
     const markRoomModelInCooldown = vi.fn(async () => new Date("2026-03-30T10:30:00.000Z"));
 
@@ -1042,8 +1016,8 @@ describe("sendRoomMessage", () => {
     );
 
     expect(result.status).toBe("partial");
-    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a", "model-c"]);
-    expect(result.skippedModels).toEqual([]);
+    expect(result.assistantMessages.map((message) => message.modelId)).toEqual(["model-a"]);
+    expect(result.skippedModels).toEqual([{ modelId: "model-c", name: "model-c", reason: "previous_failure", availableAt: null }]);
     expect(result.roundOutcomes).toEqual([
       {
         modelId: "model-a",
@@ -1060,11 +1034,6 @@ describe("sendRoomMessage", () => {
         paused: false,
         pauseReason: undefined,
         cooldownUntil: "2026-03-30T10:30:00.000Z",
-      },
-      {
-        modelId: "model-c",
-        modelName: "model-c",
-        outcome: "replied",
       },
     ]);
     expect(markRoomModelInCooldown).toHaveBeenCalledWith(

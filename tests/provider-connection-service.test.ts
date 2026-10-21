@@ -8,7 +8,6 @@ import {
   testProviderConnectionById,
   updateProviderConnection,
 } from "@/server/services/provider-connection-service";
-import { ApiError } from "@/server/http/api-error";
 import type { ModelAdapter } from "@/server/adapters/model-adapter";
 import type { ModelRuntimeConfig } from "@/types/chat";
 
@@ -56,7 +55,7 @@ describe("resolveProviderConnectionDiscoveryStrategy", () => {
 
 describe("testProviderConnectionById", () => {
   afterEach(() => {
-    delete process.env.NODE_ENV;
+    vi.unstubAllEnvs();
     delete process.env.MODEL_SECRET_ENCRYPTION_KEY;
   });
 
@@ -116,7 +115,7 @@ describe("testProviderConnectionById", () => {
           createAdapter: vi.fn(),
         },
       ),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 400,
       message:
         "Provider CLAUDE requires a model ID to test the connection. Please provide a probe model name.",
@@ -171,7 +170,7 @@ describe("testProviderConnectionById", () => {
   });
 
   it("rejects plaintext stored provider API keys in production", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MODEL_SECRET_ENCRYPTION_KEY = Buffer.from(
       "0123456789abcdef0123456789abcdef",
       "utf8",
@@ -204,7 +203,7 @@ describe("discoverModelsByConnectionId", () => {
         persistDiscoveryResult: vi.fn(),
         discoverProviderModels: vi.fn(),
       }),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 400,
       message: "Provider connection Connection conn-4 is configured for manual model entry only.",
       details: expect.objectContaining({
@@ -226,7 +225,7 @@ describe("deleteProviderConnection", () => {
         ],
         deleteById: vi.fn(),
       }),
-    ).rejects.toMatchObject<ApiError>({
+    ).rejects.toMatchObject({
       status: 409,
       message: "Provider connection Gemini 主连接 is still used by 2 model(s).",
       details: expect.objectContaining({

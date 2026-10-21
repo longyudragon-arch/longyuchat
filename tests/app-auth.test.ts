@@ -52,6 +52,7 @@ describe("app auth helpers", () => {
   it("prefers app login over basic auth when both are configured", () => {
     expect(
       getAccessProtectionMode({
+        NODE_ENV: "test",
         APP_LOGIN_ENABLED: "true",
         APP_LOGIN_USERNAME: "longyu",
         APP_LOGIN_PASSWORD: "secret",

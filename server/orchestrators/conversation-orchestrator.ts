@@ -386,7 +386,7 @@ export async function runSequentialConversation(
         providerErrorKind,
         providerErrorDetails,
       });
-      continue;
+      break;
     }
 
     const savedMessage = await input.saveAssistantMessage({

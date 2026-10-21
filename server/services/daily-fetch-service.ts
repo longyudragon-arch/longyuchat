@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { ApiError } from "@/server/http/api-error";
+import { requestPublicText } from "@/server/http/public-http";
 import type { DailySourceRuntimeConfig, UpsertDailySourceItemInput } from "@/types/daily";
 
 interface FeedItem {
@@ -157,52 +158,49 @@ function parseAtomEntries(xml: string): FeedItem[] {
 }
 
 async function fetchText(url: string) {
-  const response = await fetch(url, {
+  const response = await requestPublicText(url, {
     headers: {
       "User-Agent": "LongyuChat-AI-Daily/1.0 (+https://github.com/longyudragon-arch/longyuchat)",
       Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, application/json, text/html",
     },
-    cache: "no-store",
   });
 
-  if (!response.ok) {
+  if (response.status < 200 || response.status >= 300) {
     throw new ApiError(502, `Failed to fetch source: ${url} (${response.status})`);
   }
 
-  return response.text();
+  return response.bodyText;
 }
 
 async function fetchJson<T>(url: string) {
-  const response = await fetch(url, {
+  const response = await requestPublicText(url, {
     headers: {
       "User-Agent": "LongyuChat-AI-Daily/1.0 (+https://github.com/longyudragon-arch/longyuchat)",
       Accept: "application/json",
     },
-    cache: "no-store",
   });
 
-  if (!response.ok) {
+  if (response.status < 200 || response.status >= 300) {
     throw new ApiError(502, `Failed to fetch source: ${url} (${response.status})`);
   }
 
-  return (await response.json()) as T;
+  return JSON.parse(response.bodyText) as T;
 }
 
 async function fetchAihotJson<T>(url: string) {
-  const response = await fetch(url, {
+  const response = await requestPublicText(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       Accept: "application/json",
     },
-    cache: "no-store",
   });
 
-  if (!response.ok) {
+  if (response.status < 200 || response.status >= 300) {
     throw new ApiError(502, `Failed to fetch AI HOT source: ${url} (${response.status})`);
   }
 
-  return (await response.json()) as T;
+  return JSON.parse(response.bodyText) as T;
 }
 
 function resolveFeedUrl(source: DailySourceRuntimeConfig) {

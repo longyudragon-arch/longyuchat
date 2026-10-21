@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { listConversationRoundEventsSince } from "@/server/services/conversation-round-service";
 
 const mocks = vi.hoisted(() => ({
   getChatRoomById: vi.fn(),
   presentRoom: vi.fn((room: unknown) => room),
-  listConversationRoundEventsSince: vi.fn(async () => []),
+  listConversationRoundEventsSince: vi.fn<typeof listConversationRoundEventsSince>(async () => []),
 }));
 
 vi.mock("@/server/services/chat-room-service", () => ({

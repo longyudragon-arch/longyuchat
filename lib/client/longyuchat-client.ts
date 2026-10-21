@@ -967,10 +967,10 @@ export function describePartialSendResult(result: SendRoomMessageResult): Client
     const failedModelLabel = formatRoundOutcomeModelNames(failedOutcomes);
 
     return {
-      title: `本轮已降级完成，${failedOutcomes.length} 个模型失败`,
+      title: `本轮未完整完成，${failedOutcomes.length} 个模型失败`,
       description:
         successfulCount > 0
-          ? `这一轮里，${successfulCount} 个健康模型已继续完成回复；失败的模型有 ${failedModelLabel}。`
+          ? `这一轮里，${successfulCount} 个模型的成功回复已保留；失败的模型有 ${failedModelLabel}。`
           : `这一轮里没有模型成功回复；失败的模型有 ${failedModelLabel}。`,
       suggestion:
         pausedCount > 0
@@ -986,7 +986,9 @@ export function describePartialSendResult(result: SendRoomMessageResult): Client
   const failedModelName = failedOutcome.modelName;
   const errorMessage = failedOutcome.error ?? "本轮顺序回复在中途停止。";
   const fallbackFeedback = describeClientError(new Error(errorMessage));
-  const continuedReplySuffix = successfulCount > 0 ? " 其他健康模型已经继续完成本轮回复。" : "";
+  const continuedReplySuffix = successfulCount > 0
+    ? ` 已成功的 ${successfulCount} 条回复已保留，本轮后续模型不再执行。`
+    : " 本轮后续模型不再执行，用户消息已保存。";
   const unsupportedProvider = extractUnsupportedProviderName(errorMessage);
 
   if (unsupportedProvider || errorMessage.toLowerCase().includes("is not supported in the mvp yet")) {
@@ -1113,6 +1115,10 @@ function formatSkippedModelsLabel(result: SendRoomMessageResult) {
       return model.availableAt ? `${model.name}（冷却至 ${formatDate(model.availableAt)}）` : `${model.name}（冷却中）`;
     }
 
+    if (model.reason === "previous_failure") {
+      return `${model.name}（因前序模型失败未执行）`;
+    }
+
     return `${model.name}（已停用）`;
   });
 
@@ -1126,7 +1132,17 @@ export function describeSkippedModelsResult(result: SendRoomMessageResult): Clie
 
   const skippedLabel = formatSkippedModelsLabel(result);
   const cooldownCount = result.skippedModels.filter((model) => model.reason === "cooldown").length;
-  const disabledCount = result.skippedModels.length - cooldownCount;
+  const disabledCount = result.skippedModels.filter((model) => model.reason === "disabled").length;
+  const stoppedCount = result.skippedModels.filter((model) => model.reason === "previous_failure").length;
+
+  if (stoppedCount > 0) {
+    return {
+      title: "本轮后续模型未执行",
+      description: `前序模型失败后，本轮已停止。未参与的模型：${skippedLabel}。`,
+      suggestion: "用户消息和已成功的回复均已保存。请先处理失败模型，再发送新一轮消息。",
+      tone: "warning",
+    };
+  }
 
   return {
     title: cooldownCount > 0 ? "本轮已跳过冷却中的模型" : "本轮已跳过不可用模型",

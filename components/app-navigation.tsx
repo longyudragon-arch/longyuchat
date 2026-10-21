@@ -104,6 +104,15 @@ export function AppNavigation() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            {(session?.authenticated || session?.mode === "none" || session?.mode === "basic") && (
+              <Link
+                href="/admin/daily"
+                aria-current={pathname.startsWith("/admin/daily") ? "page" : undefined}
+                className="ly-nav-item ly-nav-item-idle"
+              >
+                管理
+              </Link>
+            )}
             {session?.mode === "app" && session.authenticated && (
               <>
                 <span className="hidden text-[11px] font-bold tracking-wide text-[var(--muted)] xl:inline">

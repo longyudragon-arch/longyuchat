@@ -1,7 +1,11 @@
-import "dotenv/config";
+import nextEnv from "@next/env";
+const { loadEnvConfig } = nextEnv;
 
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { assertNoPlaintextSecretsInSqliteDatabase } from "./startup-readiness.mjs";
+
+loadEnvConfig(process.cwd(), false);
 
 function parseBoolean(value) {
   if (value === undefined) {
@@ -151,10 +155,16 @@ function validateStoredSecrets() {
 }
 
 function startNextServer() {
-  const nextCommand = process.platform === "win32" ? "next.cmd" : "next";
-  const child = spawn(nextCommand, ["start", "-H", getListenHost()], {
+  const require = createRequire(import.meta.url);
+  const nextBin = require.resolve("next/dist/bin/next");
+  const child = spawn(process.execPath, [nextBin, "start", "-H", getListenHost(), ...process.argv.slice(2)], {
     stdio: "inherit",
     env: process.env,
+  });
+
+  child.on("error", (error) => {
+    console.error("Could not start the production server:", error.message);
+    process.exitCode = 1;
   });
 
   child.on("exit", (code, signal) => {

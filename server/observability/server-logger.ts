@@ -8,6 +8,7 @@ const apiKeyLabelPattern = /\b(api[_-]?key\s*[:=]\s*)([^\s,;]+)/gi;
 const bearerTokenPattern = /\b(authorization\s*:\s*bearer\s+)([^\s,;]+)/gi;
 const openAiKeyPattern = /\bsk-[A-Za-z0-9_-]{10,}\b/g;
 const googleApiKeyPattern = /\bAIza[0-9A-Za-z_-]{20,}\b/g;
+const secretFieldPattern = /^(?:api[_-]?key|authorization|proxy[_-]?authorization|password|passwd|secret|client[_-]?secret|access[_-]?token|refresh[_-]?token|token|cookie|set[_-]?cookie|session[_-]?secret|model[_-]?secret[_-]?encryption[_-]?key)$/i;
 
 function redactSecretsInString(value: string) {
   return value
@@ -37,7 +38,10 @@ export function sanitizeForLogging(value: unknown): unknown {
 
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, entryValue]) => [key, sanitizeForLogging(entryValue)]),
+      Object.entries(value).map(([key, entryValue]) => [
+        key,
+        secretFieldPattern.test(key) ? "[REDACTED]" : sanitizeForLogging(entryValue),
+      ]),
     );
   }
 

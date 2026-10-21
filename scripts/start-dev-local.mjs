@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 
 const LOCAL_BYPASS_HOSTS = ["localhost", "127.0.0.1", "::1"];
 const args = process.argv.slice(2);
@@ -42,18 +43,19 @@ if (args.includes("--print-env")) {
   process.exit(0);
 }
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const npmArgs = ["run", "dev"];
-
-if (args.length > 0) {
-  npmArgs.push("--", ...args);
-}
+const require = createRequire(import.meta.url);
+const nextBin = require.resolve("next/dist/bin/next");
 
 console.log("[dev:local] Starting Next.js dev server...");
 
-const child = spawn(npmCommand, npmArgs, {
+const child = spawn(process.execPath, [nextBin, "dev", "--hostname", "127.0.0.1", ...args], {
   env,
   stdio: "inherit",
+});
+
+child.on("error", (error) => {
+  console.error("Could not start the local server:", error.message);
+  process.exitCode = 1;
 });
 
 child.on("exit", (code, signal) => {

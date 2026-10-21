@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { assertProductionReadiness, buildProductionReadinessReport } from "@/server/config/production-readiness";
 
-function buildEnv(overrides?: Record<string, string | undefined>) {
+function buildEnv(overrides?: Partial<NodeJS.ProcessEnv>): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "production",
     DATABASE_URL: "file:/srv/longyuchat/data/app.db",

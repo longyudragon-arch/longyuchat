@@ -7,6 +7,20 @@ import { ApiError, handleRouteError } from "@/server/http/api-error";
 import { logServerEvent, sanitizeForLogging } from "@/server/observability/server-logger";
 
 describe("sanitizeForLogging", () => {
+  it("redacts opaque credentials by field name throughout nested objects and arrays", () => {
+    expect(sanitizeForLogging({
+      api_key: "opaque-value",
+      nested: [{ Authorization: "Basic opaque", clientSecret: "opaque", access_token: "opaque", password: "opaque" }],
+      headers: { Cookie: "session=opaque", "Set-Cookie": ["opaque"] },
+      modelName: "public-model",
+    })).toEqual({
+      api_key: "[REDACTED]",
+      nested: [{ Authorization: "[REDACTED]", clientSecret: "[REDACTED]", access_token: "[REDACTED]", password: "[REDACTED]" }],
+      headers: { Cookie: "[REDACTED]", "Set-Cookie": "[REDACTED]" },
+      modelName: "public-model",
+    });
+  });
+
   it("redacts common API key and bearer token patterns", () => {
     const sanitized = sanitizeForLogging({
       apiKey: "AIzaSyExampleKey1234567890abcd",

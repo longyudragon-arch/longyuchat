@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OpenAiCompatibleAdapter, createModelAdapter, resolveProviderRequestTimeoutMs } from "@/server/adapters/openai-compatible-adapter";
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+}));
+
 import type { ModelRuntimeConfig } from "@/types/chat";
 
 const runtimeConfig: ModelRuntimeConfig = {
@@ -14,11 +18,7 @@ const runtimeConfig: ModelRuntimeConfig = {
 };
 
 function createSuccessResponse(payload: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    text: async () => JSON.stringify(payload),
-  };
+  return new Response(JSON.stringify(payload), { status: 200 });
 }
 
 describe("OpenAiCompatibleAdapter", () => {
@@ -32,7 +32,7 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("tests connectivity through the OpenAI-compatible chat completions endpoint", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       createSuccessResponse({
         choices: [{ message: { content: "pong" } }],
       }),
@@ -63,7 +63,7 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("normalizes rich content arrays into a single text reply", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       createSuccessResponse({
         choices: [
           {
@@ -193,7 +193,7 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("allocates a larger token budget for ultra-short numeric follow-up inputs", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       createSuccessResponse({
         choices: [{ message: { content: "收到" } }],
       }),
@@ -332,7 +332,7 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("fails fast for empty responses without reasoning instead of spending a second upstream retry", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       createSuccessResponse({
         choices: [
           {
@@ -417,10 +417,7 @@ describe("OpenAiCompatibleAdapter", () => {
   });
 
   it("surfaces upstream API key failures as authentication errors", async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: false,
-      status: 400,
-      text: async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(
         JSON.stringify([
           {
             error: {
@@ -437,7 +434,8 @@ describe("OpenAiCompatibleAdapter", () => {
             },
           },
         ]),
-    }));
+      { status: 400 },
+    ));
 
     vi.stubGlobal("fetch", fetchMock);
 

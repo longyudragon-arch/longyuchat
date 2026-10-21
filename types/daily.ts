@@ -333,6 +333,9 @@ export interface BuildDailyRssFeedOptions {
 
 export interface DailyScanResult {
   runId: string;
+  outcome: "SUCCESS" | "PARTIAL";
+  successfulSourceCount: number;
+  failedSourceCount: number;
   fetchedSourceCount: number;
   fetchedItemCount: number;
   upsertedItemCount: number;
@@ -346,4 +349,5 @@ export interface DailyPublishResult {
   status: DailyIssueStatus;
   selectedClusterCount: number;
   publishedItemCount: number;
+  outcome?: "PUBLISHED" | "SKIPPED" | "PRESERVED";
 }

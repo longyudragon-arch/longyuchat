@@ -5,6 +5,8 @@ declare global {
   var prismaGlobal: PrismaClient | undefined;
 }
 
+let productionPrisma: PrismaClient | undefined;
+
 function createPrismaClient(databaseUrl: string) {
   const prismaAdapter = new PrismaBetterSqlite3({
     url: databaseUrl,
@@ -23,7 +25,8 @@ function getPrismaClient() {
   }
 
   if (process.env.NODE_ENV === "production") {
-    return createPrismaClient(databaseUrl);
+    productionPrisma ??= createPrismaClient(databaseUrl);
+    return productionPrisma;
   }
 
   if (!globalThis.prismaGlobal) {
@@ -34,7 +37,10 @@ function getPrismaClient() {
 }
 
 export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, property, receiver) {
-    return Reflect.get(getPrismaClient(), property, receiver);
+  get(_target, property) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, property, client);
+    // Prisma methods must retain the same client, including inside transactions.
+    return typeof value === "function" ? value.bind(client) : value;
   },
 });

@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -13,8 +14,7 @@ const cwd = process.cwd();
 const port = Number(process.env.UI_SMOKE_PORT ?? "3101");
 const providerPort = Number(process.env.UI_SMOKE_PROVIDER_PORT ?? String(port + 100));
 const baseUrl = process.env.UI_SMOKE_BASE_URL?.trim() || `http://127.0.0.1:${port}`;
-const providerBaseUrl =
-  process.env.UI_SMOKE_PROVIDER_BASE_URL?.trim() || `http://127.0.0.1:${providerPort}/v1`;
+const providerBaseUrl = "https://ui-smoke.invalid/v1";
 const outputDir = path.join(cwd, "output", "playwright");
 const smokeDatabaseDirectory = path.join(cwd, "prisma", ".ui-smoke");
 const smokeDatabaseSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -74,6 +74,9 @@ function getSmokeEnvironment() {
   return {
     ...process.env,
     DATABASE_URL: `file:${databaseRelativePath}`,
+    NODE_ENV: "development",
+    UI_SMOKE_PROVIDER_TARGET: `http://127.0.0.1:${providerPort}`,
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import="${pathToFileURL(path.join(cwd, "scripts/testing/smoke-provider-preload.mjs"))}"`,
     APP_LOGIN_ENABLED: "true",
     APP_LOGIN_USERNAME: smokeLoginUsername,
     APP_LOGIN_PASSWORD: smokeLoginPassword,
@@ -498,8 +501,10 @@ async function runBrowserChecks() {
     await page.getByTestId("room-composer-input").fill("smoke partial round");
     await page.getByTestId("room-composer-send").click();
     await expectVisibleText(page, "UI Smoke Auth Fail 已自动暂停");
-    await expectVisibleText(page, "其他健康模型已经继续完成本轮回复");
-    await expectVisibleText(page, "【mock-alpha】UI smoke provider 已收到消息。");
+    await expectVisibleText(page, "本轮后续模型");
+    if (await page.getByText("【mock-alpha】UI smoke provider 已收到消息。", { exact: true }).count()) {
+      throw new Error("A later model replied after an earlier failure.");
+    }
 
     const failedStatus = page.getByTestId("room-model-status-ui-model-auth-fail");
     await failedStatus.waitFor({ state: "visible", timeout: 10000 });
@@ -513,15 +518,19 @@ async function runBrowserChecks() {
     const healthyStatus = page.getByTestId("room-model-status-ui-model-alpha");
     await healthyStatus.waitFor({ state: "visible", timeout: 10000 });
     const firstRoundHealthyStatus = (await healthyStatus.textContent())?.trim();
-    if (firstRoundHealthyStatus !== "完成") {
+    if (firstRoundHealthyStatus === "完成" || firstRoundHealthyStatus === "回复中") {
       throw new Error(
-        `Expected healthy model to finish the degraded round. Got "${firstRoundHealthyStatus}".`,
+        `Expected later model to remain unexecuted after failure. Got "${firstRoundHealthyStatus}".`,
       );
     }
 
     await page.getByTestId("room-composer-input").fill("smoke skipped round");
     await page.getByTestId("room-composer-send").click();
     await expectVisibleText(page, "本轮已跳过不可用模型");
+    await expectVisibleText(page, "【mock-alpha】UI smoke provider 已收到消息。");
+    await page.reload();
+    await expectVisibleText(page, "smoke skipped round");
+    await expectVisibleText(page, "【mock-alpha】UI smoke provider 已收到消息。");
 
     const secondRoundFailedStatus = (await failedStatus.textContent())?.trim();
     if (secondRoundFailedStatus !== "已停用") {
@@ -540,30 +549,23 @@ async function runBrowserChecks() {
 }
 
 function initializeSmokeDatabase() {
-  const templateDatabasePath = path.join(cwd, "prisma", "dev.db");
-
-  if (!fs.existsSync(templateDatabasePath)) {
-    throw new Error(`UI smoke requires an existing schema template at ${templateDatabasePath}.`);
-  }
-
   ensureDirectory(smokeDatabaseDirectory);
-  removeIfExists(databasePath, { suppressErrors: true });
-  removeIfExists(`${databasePath}-journal`, { suppressErrors: true });
-  removeIfExists(`${databasePath}-wal`, { suppressErrors: true });
-  removeIfExists(`${databasePath}-shm`, { suppressErrors: true });
-  fs.copyFileSync(templateDatabasePath, databasePath);
-
+  const relative = path.relative(smokeDatabaseDirectory, databasePath);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("UI smoke database must be inside prisma/.ui-smoke.");
+  }
+  if (fs.existsSync(databasePath)) throw new Error("Refusing to overwrite an existing smoke database.");
   const db = new Database(databasePath);
-  db.pragma("foreign_keys = OFF");
-  db.exec(`
-    DELETE FROM messages;
-    DELETE FROM chat_room_models;
-    DELETE FROM chat_rooms;
-    DELETE FROM model_configs;
-    DELETE FROM provider_connections;
-  `);
-  db.pragma("foreign_keys = ON");
-  db.close();
+  try {
+    const migrations = path.join(cwd, "prisma", "migrations");
+    for (const directory of fs.readdirSync(migrations).sort()) {
+      if (!/^\d/.test(directory)) continue;
+      db.exec(fs.readFileSync(path.join(migrations, directory, "migration.sql"), "utf8"));
+    }
+    db.pragma("foreign_keys = ON");
+  } finally {
+    db.close();
+  }
 }
 
 async function main() {

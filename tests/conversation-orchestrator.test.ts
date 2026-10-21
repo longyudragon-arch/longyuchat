@@ -38,6 +38,7 @@ function createPersistMessage(roomId: string) {
     replyDurationMs: number;
     replyTiming?: PersistedMessage["replyTiming"];
   }): Promise<PersistedMessage> => ({
+    id: `${modelId}-${sequence}`,
     roomId,
     modelId,
     content,
@@ -174,7 +175,7 @@ describe("runSequentialConversation", () => {
     }
   });
 
-  it("treats adapter creation failures as per-model failures and continues later models", async () => {
+  it("stops immediately when the first model adapter cannot be created", async () => {
     const saveAssistantMessage = vi.fn(createPersistMessage("room-partial"));
 
     const result = await runSequentialConversation({
@@ -211,14 +212,9 @@ describe("runSequentialConversation", () => {
         outcome: "failed",
         error: "Provider CLAUDE is not supported in the MVP yet.",
       }),
-      expect.objectContaining({
-        modelId: "model-b",
-        outcome: "replied",
-      }),
     ]);
-    expect(result.messages).toHaveLength(1);
-    expect(result.messages[0]?.modelId).toBe("model-b");
-    expect(saveAssistantMessage).toHaveBeenCalledTimes(1);
+    expect(result.messages).toHaveLength(0);
+    expect(saveAssistantMessage).not.toHaveBeenCalled();
   });
 
   it("forwards adapter timing telemetry into the persisted assistant message", async () => {
@@ -347,7 +343,7 @@ describe("runSequentialConversation", () => {
     );
   });
 
-  it("returns partial success while allowing later healthy models to continue", async () => {
+  it("preserves earlier replies and stops after the first model failure", async () => {
     const seenMessages = new Map<string, ChatMessage[]>();
     const thirdModel = {
       testConnection: vi.fn(),
@@ -401,9 +397,8 @@ describe("runSequentialConversation", () => {
     });
 
     expect(result.status).toBe("partial");
-    expect(result.messages).toHaveLength(2);
+    expect(result.messages).toHaveLength(1);
     expect(result.messages[0]?.modelId).toBe("model-a");
-    expect(result.messages[1]?.modelId).toBe("model-c");
     expect(result.roundOutcomes).toEqual([
       {
         modelId: "model-a",
@@ -416,30 +411,9 @@ describe("runSequentialConversation", () => {
         providerErrorKind: undefined,
         providerErrorDetails: undefined,
       },
-      {
-        modelId: "model-c",
-        outcome: "replied",
-      },
     ]);
-    expect(thirdModel.generateReply).toHaveBeenCalledTimes(1);
-    expect(seenMessages.get("model-c")).toEqual([
-      buildReplyLengthInstruction(buildConfig("model-c")),
-      buildParticipantRosterInstruction(
-        [
-          { modelId: "model-a", sortOrder: 1, config: buildConfig("model-a") },
-          { modelId: "model-b", sortOrder: 2, config: buildConfig("model-b") },
-          { modelId: "model-c", sortOrder: 3, config: buildConfig("model-c") },
-        ],
-        { modelId: "model-c", sortOrder: 3, config: buildConfig("model-c") },
-      ),
-      { role: "user", content: "Keep going" },
-      {
-        role: "system",
-        content:
-          "以下是房间中其他模型「model-a（model-a-model）」的参考发言，供应商为「OPENAI_COMPATIBLE」。这不是你自己的历史回复，也不代表你的身份或既有立场，请仅作为参考：\nFirst reply",
-      },
-      buildParticipationInstruction(buildConfig("model-c")),
-    ]);
+    expect(thirdModel.generateReply).not.toHaveBeenCalled();
+    expect(seenMessages.has("model-c")).toBe(false);
   });
 
   it("does not downgrade persistence failures into model failures", async () => {

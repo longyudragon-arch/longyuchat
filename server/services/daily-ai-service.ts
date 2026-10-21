@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { createModelAdapter } from "@/server/adapters/openai-compatible-adapter";
 import { ApiError } from "@/server/http/api-error";
 import { getAiDailyGenerationTimeoutMs, getAiDailyModelId } from "@/server/services/daily-config-service";
@@ -119,6 +120,7 @@ export async function generateAiDailyJson<T>(input: {
   system: string;
   user: string;
   defaultReplyLength?: number;
+  schema: z.ZodType<T>;
 }) {
   const response = await generateAiDailyText(input);
 
@@ -129,13 +131,11 @@ export async function generateAiDailyJson<T>(input: {
   const jsonBlock = extractJsonBlock(response);
 
   try {
-    return JSON.parse(jsonBlock) as T;
-  } catch (error) {
+    return input.schema.parse(JSON.parse(jsonBlock));
+  } catch {
     throw new ApiError(
       502,
-      error instanceof Error
-        ? `AI daily model did not return valid JSON. ${error.message}`
-        : "AI daily model did not return valid JSON.",
+      "AI daily model returned JSON that does not match the required structure.",
     );
   }
 }
