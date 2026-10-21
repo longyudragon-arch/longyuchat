@@ -1,0 +1,87 @@
+
+> longyuchat@0.1.0 prebuild
+> prisma generate
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+
+✔ Generated Prisma Client (7.4.2) to .\generated\prisma in 252ms
+
+
+> longyuchat@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 4.3s
+  Running TypeScript ...
+  Collecting page data using 5 workers ...
+  Generating static pages using 5 workers (0/33) ...
+  Generating static pages using 5 workers (8/33) 
+  Generating static pages using 5 workers (16/33) 
+  Generating static pages using 5 workers (24/33) 
+✓ Generating static pages using 5 workers (33/33) in 527.8ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /admin/daily
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/session
+├ ƒ /api/daily/admin/events/seed
+├ ƒ /api/daily/admin/interests
+├ ƒ /api/daily/admin/interests/[id]
+├ ƒ /api/daily/admin/runs
+├ ƒ /api/daily/admin/runs/publish
+├ ƒ /api/daily/admin/runs/scan
+├ ƒ /api/daily/admin/sources
+├ ƒ /api/daily/admin/sources/[id]
+├ ƒ /api/daily/admin/sources/seed
+├ ƒ /api/daily/events
+├ ƒ /api/daily/issues
+├ ƒ /api/daily/issues/[slug]
+├ ƒ /api/daily/rss
+├ ƒ /api/dev/mock-openai/chat/completions
+├ ƒ /api/dev/mock-openai/models
+├ ƒ /api/health
+├ ƒ /api/models
+├ ƒ /api/models/[id]
+├ ƒ /api/models/[id]/discover-models
+├ ƒ /api/models/[id]/test
+├ ƒ /api/provider-catalog
+├ ƒ /api/provider-connections
+├ ƒ /api/provider-connections/[id]
+├ ƒ /api/provider-connections/[id]/discover-models
+├ ƒ /api/provider-connections/[id]/test
+├ ƒ /api/providers/discover-models
+├ ƒ /api/rooms
+├ ƒ /api/rooms/[id]
+├ ƒ /api/rooms/[id]/configuration
+├ ƒ /api/rooms/[id]/events
+├ ƒ /api/rooms/[id]/messages
+├ ƒ /api/rooms/[id]/order
+├ ƒ /daily
+├ ƒ /daily/[slug]
+├ ƒ /daily/archive
+├ ƒ /daily/events
+├ ○ /icon.svg
+├ ƒ /login
+├ ○ /manifest.webmanifest
+├ ○ /models
+├ ○ /projects
+├ ○ /rooms
+├ ƒ /rooms/[id]
+├ ƒ /rooms/[id]/edit
+└ ○ /rooms/new
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

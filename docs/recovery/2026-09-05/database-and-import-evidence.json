@@ -1,0 +1,31 @@
+{
+  "migration_checksums": {
+    "applied": 22,
+    "mismatches": [
+      "20260326120000_add_model_avatar_color",
+      "20260422165000_add_daily_interest_profiles"
+    ]
+  },
+  "local_database": {
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "model_configs": {
+      "encrypted": 2,
+      "plaintext": 10
+    },
+    "provider_connections": {
+      "encrypted": 1
+    }
+  },
+  "tracked_backup": {
+    "models": 8,
+    "plaintext": 8,
+    "credential_shaped_non_test_values": 2,
+    "validity": "not tested"
+  },
+  "static_import_graph": {
+    "source_files": 123,
+    "cycles": [],
+    "limits": "Static alias/relative imports only; excludes runtime dependency graphs."
+  }
+}

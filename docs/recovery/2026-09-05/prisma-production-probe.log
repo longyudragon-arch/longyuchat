@@ -1,0 +1,10 @@
+
+ RUN  v4.0.18 C:/Users/11501/.codex/tmp/project-recovery-20260905/latest
+
+ ✓ tests/recovery-prisma-probe.test.ts (2 tests) 243ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  13:19:19
+   Duration  911ms (transform 149ms, setup 30ms, import 198ms, tests 243ms, environment 0ms)
+

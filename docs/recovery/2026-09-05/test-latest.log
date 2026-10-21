@@ -1,0 +1,72 @@
+
+> longyuchat@0.1.0 test
+> vitest run
+
+
+ RUN  v4.0.18 C:/Users/11501/.codex/tmp/project-recovery-20260905/latest
+
+ ✓ tests/longyuchat-client.test.ts (48 tests) 276ms
+ ✓ tests/conversation-orchestrator.test.ts (10 tests) 34ms
+ ✓ tests/model-config-service.test.ts (17 tests) 23ms
+ ✓ tests/provider-matrix.test.ts (5 tests) 20ms
+ ✓ tests/room-message-service.test.ts (15 tests) 43ms
+ ✓ tests/api-presenters.test.ts (6 tests) 9ms
+ ✓ tests/proxy.test.ts (10 tests) 173ms
+ ✓ tests/message-service.test.ts (6 tests) 21ms
+ ✓ tests/openai-compatible-adapter.test.ts (11 tests) 744ms
+     ✓ tests connectivity through the OpenAI-compatible chat completions endpoint  313ms
+ ✓ tests/room-chat-derived.test.ts (5 tests) 8ms
+ ✓ tests/provider-connection-service.test.ts (10 tests) 17ms
+ ✓ tests/runtime.test.ts (18 tests) 9ms
+ ✓ tests/room-events-route.test.ts (3 tests) 22ms
+ ✓ tests/model-discovery-service.test.ts (5 tests) 24ms
+ ✓ tests/room-chat-helpers.test.ts (4 tests) 5ms
+ ✓ tests/chat-room-service.test.ts (10 tests) 12ms
+ ✓ tests/provider-error.test.ts (7 tests) 7ms
+ ✓ tests/provider-request.test.ts (3 tests) 45ms
+ ✓ tests/server-access.test.ts (11 tests) 8ms
+ ✓ tests/rate-limit.test.ts (6 tests) 9ms
+ ✓ tests/production-readiness.test.ts (4 tests) 7ms
+ ✓ tests/server-logger.test.ts (4 tests) 41ms
+ ✓ tests/provider-catalog.test.ts (6 tests) 9ms
+ ✓ tests/model-page-error-field-resolver.test.ts (5 tests) 5ms
+ ✓ tests/model-secret-crypto.test.ts (6 tests) 7ms
+ ✓ tests/startup-readiness.test.ts (2 tests) 104ms
+ ✓ tests/app-auth.test.ts (4 tests) 32ms
+ ✓ tests/edit-room-page-error-resolver.test.ts (3 tests) 3ms
+ ✓ tests/daily-feed-service.test.ts (1 test) 316ms
+     ✓ renders a valid RSS xml payload from published issues  314ms
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.517Z","level":"warn","event":"api_error","requestId":"ebf91045-6b01-4689-9684-dcab0420bd2c","method":"POST","url":"https://example.com/api/auth/login","status":401,"error":{"name":"Error","message":"Invalid username or password.","stack":"Error: Invalid username or password.\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:51:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:55:24\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"reasonCode":"invalid_credentials","retryable":true,"fieldHints":["username","password"]}}
+
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.526Z","level":"warn","event":"api_error","requestId":"70e620bb-e0c0-46b8-94ea-13469bcdf944","method":"POST","url":"https://example.com/api/auth/login","status":401,"error":{"name":"Error","message":"Invalid username or password.","stack":"Error: Invalid username or password.\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:51:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:55:24\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"reasonCode":"invalid_credentials","retryable":true,"fieldHints":["username","password"]}}
+
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.528Z","level":"warn","event":"api_error","requestId":"946ecfee-ba48-4cd0-a29b-c85d03090015","method":"POST","url":"https://example.com/api/auth/login","status":401,"error":{"name":"Error","message":"Invalid username or password.","stack":"Error: Invalid username or password.\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:51:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:55:24\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"reasonCode":"invalid_credentials","retryable":true,"fieldHints":["username","password"]}}
+
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.529Z","level":"warn","event":"api_error","requestId":"495a0828-ca42-4645-8f70-987bcbc27a43","method":"POST","url":"https://example.com/api/auth/login","status":401,"error":{"name":"Error","message":"Invalid username or password.","stack":"Error: Invalid username or password.\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:51:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:55:24\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"reasonCode":"invalid_credentials","retryable":true,"fieldHints":["username","password"]}}
+
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.530Z","level":"warn","event":"api_error","requestId":"a633cbcd-cf02-4803-acc4-33456b090abb","method":"POST","url":"https://example.com/api/auth/login","status":401,"error":{"name":"Error","message":"Invalid username or password.","stack":"Error: Invalid username or password.\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:51:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:55:24\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"reasonCode":"invalid_credentials","retryable":true,"fieldHints":["username","password"]}}
+
+stderr | tests/login-route.test.ts > POST /api/auth/login > rate limits repeated failed login attempts from the same client
+{"timestamp":"2026-09-05T05:08:25.531Z","level":"warn","event":"api_error","requestId":"2a423c8c-adfe-4cde-9372-0f4ec2e3c430","method":"POST","url":"https://example.com/api/auth/login","status":429,"error":{"name":"Error","message":"Too many requests. Please wait and try again.","stack":"Error: Too many requests. Please wait and try again.\n    at assertRateLimit (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/server/http/rate-limit.ts:150:11)\n    at assertLoginRateLimit (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/server/http/rate-limit.ts:181:3)\n    at POST (C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/app/api/auth/login/route.ts:26:5)\n    at C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/tests/login-route.test.ts:59:27\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///C:/Users/11501/.codex/tmp/project-recovery-20260905/latest/node_modules/@vitest/runner/dist/index.js:915:20"},"details":{"bucket":"app-login-posts","limit":5,"windowSeconds":60,"retryAfterSeconds":60}}
+
+ ✓ tests/login-route.test.ts (1 test) 108ms
+ ✓ tests/logout-route.test.ts (1 test) 364ms
+     ✓ revokes the active app-session token before clearing the cookie  361ms
+ ✓ tests/login-page-error-resolver.test.ts (2 tests) 3ms
+ ✓ tests/api-error.test.ts (2 tests) 12ms
+ ✓ tests/next-config.test.ts (1 test) 3ms
+ ✓ tests/prisma.test.ts (2 tests) 140ms
+ ✓ tests/request-id.test.ts (2 tests) 35ms
+ ✓ tests/daily-default-source-service.test.ts (1 test) 3ms
+ ✓ tests/daily-major-event-service.test.ts (1 test) 3ms
+
+ Test Files  38 passed (38)
+      Tests  258 passed (258)
+   Start at  13:08:18
+   Duration  8.45s (transform 6.62s, setup 476ms, import 12.78s, tests 2.70s, environment 11ms)
+

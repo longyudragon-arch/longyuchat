@@ -1,0 +1,20 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { prisma } from '@/lib/prisma';
+
+afterEach(() => vi.unstubAllEnvs());
+
+it('reproduces production client identity changes and broken interactive transaction', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  expect(prisma.dailyStoryClusterItem).not.toBe(prisma.dailyStoryClusterItem);
+  await expect(prisma.$transaction(async tx =>
+    tx.dailyStoryClusterItem.deleteMany({where: {id: 'nonexistent-audit-record'}})
+  )).rejects.toThrow(/Transaction.*not found/);
+});
+
+it('same operation retains client identity and succeeds in development', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  expect(prisma.dailyStoryClusterItem).toBe(prisma.dailyStoryClusterItem);
+  await expect(prisma.$transaction(async tx =>
+    tx.dailyStoryClusterItem.deleteMany({where: {id: 'nonexistent-audit-record'}})
+  )).resolves.toEqual({count: 0});
+});

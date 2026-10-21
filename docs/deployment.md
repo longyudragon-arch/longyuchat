@@ -60,7 +60,7 @@ sudo apt update
 sudo apt install -y git curl nginx
 ```
 
-Node.js 推荐使用 Node 20 LTS。若服务器还没有 Node，请先安装 Node 20，再确认：
+当前依赖要求 Node 20.19+、22.12+ 或 24+。本次恢复已在 Node 24.14.1 验证；部署前确认实际版本满足 `prisma/package.json` 与 `next/package.json` 的 engines：
 
 ```bash
 node -v

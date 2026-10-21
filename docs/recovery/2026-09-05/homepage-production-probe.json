@@ -1,0 +1,7 @@
+{
+  "issueStatus": "PUBLISHED",
+  "issueTitle": "Recovery Published After Build",
+  "homepageHasNewTitle": false,
+  "homepageStillSaysNoPublishedIssue": true,
+  "fixture": "Only isolated audit database was seeded after production build."
+}

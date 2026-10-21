@@ -1,447 +1,94 @@
 # LongyuChat
 
-## AI 多模型聊天室 MVP 规范
+A personal AI website with a public portal, an AI Daily publication, and a private multi-model chat workspace.
 
-## 1. 项目定位
+## Features
 
-本项目用于构建一个面向个人使用的 AI 多模型聊天室 Web 应用。
+- Public home page, profile, and project showcase.
+- Provider connections, model discovery, model configuration, and connection tests.
+- Single-model conversations and sequential multi-model group conversations.
+- Persistent messages, conversation history, and round status events.
+- Daily source management, collection, clustering, AI drafting with rules-based fallback, publication, archives, and RSS.
+- Single-owner access protection, encrypted model credentials, request limits, and server logging.
 
-第一阶段目标不是做完整产品，而是尽快交付一个最基础、可运行、可演示的 MVP，用来验证多模型协作聊天的核心链路是否成立。
+A group conversation saves the user message first. Each model sees earlier successful replies from the same round. If a model fails, previous replies remain saved and later models are skipped. Round events report progress; they do not stream individual tokens.
 
-本阶段只验证以下 4 件事：
+Agent runtimes, tool execution, MCP, RAG, knowledge bases, registration, and multi-user accounts are outside the current scope. Live provider quality and external Daily scheduling require separate validation.
 
-1. 能配置模型
-2. 能单聊
-3. 能多模型按顺序回复
-4. 能保存聊天记录并重新打开继续聊天
+## Quick start
 
-## 2. MVP 范围
+Use Node.js 22.12+ on the 22.x line, or Node.js 24+. The recovery checks were run with Node.js 24.14.1.
 
-### 2.1 本阶段必须实现
-
-#### 模型管理
-
-- 新增模型
-- 编辑模型
-- 删除模型
-- 启用或停用模型
-- 测试连接
-
-模型配置字段仅包含：
-
-- `name`
-- `provider`
-- `baseUrl`
-- `modelName`
-- `apiKey`
-- `enabled`
-
-模型接入策略：
-
-- MVP 第一版优先支持 OpenAI 兼容接口
-- `Claude`、`Gemini`、`Grok`、`豆包`、`DeepSeek` 先预留 `provider` 类型
-- 非 OpenAI 兼容 provider 不在本阶段落地
-
-#### 聊天能力
-
-- 单聊
-- 多模型群聊
-- 会话历史保存
-- 重新打开历史会话继续聊天
-
-#### 群聊规则
-
-- 创建群聊时可选择多个模型
-- 每个房间需要保存模型顺序
-- 用户发送一条消息后，模型按固定顺序依次回复
-- 后一个模型能看到前一个模型在当前轮中的已成功回复
-- 本阶段不实现角色分工、`@` 打断、自动继续、多轮自动博弈
-
-### 2.2 本阶段明确不做
-
-以下内容全部留到后续版本，不得混入 MVP：
-
-- 图片上传
-- 文件解析
-- 语音输入
-- 语音播报
-- Prompt 模板
-- 超长 Prompt 导入
-- 自动总结
-- 搜索
-- 归档
-- 导出
-- 成本统计页面
-- 错误日志页面
-- 角色分工
-- `@` 打断
-- 自动继续多轮
-- 多端 App 或小程序
-- 多用户
-- 登录注册
-- 商业化和权限系统
-
-## 3. 技术边界
-
-### 3.1 前端
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-
-### 3.2 服务端
-
-- 不拆独立后端
-- 直接使用 Next.js API Routes 提供接口
-
-### 3.3 数据存储
-
-- Prisma ORM
-- SQLite
-
-选型原则：
-
-- 优先保证本地可运行
-- 优先降低安装和调试门槛
-- 后续如需升级，可迁移到 PostgreSQL
-
-## 4. 页面范围
-
-### 页面 1：模型管理页
-
-功能：
-
-- 查看模型列表
-- 新增模型
-- 编辑模型
-- 删除模型
-- 启用或停用模型
-- 测试连接
-
-### 页面 2：聊天主页面
-
-布局：
-
-- 左侧为会话列表
-- 中间为聊天消息区
-- 底部为输入框和发送按钮
-- 右侧为当前房间参与模型和回复顺序
-
-功能：
-
-- 新建单聊
-- 新建群聊
-- 打开历史会话
-- 显示消息记录
-- 输入并发送消息
-
-### 页面 3：新建群聊弹窗
-
-功能：
-
-- 输入房间名称
-- 选择参与模型
-- 调整模型顺序
-
-## 5. 数据模型规范
-
-### 5.1 `model_configs`
-
-用途：保存可供房间使用的模型配置。
-
-字段：
-
-- `id`
-- `name`
-- `provider`
-- `base_url`
-- `model_name`
-- `api_key`
-- `enabled`
-- `created_at`
-- `updated_at`
-
-约束：
-
-- `name` 在本地单用户场景下应保持唯一
-- `enabled = false` 的模型不可用于新建房间
-- `api_key` 仅服务端可见
-
-### 5.2 `chat_rooms`
-
-用途：保存会话房间。
-
-字段：
-
-- `id`
-- `title`
-- `type`，枚举值为 `single` 或 `group`
-- `created_at`
-- `updated_at`
-
-约束：
-
-- `single` 表示单聊房间
-- `group` 表示群聊房间
-
-### 5.3 `chat_room_models`
-
-用途：保存房间与模型的关联关系及顺序。
-
-字段：
-
-- `id`
-- `room_id`
-- `model_id`
-- `sort_order`
-
-约束：
-
-- `room_id + model_id` 必须唯一
-- `room_id + sort_order` 必须唯一
-- 单聊房间也必须写入本表
-- 单聊房间必须且只能关联 1 个模型
-- 群聊房间必须至少关联 2 个模型
-
-### 5.4 `messages`
-
-用途：保存聊天消息。
-
-字段：
-
-- `id`
-- `room_id`
-- `sequence`
-- `role`，枚举值为 `user`、`assistant`、`system`
-- `model_id`，可空；用户消息为空
-- `content`
-- `created_at`
-
-约束：
-
-- `room_id + sequence` 必须唯一
-- 同一房间的消息顺序以 `sequence` 为准，不以时间戳推断
-- 本阶段只保存纯文本消息
-
-## 6. 接口范围
-
-### 6.1 模型管理
-
-- `GET /api/models`
-- `POST /api/models`
-- `PUT /api/models/:id`
-- `DELETE /api/models/:id`
-- `POST /api/models/:id/test`
-
-### 6.2 会话管理
-
-- `GET /api/rooms`
-- `POST /api/rooms`
-- `GET /api/rooms/:id/messages`
-- `POST /api/rooms/:id/messages`
-
-## 7. 消息流程规范
-
-### 7.1 单聊流程
-
-1. 用户进入单聊房间
-2. 前端提交消息到 `POST /api/rooms/:id/messages`
-3. 服务端保存用户消息
-4. 服务端读取该房间唯一绑定的模型
-5. 服务端调用模型接口
-6. 服务端保存模型回复
-7. 返回本轮新增消息给前端显示
-
-### 7.2 多模型群聊流程
-
-1. 用户发送消息
-2. 服务端先保存用户消息
-3. 服务端按 `sort_order` 依次调用房间中的模型
-4. 每个模型读取当前房间历史消息，以及本轮前面模型的已成功回复
-5. 每个模型成功返回后立即保存一条 `assistant` 消息
-6. 全部执行完成后返回本轮新增消息
-
-## 8. 失败处理规范
-
-本阶段采用“降级继续”的失败策略：
-
-- 用户消息必须先保存
-- 模型顺序调用过程中，如某个模型失败或超时，则已成功保存的模型回复保留，不回滚
-- 当前失败模型不生成消息
-- 后续健康模型继续执行，房间按顺序降级完成本轮
-- 接口返回“部分成功”结果，并带上失败模型标识、错误摘要以及本轮各模型结果
-
-补充约束：
-
-- “测试连接”失败不应写入聊天消息表
-- 聊天接口不得因为单个模型失败而丢失本轮已保存消息
-
-## 9. API Key 安全底线
-
-虽然本阶段是本地单用户 MVP，仍必须满足以下规则：
-
-- `api_key` 只允许服务端读取和使用
-- 模型列表和详情接口不得回传明文 `api_key`
-- 编辑模型时，如未提交新 `api_key`，应保留旧值
-- 日志和报错信息不得打印明文 `api_key`
-- 仓库中不得提交真实 `.env`
-- 必须提供 `.env.example`
-
-说明：
-
-- 用户自行配置的模型密钥属于业务数据，应存于数据库
-- 应用运行所需环境变量放入 `.env`
-
-## 10. 目录建议
-
-```text
-app/
-components/
-server/
-  adapters/
-  orchestrators/
-  services/
-lib/
-prisma/
-types/
-public/
+```sh
+git clone https://github.com/longyudragon-arch/longyuchat.git
+cd longyuchat
+git switch codex/project-recovery-20260920
+npm ci
 ```
 
-目录职责：
+Copy `.env.example` to `.env` and configure the database. The default local database is SQLite at `prisma/dev.db`. Keep credentials out of Git.
 
-- `app/`：页面和 API 路由入口
-- `components/`：纯 UI 组件
-- `server/adapters/`：模型调用适配层
-- `server/orchestrators/`：多模型顺序编排
-- `server/services/`：业务逻辑与数据协调
-- `lib/`：通用工具、常量、错误处理、数据库客户端
-- `prisma/`：数据库 schema 和 migration
-- `types/`：项目共享类型
+For a **new, empty database**:
 
-## 11. 最小实现原则
-
-- 页面层不写复杂业务逻辑
-- API Route 只做参数接收、参数校验、调用 service、返回响应
-- 第三方模型调用必须统一收口到适配层
-- 多模型顺序回复必须统一收口到编排层
-- 不为了赶进度把多种职责直接写死在页面或 route 中
-
-## 12. 最小测试与验收标准
-
-### 12.1 自动化测试最低要求
-
-至少覆盖以下场景：
-
-- 模型连接测试可通过 mocked OpenAI 兼容接口完成校验
-- 单聊发送消息后，能保存用户消息和模型回复
-- 群聊发送消息后，模型按配置顺序回复
-- 群聊中后一个模型可读取前一个模型本轮已成功回复
-- 某个模型失败时，已成功回复保留，后续健康模型继续回复
-- 刷新后可以重新读取历史消息
-
-### 12.2 人工验收通过条件
-
-满足以下条件即可视为 MVP 跑通：
-
-- 页面能打开
-- 模型可以新增、编辑、删除、启停
-- 模型连接测试可成功返回结果
-- 可以创建单聊和群聊
-- 用户发送一句话后，多个模型能按顺序回复
-- 刷新页面后聊天记录仍存在
-- 历史会话可以重新打开继续聊天
-
-## 13. 建议开发顺序
-
-### 第 1 步：初始化项目
-
-- 创建 Next.js 项目
-- 配置 Tailwind
-- 配置 Prisma 和 SQLite
-- 建立基础目录
-
-### 第 2 步：完成模型管理
-
-- 建立模型表
-- 完成模型 CRUD
-- 完成模型连接测试
-- 完成模型管理页
-
-### 第 3 步：完成房间管理
-
-- 建立房间表和关联表
-- 新建单聊
-- 新建群聊
-- 配置房间模型顺序
-
-### 第 4 步：完成聊天主流程
-
-- 发送消息
-- 调用模型
-- 顺序编排
-- 保存消息
-- 加载历史消息
-
-### 第 5 步：整理基础 UI
-
-- 左侧房间列表
-- 中间聊天区
-- 右侧模型顺序栏
-
-## 14. 后续版本方向
-
-以下能力仅作为后续规划，不属于当前交付承诺：
-
-- 非 OpenAI 兼容 provider 的专用适配器
-- 图片、文件、语音能力
-- Prompt 模板与超长 Prompt
-- 自动总结和上下文压缩
-- 搜索、归档、导出
-- 成本统计和错误日志页面
-- 角色分工、`@` 打断、自动继续
-- Android App 和微信小程序
-
-## 15. 最终目标
-
-当前所有代码产出都应服务于同一个目标：
-
-**尽快完成一个结构清晰、可运行、可扩展的 AI 多模型聊天室 MVP。**
-
-## 16. 部署准备
-
-项目已经补充了第一批服务器部署准备项：
-
-- `.env.example`
-- `npm run start:prod`
-- `npm run prisma:migrate:deploy`
-- `GET /api/health`
-- 生产环境自动禁用本地 mock 路由
-- 可选的 Basic Auth 访问保护
-- 可选的模型 API Key 加密存储
-- 可选的敏感 POST 接口限流
-- API 请求 ID 响应头和脱敏错误日志
-- 生产启动自检、文件日志和 SQLite 备份脚本
-
-部署步骤和服务器示例见：[docs/deployment.md](./docs/deployment.md)
-
-## 17. 本地开发代理说明
-
-如果本机开启了 TUN 模式代理，或设置了 `http_proxy` / `https_proxy`，本地开发时可能会把 `localhost` 也错误走代理，导致：
-
-- `http://localhost:3000` 返回 `502`
-- 浏览器或自动化工具访问本地页面持续超时
-
-项目已提供本地开发启动脚本，会自动为当前进程补齐 `NO_PROXY`：
-
-```bash
-npm run dev:local
+```sh
+npm run prisma:migrate:deploy
+npm run dev:local -- --port 3000
 ```
 
-这个脚本会自动把以下地址加入绕过列表：
+For an existing database, back it up and inspect its migration history before applying migrations. Never reset a database that contains user data.
 
-- `localhost`
-- `127.0.0.1`
-- `::1`
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The local launcher binds to loopback. Configure authentication before exposing the application to a network.
 
-如果你仍然使用系统代理或 Clash / Mihomo 一类工具，建议同时在代理规则中将上述地址设置为 `DIRECT`，避免本地开发服务被代理劫持。
+| Area | Path |
+| --- | --- |
+| Chat workspace | `/rooms` |
+| Model management | `/models` |
+| AI Daily | `/daily` |
+| Daily administration | `/admin/daily` |
+
+The administration link is available to the owner after login, or while access protection is disabled locally.
+
+## Verification
+
+```sh
+npm run check
+npm run test:ui:smoke
+npm run build
+npm run test:production
+```
+
+`check` runs ESLint, the full TypeScript check, and unit/integration tests. Browser and production smoke checks use isolated synthetic databases and test credentials. They do not call paid providers. Build before running the production smoke check.
+
+## Operations
+
+- `npm run start:prod` loads production configuration and enforces startup readiness checks.
+- `npm run sqlite:backup` creates a consistent SQLite online backup and checks its integrity.
+- `npm run secrets:encrypt` backs up the database, then encrypts legacy plaintext model credentials using `MODEL_SECRET_ENCRYPTION_KEY`.
+
+Keep encryption keys and backups in controlled storage. A backup taken before encryption can still contain plaintext credentials. See the [deployment guide](docs/deployment.md) for production setup.
+
+## Architecture
+
+| Directory | Responsibility |
+| --- | --- |
+| `app/` | Pages and API route entry points |
+| `components/` | User interface |
+| `server/services/` | Business logic and persistence coordination |
+| `server/adapters/` | Provider adapters |
+| `server/orchestrators/` | Sequential model execution |
+| `lib/` | Shared configuration and utilities |
+| `prisma/` | SQLite schema and migrations |
+| `types/` | Shared types |
+
+The application remains a modular monolith built with Next.js 16.3.5, React 19.2.4, TypeScript, Tailwind CSS, Prisma 7.10.0, and SQLite.
+
+## Project documentation
+
+- [GitHub synchronization and history notes](docs/GITHUB_SYNC_2026-10-21.md)
+- [Project overview](docs/PROJECT_OVERVIEW.md)
+- [Recovery changes and verification](docs/RECOVERY_CHANGES_2026-09-20.md)
+- [Historical recovery audit](docs/PROJECT_RECOVERY_REPORT.md)
+- [Original MVP specification](docs/legacy/MVP_SPEC.md)
+- [AI Daily module](ai-daily/README.md)
+
+The detailed recovery audit and operational records retain their original Chinese text. They distinguish verified behavior from remaining work, including historical credential exposure, migration-history differences, provider DNS binding, dependency advisories, and live-service validation.

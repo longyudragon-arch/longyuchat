@@ -1,0 +1,83 @@
+
+> longyuchat@0.1.0 prisma:migrate:deploy
+> prisma migrate deploy
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Datasource "db": SQLite database "dev.db" at "file:./prisma/dev.db"
+
+22 migrations found in prisma/migrations
+
+Applying migration `20260310192500_init`
+Applying migration `20260310223000_add_default_reply_length`
+Applying migration `20260311005500_add_model_test_results`
+Applying migration `20260325110000_add_provider_connections`
+Applying migration `20260326120000_add_model_avatar_color`
+Applying migration `20260327124000_add_model_avatar_label`
+Applying migration `20260330100000_add_message_speaker_snapshots`
+Applying migration `20260330113000_add_message_reply_duration`
+Applying migration `20260330121500_add_chat_room_model_timeout_count`
+Applying migration `20260330133000_add_message_reply_timing_breakdown`
+Applying migration `20260330140000_add_message_queue_and_persistence_durations`
+Applying migration `20260330152000_add_chat_room_next_message_sequence`
+Applying migration `20260330154000_add_chat_room_model_failure_snapshots`
+Applying migration `20260330170000_add_chat_room_model_cooldown_state`
+Applying migration `20260330184000_add_chat_room_model_half_open_state`
+Applying migration `20260330191500_add_chat_room_model_success_recovery_timestamps`
+Applying migration `20260402113000_add_conversation_rounds`
+Applying migration `20260402123000_add_conversation_round_events`
+Applying migration `20260422040000_add_ai_daily_tables`
+Applying migration `20260422150000_add_daily_categories_and_sources`
+Applying migration `20260422165000_add_daily_interest_profiles`
+Applying migration `20260509173000_add_daily_major_events`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260310192500_init/
+    └─ migration.sql
+  └─ 20260310223000_add_default_reply_length/
+    └─ migration.sql
+  └─ 20260311005500_add_model_test_results/
+    └─ migration.sql
+  └─ 20260325110000_add_provider_connections/
+    └─ migration.sql
+  └─ 20260326120000_add_model_avatar_color/
+    └─ migration.sql
+  └─ 20260327124000_add_model_avatar_label/
+    └─ migration.sql
+  └─ 20260330100000_add_message_speaker_snapshots/
+    └─ migration.sql
+  └─ 20260330113000_add_message_reply_duration/
+    └─ migration.sql
+  └─ 20260330121500_add_chat_room_model_timeout_count/
+    └─ migration.sql
+  └─ 20260330133000_add_message_reply_timing_breakdown/
+    └─ migration.sql
+  └─ 20260330140000_add_message_queue_and_persistence_durations/
+    └─ migration.sql
+  └─ 20260330152000_add_chat_room_next_message_sequence/
+    └─ migration.sql
+  └─ 20260330154000_add_chat_room_model_failure_snapshots/
+    └─ migration.sql
+  └─ 20260330170000_add_chat_room_model_cooldown_state/
+    └─ migration.sql
+  └─ 20260330184000_add_chat_room_model_half_open_state/
+    └─ migration.sql
+  └─ 20260330191500_add_chat_room_model_success_recovery_timestamps/
+    └─ migration.sql
+  └─ 20260402113000_add_conversation_rounds/
+    └─ migration.sql
+  └─ 20260402123000_add_conversation_round_events/
+    └─ migration.sql
+  └─ 20260422040000_add_ai_daily_tables/
+    └─ migration.sql
+  └─ 20260422150000_add_daily_categories_and_sources/
+    └─ migration.sql
+  └─ 20260422165000_add_daily_interest_profiles/
+    └─ migration.sql
+  └─ 20260509173000_add_daily_major_events/
+    └─ migration.sql
+
+All migrations have been successfully applied.

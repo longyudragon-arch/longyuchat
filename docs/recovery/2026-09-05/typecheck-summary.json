@@ -1,0 +1,69 @@
+{
+  "verifiedAt": "2026-09-05",
+  "sourceCommit": "257fbeafb08b16c7d126e7e8d8ec7c801184b787",
+  "command": "npx tsc --noEmit --incremental false",
+  "diagnostics": 119,
+  "files": [
+    {
+      "path": "tests/api-presenters.test.ts",
+      "diagnostics": 2
+    },
+    {
+      "path": "tests/app-auth.test.ts",
+      "diagnostics": 1
+    },
+    {
+      "path": "tests/conversation-orchestrator.test.ts",
+      "diagnostics": 1
+    },
+    {
+      "path": "tests/longyuchat-client.test.ts",
+      "diagnostics": 6
+    },
+    {
+      "path": "tests/model-config-service.test.ts",
+      "diagnostics": 4
+    },
+    {
+      "path": "tests/openai-compatible-adapter.test.ts",
+      "diagnostics": 4
+    },
+    {
+      "path": "tests/production-readiness.test.ts",
+      "diagnostics": 4
+    },
+    {
+      "path": "tests/provider-connection-service.test.ts",
+      "diagnostics": 5
+    },
+    {
+      "path": "tests/provider-matrix.test.ts",
+      "diagnostics": 9
+    },
+    {
+      "path": "tests/provider-request.test.ts",
+      "diagnostics": 1
+    },
+    {
+      "path": "tests/proxy.test.ts",
+      "diagnostics": 10
+    },
+    {
+      "path": "tests/rate-limit.test.ts",
+      "diagnostics": 1
+    },
+    {
+      "path": "tests/room-events-route.test.ts",
+      "diagnostics": 1
+    },
+    {
+      "path": "tests/room-message-service.test.ts",
+      "diagnostics": 68
+    },
+    {
+      "path": "tests/startup-readiness.test.ts",
+      "diagnostics": 2
+    }
+  ],
+  "fullLog": "C:/Users/11501/.codex/tmp/project-recovery-20260905/typecheck-latest.log"
+}

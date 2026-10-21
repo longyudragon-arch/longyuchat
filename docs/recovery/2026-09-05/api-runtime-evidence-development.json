@@ -1,0 +1,205 @@
+[
+  {
+    "name": "anonymous_route",
+    "path": "/",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily/archive",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily/events",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/projects",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/about",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/api/rooms",
+    "status": 401,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/admin/daily",
+    "status": 307,
+    "location": "/login?next=%2Fadmin%2Fdaily"
+  },
+  {
+    "name": "login",
+    "status": 200,
+    "hasCookie": true
+  },
+  {
+    "name": "csrf",
+    "status": 403
+  },
+  {
+    "name": "source_create",
+    "status": 201
+  },
+  {
+    "name": "daily_scan",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxlokv0001jkv10c57iba6",
+      "fetchedSourceCount": 1,
+      "fetchedItemCount": 3,
+      "upsertedItemCount": 3,
+      "affectedClusterCount": 3
+    },
+    "loopbackFeedHits": 1
+  },
+  {
+    "name": "daily_publish_no_llm",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxlp1x000bjkv1dxvvzddj",
+      "issueId": "cmtnxhnlo0006vov1e14lcjgg",
+      "issueDate": "2026-09-05",
+      "status": "PUBLISHED",
+      "selectedClusterCount": 3,
+      "publishedItemCount": 3
+    }
+  },
+  {
+    "name": "homepage_freshness",
+    "issueStatus": "PUBLISHED",
+    "publishedTitle": "AI 日报：审计样例：开发者工具正式上线",
+    "homepageHasPublishedTitle": true,
+    "homepageStillEmpty": false,
+    "dailyRedirect": "/daily/daily-2026-09-05"
+  },
+  {
+    "name": "rss",
+    "status": 200,
+    "hasItems": true
+  },
+  {
+    "name": "repeat_publish_insufficient",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxlqfc000ijkv1ho1d9k7c",
+      "issueId": "cmtnxhnlo0006vov1e14lcjgg",
+      "issueDate": "2026-09-05",
+      "status": "SKIPPED",
+      "selectedClusterCount": 0,
+      "publishedItemCount": 0
+    }
+  },
+  {
+    "name": "unpublished_public_api",
+    "status": 200,
+    "issueStatus": "SKIPPED",
+    "itemCount": 3
+  },
+  {
+    "name": "all_sources_fail",
+    "httpStatus": 200,
+    "result": {
+      "runId": "cmtnxlrg6000qjkv1f927u4un",
+      "fetchedSourceCount": 0,
+      "fetchedItemCount": 0,
+      "upsertedItemCount": 0,
+      "affectedClusterCount": 0
+    },
+    "runStatus": "SUCCESS",
+    "stepStatuses": [
+      "FAILED"
+    ]
+  },
+  {
+    "name": "model_create",
+    "status": 201,
+    "keyInResponse": false
+  },
+  {
+    "name": "local_model_test",
+    "status": 400,
+    "body": {
+      "error": "Provider URL is not allowed.",
+      "requestId": "0c804033-0dbd-49f7-9b14-49adbe9c2a9c"
+    }
+  },
+  {
+    "name": "room_create",
+    "status": 201,
+    "roomId": "cmtnxlsmq000tjkv1mcrniam0"
+  },
+  {
+    "name": "message_failure_persistence",
+    "status": 207,
+    "result": {
+      "roomId": "cmtnxlsmq000tjkv1mcrniam0",
+      "status": "partial",
+      "userMessage": {
+        "id": "cmtnxltj5000vjkv1bnrm56or",
+        "roomId": "cmtnxlsmq000tjkv1mcrniam0",
+        "sequence": 1,
+        "role": "USER",
+        "modelId": null,
+        "content": "审计测试消息，仅写入隔离数据库。",
+        "replyDurationMs": null,
+        "queueDurationMs": null,
+        "providerRequestDurationMs": null,
+        "providerAttemptCount": null,
+        "recoveryRequestDurationMs": null,
+        "rewriteRequestDurationMs": null,
+        "persistenceDurationMs": null,
+        "speakerName": null,
+        "speakerProvider": null,
+        "speakerModelName": null,
+        "speakerAvatarLabel": null,
+        "speakerAvatarColor": null,
+        "createdAt": "2026-09-05T05:17:45.281Z"
+      },
+      "assistantMessages": [],
+      "roundOutcomes": [
+        {
+          "modelId": "cmtnxlrnv000sjkv1bzroccnm",
+          "modelName": "Recovery Audit Mock 1788585452239",
+          "outcome": "failed",
+          "error": "Provider URL is not allowed.",
+          "providerErrorKind": "request",
+          "paused": false,
+          "cooldownUntil": "2026-09-05T05:27:45.345Z"
+        }
+      ],
+      "skippedModels": [],
+      "failedModelId": "cmtnxlrnv000sjkv1bzroccnm",
+      "error": "Provider URL is not allowed.",
+      "providerErrorKind": "request",
+      "failedModelPaused": false,
+      "failedModelCooldownUntil": "2026-09-05T05:27:45.345Z"
+    },
+    "historyCount": 1
+  },
+  {
+    "name": "sse",
+    "status": 200,
+    "contentType": "text/event-stream; charset=utf-8",
+    "firstContainsSnapshot": true
+  }
+]

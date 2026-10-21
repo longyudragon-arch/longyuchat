@@ -1,0 +1,151 @@
+[
+  {
+    "name": "anonymous_route",
+    "path": "/",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily/archive",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/daily/events",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/projects",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/about",
+    "status": 200,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/api/rooms",
+    "status": 401,
+    "location": null
+  },
+  {
+    "name": "anonymous_route",
+    "path": "/admin/daily",
+    "status": 307,
+    "location": "/login?next=%2Fadmin%2Fdaily"
+  },
+  {
+    "name": "login",
+    "status": 200,
+    "hasCookie": true
+  },
+  {
+    "name": "csrf",
+    "status": 403
+  },
+  {
+    "name": "source_create",
+    "status": 201
+  },
+  {
+    "name": "daily_scan",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxknlc00018ov1veaqav4l",
+      "fetchedSourceCount": 1,
+      "fetchedItemCount": 3,
+      "upsertedItemCount": 1,
+      "affectedClusterCount": 1
+    },
+    "loopbackFeedHits": 2
+  },
+  {
+    "name": "daily_publish_no_llm",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxknwu00058ov1aj25prgk",
+      "issueId": "cmtnxhnlo0006vov1e14lcjgg",
+      "issueDate": "2026-09-05",
+      "status": "SKIPPED",
+      "selectedClusterCount": 0,
+      "publishedItemCount": 0
+    }
+  },
+  {
+    "name": "homepage_freshness",
+    "issueStatus": "SKIPPED",
+    "publishedTitle": "AI 日报 2026-09-05",
+    "homepageHasPublishedTitle": false,
+    "homepageStillEmpty": true,
+    "dailyRedirect": null
+  },
+  {
+    "name": "rss",
+    "status": 200,
+    "hasItems": false
+  },
+  {
+    "name": "repeat_publish_insufficient",
+    "status": 200,
+    "result": {
+      "runId": "cmtnxko2r00068ov15t41rykz",
+      "issueId": "cmtnxhnlo0006vov1e14lcjgg",
+      "issueDate": "2026-09-05",
+      "status": "SKIPPED",
+      "selectedClusterCount": 0,
+      "publishedItemCount": 0
+    }
+  },
+  {
+    "name": "unpublished_public_api",
+    "status": 200,
+    "issueStatus": "SKIPPED",
+    "itemCount": 0
+  },
+  {
+    "name": "all_sources_fail",
+    "httpStatus": 200,
+    "result": {
+      "runId": "cmtnxko9t00088ov186oxm2ck",
+      "fetchedSourceCount": 0,
+      "fetchedItemCount": 0,
+      "upsertedItemCount": 0,
+      "affectedClusterCount": 0
+    },
+    "runStatus": "SUCCESS",
+    "stepStatuses": [
+      "FAILED",
+      "FAILED"
+    ]
+  },
+  {
+    "name": "model_create",
+    "status": 201,
+    "keyInResponse": false
+  },
+  {
+    "name": "local_model_test",
+    "status": 400,
+    "body": {
+      "error": "Provider URL is not allowed.",
+      "requestId": "9e45346f-448e-44a2-b1c5-5473d232c2f9"
+    }
+  },
+  {
+    "name": "room_create",
+    "status": 500
+  }
+]

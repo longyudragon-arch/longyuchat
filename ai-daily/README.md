@@ -1,45 +1,28 @@
-# LongyuChat AI 日报
+# LongyuChat AI Daily
 
-这个目录用于承载 `LongyuChat` 里的 `AI 日报` 子项目。
+AI Daily is an existing module of the LongyuChat website. Its implementation lives in `app/daily`, `app/admin/daily`, `app/api/daily`, and `server/services/daily-*.ts`.
 
-当前阶段先不落具体实现代码，先固定方向、架构和约束，避免后面一边做一边推翻。
+It includes source management, collection, drafting, publication, archives, and RSS. Other documents in this directory retain early design proposals and should not be treated as proof that a capability is implemented. See the [recovery record](../docs/RECOVERY_CHANGES_2026-09-20.md) for verified behavior.
 
-## 当前定位
+## Direction
 
-- 这是 `LongyuChat` 总站中的一个独立模块
-- 目标是做成 `全自动 AI 日报`
-- 不做视频版
-- 最终发布面仍然是 `LongyuChat` 主站，而不是单独再起一个对外站点
+- Keep Daily as a separate module within the main website.
+- Generate content before publication; public page requests only read stored issues.
+- Prefer structured sources over fragile scraping.
+- Keep collection, scoring, clustering, drafting, and publishing in services and CLI entry points.
+- Validate external scheduling separately; it was not verified during recovery.
 
-## 已确认的核心决策
+Video, multi-platform publishing, personalized recommendations, comments, search, and multi-author administration are outside the current scope.
 
-- `LongyuChat` 负责最终展示、归档、RSS、SEO 和首页入口
-- `AI 日报 worker` 负责抓取、评分、去重、聚类、摘要和自动发布
-- 来源优先采用结构化数据源，避免第一阶段就重度依赖脆弱爬虫
-- 发布流程走 `异步生成 -> 写库 -> 前台读取`，不在页面请求里直接跑 LLM
+## Historical design references
 
-## 推荐技术组合
+The original planning documents considered RSSHub for feed coverage, Horizon and openclaw-newsroom for workflow ideas, and juya-ai-daily for Markdown/RSS/archive presentation. These are historical research references, not additional installed dependencies.
 
-- `RSSHub`：补齐非原生 RSS 来源
-- `Horizon`：作为自动日报引擎的主要参考对象
-- `LongyuChat`：作为最终发布层
-- `juya-ai-daily`：参考其 Markdown / RSS / 归档形态
-- `openclaw-newsroom`：参考其自动化采编策略
+## Documents
 
-## 当前不做
-
-- 视频版
-- 多平台同步发布
-- 个性化推荐
-- 评论系统
-- 搜索系统
-- 多作者后台
-
-## 文档索引
-
-- [ARCHITECTURE.md](./ARCHITECTURE.md)：架构、模块边界、数据流
-- [ROADMAP.md](./ROADMAP.md)：阶段划分与实施顺序
-- [API-STRATEGY.md](./API-STRATEGY.md)：大模型 API、成本与提供商策略
-- [SYSTEM-DESIGN.md](./SYSTEM-DESIGN.md)：表设计、目录结构、调度方案
-- [PRISMA-SCHEMA-DRAFT.prisma](./PRISMA-SCHEMA-DRAFT.prisma)：可并入主项目的 Prisma 草案
-- [REFERENCE-PROJECTS.md](./REFERENCE-PROJECTS.md)：值得学习的 AI 日报/新闻雷达项目清单
+- [Architecture](ARCHITECTURE.md)
+- [Roadmap](ROADMAP.md)
+- [API strategy](API-STRATEGY.md)
+- [System design](SYSTEM-DESIGN.md)
+- [Historical Prisma schema draft](PRISMA-SCHEMA-DRAFT.prisma)
+- [Reference projects](REFERENCE-PROJECTS.md)

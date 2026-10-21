@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-09-05",
+  "sourceRecheckedAt": "2026-09-20",
+  "sourceCommit": "257fbeafb08b16c7d126e7e8d8ec7c801184b787",
+  "note": "Copied audit evidence. Fixtures are synthetic. No original database, environment file, session cookie or real secret is included.",
+  "files": [
+    {
+      "file": "api-runtime-evidence-development.json",
+      "sha256": "8a6d0d7ce51807be2a0a2791e79d81ea430e2e88d1c5ed72eb2926221615d3e3"
+    },
+    {
+      "file": "api-runtime-evidence-production.json",
+      "sha256": "d289f3441f08cef07d31e644fbc75ab47f325e439b05779fb90630677b16bf7d"
+    },
+    {
+      "file": "build-latest.log",
+      "sha256": "764445d6e56f96c25498b2d5117f5690352718eef50a587226b8703e97586bcd"
+    },
+    {
+      "file": "database-and-import-evidence.json",
+      "sha256": "e16ba9ce2061b5a78dafb9739db91559a4573eb82c26709f4234ba0cd49564be"
+    },
+    {
+      "file": "dev-local-wrapper.log",
+      "sha256": "ff6cc570e3d665ca20f6a363bd2f0ba8650e4946ff86d79aa096f1e01ca1d846"
+    },
+    {
+      "file": "homepage-production-probe.json",
+      "sha256": "b8830d63f2d553ef964bc60d5111f4274b4fbe6a0902f255f41c543a224741e6"
+    },
+    {
+      "file": "lint-latest.log",
+      "sha256": "3df95e8c8074940c56d01c3c3600b8bab77031d5652e18e1d564cdaef5ab7a77"
+    },
+    {
+      "file": "migrate-latest-precreated.log",
+      "sha256": "073c8251d7bbc8f5f1ca05a7e54f89753153615a43d7bd034b0535dad33aaddb"
+    },
+    {
+      "file": "prisma-production-probe.log",
+      "sha256": "7fc14a302f37fad67bb5948967b1277bb11ef539bbe8bfbed6130cb4349e4c4f"
+    },
+    {
+      "file": "recovery-prisma-probe.test.ts.txt",
+      "sha256": "96ae10ad645a3de2af153ac69701b58991cdbe7aa84fc813be53ef0ab43108bb"
+    },
+    {
+      "file": "schema-drift-details.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "file": "test-latest.log",
+      "sha256": "8b055a81c6b256c724531b385fc7144f704b3cd6e66f87a379bc066ff00ca127"
+    },
+    {
+      "file": "typecheck-summary.json",
+      "sha256": "63a738588cdbcd0d71a7708c7635bad8428afde0f6c52e978514887eb0bc7c54"
+    },
+    {
+      "file": "ui-smoke-latest.log",
+      "sha256": "d4bbd465cb827ed0a13aa3d014c868434c788a48a76283ee8da22cc3efb0fa41"
+    }
+  ]
+}
