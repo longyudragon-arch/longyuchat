@@ -41,3 +41,11 @@ prisma/dev.db.backup-*
 prisma/test.db
 .codex/dev-server.log
 .codex/dev-server.err.log
+.vs/
+var/backups/
+output/
+prisma/.ui-smoke/
+prisma/*.db*
+
+.codex-*.log
+.codex-audit.json
