@@ -1,230 +1,88 @@
-# AI 多模型聊天室 MVP 规范
+# AI Multi-Model Chatroom MVP Specification
 
-## 1. 项目定位
+## 1. Project purpose
 
-本项目用于构建一个面向个人使用的 AI 多模型聊天室 Web 应用。
+Build a personal web application for conversations with one or more AI models. The first stage validates a runnable, demonstrable core: configure models, have a single-model conversation, receive sequential multi-model replies, and reopen saved conversations.
 
-第一阶段目标不是做完整产品，而是尽快交付一个最基础、可运行、可演示的 MVP，用来验证多模型协作聊天的核心链路是否成立。
+## 2. MVP scope
 
-本阶段只验证以下 4 件事：
+### Model management
 
-1. 能配置模型
-2. 能单聊
-3. 能多模型按顺序回复
-4. 能保存聊天记录并重新打开继续聊天
+Create, edit, delete, enable, disable, and connection-test model configurations.
 
-## 2. MVP 范围
+Configuration fields: `name`, `provider`, `baseUrl`, `modelName`, `apiKey`, and `enabled`.
 
-### 2.1 本阶段必须实现
+Prioritize OpenAI-compatible APIs. Reserve provider types for Claude, Gemini, Grok, Doubao, and DeepSeek; dedicated non-compatible adapters are outside the initial stage.
 
-#### 模型管理
+### Conversations
 
-- 新增模型
-- 编辑模型
-- 删除模型
-- 启用或停用模型
-- 测试连接
+Support single-model chat, multi-model group chat, persistent history, and continuing a saved conversation.
 
-模型配置字段仅包含：
+Select models and save their order when creating a group. Invoke them in that order for each user message. Each later model receives earlier successful replies from the current round.
 
-- `name`
-- `provider`
-- `baseUrl`
-- `modelName`
-- `apiKey`
-- `enabled`
+Role assignment, `@` interruption, automatic continuation, and autonomous multi-round debate are outside this stage.
 
-模型接入策略：
+### Out of scope
 
-- MVP 第一版优先支持 OpenAI 兼容接口
-- `Claude`、`Gemini`、`Grok`、`豆包`、`DeepSeek` 先预留 `provider` 类型
-- 非 OpenAI 兼容 provider 不在本阶段落地
+Do not add image uploads, file parsing, voice input/output, prompt templates, long-prompt imports, automatic summaries, search, archives, export, cost dashboards, error-log pages, role assignment, `@` interruption, automatic multi-round continuation, native apps, mini-programs, multiple users, registration, monetization, or permission systems as part of this MVP.
 
-#### 聊天能力
+## 3. Technology boundaries
 
-- 单聊
-- 多模型群聊
-- 会话历史保存
-- 重新打开历史会话继续聊天
+- Frontend: Next.js, React, TypeScript, and Tailwind CSS.
+- Server: Next.js API routes; no separate backend service.
+- Storage: Prisma ORM and SQLite.
 
-#### 群聊规则
+Prioritize a runnable local application and straightforward installation and debugging. PostgreSQL can be evaluated later if needed.
 
-- 创建群聊时可选择多个模型
-- 每个房间需要保存模型顺序
-- 用户发送一条消息后，模型按固定顺序依次回复
-- 后一个模型能看到前一个模型在当前轮中的已成功回复
-- 本阶段不实现角色分工、`@` 打断、自动继续、多轮自动博弈
+## 4. Pages
 
-### 2.2 本阶段明确不做
+### Model management
 
-以下内容全部留到后续版本，不得混入 MVP：
+List models and provide create, edit, delete, enable/disable, and connection-test actions.
 
-- 图片上传
-- 文件解析
-- 语音输入
-- 语音播报
-- Prompt 模板
-- 超长 Prompt 导入
-- 自动总结
-- 搜索
-- 归档
-- 导出
-- 成本统计页面
-- 错误日志页面
-- 角色分工
-- `@` 打断
-- 自动继续多轮
-- 多端 App 或小程序
-- 多用户
-- 登录注册
-- 商业化和权限系统
+### Main chat page
 
-## 3. 技术边界
+Show the conversation list on the left, messages in the center, the composer below, and participating models with their reply order on the right. Support creating single/group conversations, reopening history, viewing messages, and sending input.
 
-### 3.1 前端
+### New group dialog
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+Enter a room title, select participating models, and arrange their order.
 
-### 3.2 服务端
+## 5. Data model
 
-- 不拆独立后端
-- 直接使用 Next.js API Routes 提供接口
+### `model_configs`
 
-### 3.3 数据存储
+Stores model configurations available to rooms.
 
-- Prisma ORM
-- SQLite
+Fields: `id`, `name`, `provider`, `base_url`, `model_name`, `api_key`, `enabled`, `created_at`, `updated_at`.
 
-选型原则：
+Keep names unique in the local single-user scenario. Disabled models cannot be selected for new rooms. Only the server may access `api_key`.
 
-- 优先保证本地可运行
-- 优先降低安装和调试门槛
-- 后续如需升级，可迁移到 PostgreSQL
+### `chat_rooms`
 
-## 4. 页面范围
+Stores conversation rooms.
 
-### 页面 1：模型管理页
+Fields: `id`, `title`, `type` (`single` or `group`), `created_at`, `updated_at`.
 
-功能：
+### `chat_room_models`
 
-- 查看模型列表
-- 新增模型
-- 编辑模型
-- 删除模型
-- 启用或停用模型
-- 测试连接
+Stores room/model membership and ordering.
 
-### 页面 2：聊天主页面
+Fields: `id`, `room_id`, `model_id`, `sort_order`.
 
-布局：
+Enforce uniqueness of both `room_id + model_id` and `room_id + sort_order`. Single-model rooms must also use this table and bind exactly one model; group rooms must bind at least two.
 
-- 左侧为会话列表
-- 中间为聊天消息区
-- 底部为输入框和发送按钮
-- 右侧为当前房间参与模型和回复顺序
+### `messages`
 
-功能：
+Stores plain-text messages.
 
-- 新建单聊
-- 新建群聊
-- 打开历史会话
-- 显示消息记录
-- 输入并发送消息
+Fields: `id`, `room_id`, `sequence`, `role` (`user`, `assistant`, `system`), nullable `model_id`, `content`, `created_at`.
 
-### 页面 3：新建群聊弹窗
+User messages have no model ID. Enforce uniqueness of `room_id + sequence`; order by sequence rather than inferring order from timestamps.
 
-功能：
+## 6. API scope
 
-- 输入房间名称
-- 选择参与模型
-- 调整模型顺序
-
-## 5. 数据模型规范
-
-### 5.1 `model_configs`
-
-用途：保存可供房间使用的模型配置。
-
-字段：
-
-- `id`
-- `name`
-- `provider`
-- `base_url`
-- `model_name`
-- `api_key`
-- `enabled`
-- `created_at`
-- `updated_at`
-
-约束：
-
-- `name` 在本地单用户场景下应保持唯一
-- `enabled = false` 的模型不可用于新建房间
-- `api_key` 仅服务端可见
-
-### 5.2 `chat_rooms`
-
-用途：保存会话房间。
-
-字段：
-
-- `id`
-- `title`
-- `type`，枚举值为 `single` 或 `group`
-- `created_at`
-- `updated_at`
-
-约束：
-
-- `single` 表示单聊房间
-- `group` 表示群聊房间
-
-### 5.3 `chat_room_models`
-
-用途：保存房间与模型的关联关系及顺序。
-
-字段：
-
-- `id`
-- `room_id`
-- `model_id`
-- `sort_order`
-
-约束：
-
-- `room_id + model_id` 必须唯一
-- `room_id + sort_order` 必须唯一
-- 单聊房间也必须写入本表
-- 单聊房间必须且只能关联 1 个模型
-- 群聊房间必须至少关联 2 个模型
-
-### 5.4 `messages`
-
-用途：保存聊天消息。
-
-字段：
-
-- `id`
-- `room_id`
-- `sequence`
-- `role`，枚举值为 `user`、`assistant`、`system`
-- `model_id`，可空；用户消息为空
-- `content`
-- `created_at`
-
-约束：
-
-- `room_id + sequence` 必须唯一
-- 同一房间的消息顺序以 `sequence` 为准，不以时间戳推断
-- 本阶段只保存纯文本消息
-
-## 6. 接口范围
-
-### 6.1 模型管理
+### Models
 
 - `GET /api/models`
 - `POST /api/models`
@@ -232,66 +90,47 @@
 - `DELETE /api/models/:id`
 - `POST /api/models/:id/test`
 
-### 6.2 会话管理
+### Rooms
 
 - `GET /api/rooms`
 - `POST /api/rooms`
 - `GET /api/rooms/:id/messages`
 - `POST /api/rooms/:id/messages`
 
-## 7. 消息流程规范
+## 7. Message flow
 
-### 7.1 单聊流程
+### Single-model conversation
 
-1. 用户进入单聊房间
-2. 前端提交消息到 `POST /api/rooms/:id/messages`
-3. 服务端保存用户消息
-4. 服务端读取该房间唯一绑定的模型
-5. 服务端调用模型接口
-6. 服务端保存模型回复
-7. 返回本轮新增消息给前端显示
+1. Open a room and send input to `POST /api/rooms/:id/messages`.
+2. Save the user message.
+3. Load the room's single model and call its API.
+4. Save the reply and return the new messages for display.
 
-### 7.2 多模型群聊流程
+### Group conversation
 
-1. 用户发送消息
-2. 服务端先保存用户消息
-3. 服务端按 `sort_order` 依次调用房间中的模型
-4. 每个模型读取当前房间历史消息，以及本轮前面模型的已成功回复
-5. 每个模型成功返回后立即保存一条 `assistant` 消息
-6. 全部执行完成后返回本轮新增消息
+1. Save the user's input first.
+2. Call room models sequentially by `sort_order`.
+3. Give each model the room history and earlier successful replies from the current round.
+4. Save an `assistant` message immediately after each successful reply.
+5. Return the round's saved messages.
 
-## 8. 失败处理规范
+## 8. Failure policy
 
-本阶段采用最简单且可解释的失败策略：
+Persist the user message before making model calls. If a model fails or times out, retain earlier saved replies, create no message for the failed model, and stop subsequent calls. Return partial-success information with the failed model ID and a concise error.
 
-- 用户消息必须先保存
-- 模型顺序调用过程中，如某个模型失败或超时，则已成功保存的模型回复保留，不回滚
-- 当前失败模型不生成消息
-- 后续模型不再继续执行
-- 接口返回“部分成功”结果，并带上失败模型标识和错误摘要
+Connection-test failures must not write chat messages. A single provider failure must not discard messages already saved in the round.
 
-补充约束：
+## 9. API-key security
 
-- “测试连接”失败不应写入聊天消息表
-- 聊天接口不得因为单个模型失败而丢失本轮已保存消息
+- Read and use credentials only on the server.
+- Never return plaintext `api_key` in model list/detail responses.
+- Preserve the old key when an edit does not provide a replacement.
+- Never print plaintext credentials in logs or errors.
+- Keep real `.env` files out of Git and provide `.env.example`.
 
-## 9. API Key 安全底线
+User-configured model credentials are business data stored in the database. Application runtime configuration belongs in environment files.
 
-虽然本阶段是本地单用户 MVP，仍必须满足以下规则：
-
-- `api_key` 只允许服务端读取和使用
-- 模型列表和详情接口不得回传明文 `api_key`
-- 编辑模型时，如未提交新 `api_key`，应保留旧值
-- 日志和报错信息不得打印明文 `api_key`
-- 仓库中不得提交真实 `.env`
-- 必须提供 `.env.example`
-
-说明：
-
-- 用户自行配置的模型密钥属于业务数据，应存于数据库
-- 应用运行所需环境变量放入 `.env`
-
-## 10. 目录建议
+## 10. Directory structure
 
 ```text
 app/
@@ -306,119 +145,45 @@ types/
 public/
 ```
 
-目录职责：
+`app/` contains pages and API entry points; `components/` contains UI. Adapters encapsulate model APIs, orchestrators own sequential execution, and services coordinate business logic and data. Shared utilities, constants, error handling, and the database client belong in `lib/`. Keep schemas/migrations in `prisma/` and shared types in `types/`.
 
-- `app/`：页面和 API 路由入口
-- `components/`：纯 UI 组件
-- `server/adapters/`：模型调用适配层
-- `server/orchestrators/`：多模型顺序编排
-- `server/services/`：业务逻辑与数据协调
-- `lib/`：通用工具、常量、错误处理、数据库客户端
-- `prisma/`：数据库 schema 和 migration
-- `types/`：项目共享类型
+## 11. Implementation principles
 
-## 11. 最小实现原则
+Keep complex business logic out of pages. Routes receive and validate input, call services, and return responses. Centralize provider calls in adapters and group-reply logic in orchestrators. Preserve these boundaries instead of combining responsibilities to save time.
 
-- 页面层不写复杂业务逻辑
-- API Route 只做参数接收、参数校验、调用 service、返回响应
-- 第三方模型调用必须统一收口到适配层
-- 多模型顺序回复必须统一收口到编排层
-- 不为了赶进度把多种职责直接写死在页面或 route 中
+## 12. Tests and acceptance
 
-## 12. 最小测试与验收标准
+### Automated coverage
 
-### 12.1 自动化测试最低要求
+- Connection tests against a mocked OpenAI-compatible API.
+- User and assistant message persistence in single-model chat.
+- Group replies in configured order.
+- Later models receiving earlier replies from the same round.
+- Earlier replies preserved and later models stopped after failure.
+- History reloaded after refresh.
 
-至少覆盖以下场景：
+### Manual acceptance
 
-- 模型连接测试可通过 mocked OpenAI 兼容接口完成校验
-- 单聊发送消息后，能保存用户消息和模型回复
-- 群聊发送消息后，模型按配置顺序回复
-- 群聊中后一个模型可读取前一个模型本轮已成功回复
-- 某个模型失败时，已成功回复保留，后续模型停止
-- 刷新后可以重新读取历史消息
+Pages open; model CRUD and enable/disable actions work; connection tests return results; single/group rooms can be created; models reply in sequence; messages survive refresh; and saved conversations can be continued.
 
-### 12.2 人工验收通过条件
+## 13. Suggested implementation order
 
-满足以下条件即可视为 MVP 跑通：
+1. Initialize Next.js, Tailwind, Prisma/SQLite, and directory boundaries.
+2. Implement the model table, CRUD, connection tests, and management page.
+3. Implement rooms, membership, and saved model ordering.
+4. Implement sending, provider calls, orchestration, persistence, and history loading.
+5. Complete the room list, conversation area, and model-order panel.
 
-- 页面能打开
-- 模型可以新增、编辑、删除、启停
-- 模型连接测试可成功返回结果
-- 可以创建单聊和群聊
-- 用户发送一句话后，多个模型能按顺序回复
-- 刷新页面后聊天记录仍存在
-- 历史会话可以重新打开继续聊天
+## 14. Future directions
 
-## 13. 建议开发顺序
+Dedicated non-compatible provider adapters, images/files/voice, prompt templates, long prompts, summaries/context compression, search/archives/export, cost/error dashboards, role assignment, interruption, automatic continuation, Android, and WeChat mini-programs are future ideas rather than current delivery commitments.
 
-### 第 1 步：初始化项目
+## 15. Goal
 
-- 创建 Next.js 项目
-- 配置 Tailwind
-- 配置 Prisma 和 SQLite
-- 建立基础目录
+Deliver a clear, runnable, extensible AI multi-model chatroom MVP with minimal complexity.
 
-### 第 2 步：完成模型管理
+## 16. Deployment preparation
 
-- 建立模型表
-- 完成模型 CRUD
-- 完成模型连接测试
-- 完成模型管理页
+Existing deployment support includes `.env.example`, `npm run start:prod`, `npm run prisma:migrate:deploy`, `GET /api/health`, production-disabled local mock routes, optional Basic Auth, optional model-key encryption, optional sensitive-request limits, request IDs, redacted errors, startup readiness checks, file logging, and SQLite backup scripts.
 
-### 第 3 步：完成房间管理
-
-- 建立房间表和关联表
-- 新建单聊
-- 新建群聊
-- 配置房间模型顺序
-
-### 第 4 步：完成聊天主流程
-
-- 发送消息
-- 调用模型
-- 顺序编排
-- 保存消息
-- 加载历史消息
-
-### 第 5 步：整理基础 UI
-
-- 左侧房间列表
-- 中间聊天区
-- 右侧模型顺序栏
-
-## 14. 后续版本方向
-
-以下能力仅作为后续规划，不属于当前交付承诺：
-
-- 非 OpenAI 兼容 provider 的专用适配器
-- 图片、文件、语音能力
-- Prompt 模板与超长 Prompt
-- 自动总结和上下文压缩
-- 搜索、归档、导出
-- 成本统计和错误日志页面
-- 角色分工、`@` 打断、自动继续
-- Android App 和微信小程序
-
-## 15. 最终目标
-
-当前所有代码产出都应服务于同一个目标：
-
-**尽快完成一个结构清晰、可运行、可扩展的 AI 多模型聊天室 MVP。**
-
-## 16. 部署准备
-
-项目已经补充了第一批服务器部署准备项：
-
-- `.env.example`
-- `npm run start:prod`
-- `npm run prisma:migrate:deploy`
-- `GET /api/health`
-- 生产环境自动禁用本地 mock 路由
-- 可选的 Basic Auth 访问保护
-- 可选的模型 API Key 加密存储
-- 可选的敏感 POST 接口限流
-- API 请求 ID 响应头和脱敏错误日志
-- 生产启动自检、文件日志和 SQLite 备份脚本
-
-部署步骤和服务器示例见：[docs/deployment.md](./docs/deployment.md)
+See the [deployment guide](docs/deployment.md) for instructions and server examples. The newer portal/Daily recovery work is published separately on [`codex/project-recovery-20260920`](https://github.com/longyudragon-arch/longyuchat/tree/codex/project-recovery-20260920).

@@ -1,199 +1,113 @@
 # AGENTS.md
 
-## 1. 目的
+## 1. Purpose
 
-本文件用于约束 AI 代理和协作者在本仓库中的实现行为。
+These rules guide AI agents and collaborators working in this repository.
 
-本仓库当前以 `README.md` 中的 MVP 规范为准。
-如 README 与其他说明冲突，以 README 的范围定义为准；如实现细节缺失，以本文件补充的工程规则为准。
+Use the MVP scope in `README.md` as the current specification. If other documents conflict, follow the README scope and use these engineering rules to fill in implementation details.
 
-## 2. 当前范围
+## 2. Current scope
 
-当前只允许实现以下能力：
+Only implement model configuration, connection tests, single-model chat, sequential multi-model replies, and saved history with continued conversations.
 
-- 模型配置
-- 模型连接测试
-- 单聊
-- 多模型按顺序回复
-- 聊天记录保存和续聊
+Do not add image uploads, file parsing, voice input/output, prompt templates, long-prompt imports, automatic summaries, search/archives/export, cost or error-log pages, role assignment, `@` interruption, automatic continuation, multiple users, login/registration, monetization, permission systems, native apps, or mini-programs without an explicit request.
 
-以下内容在 MVP 中禁止擅自实现：
+## 3. Implementation principles
 
-- 图片上传
-- 文件解析
-- 语音输入
-- 语音播报
-- Prompt 模板
-- 超长 Prompt 导入
-- 自动总结
-- 搜索、归档、导出
-- 成本统计页面
-- 错误日志页面
-- 角色分工
-- `@` 打断
-- 自动继续多轮
-- 多用户
-- 登录注册
-- 商业化和权限系统
-- App 或小程序
+### Keep scope focused
 
-## 3. 实现总原则
+Implement the smallest useful change for the current stage. Do not introduce later-stage features in advance.
 
-### 3.1 保持 MVP 克制
+### Preserve extension points
 
-- 只做当前阶段所需的最小功能
-- 不提前引入二期或三期能力
+Keep provider adapters even when supporting only OpenAI-compatible APIs. Keep an orchestration layer even when replies follow a fixed order. Do not embed model calls or future extension logic directly in routes or pages.
 
-### 3.2 保持可扩展结构
+### Preserve directory boundaries
 
-- 即使只支持 OpenAI 兼容接口，也必须保留适配层
-- 即使当前只有固定顺序回复，也必须保留编排层
-- 不把未来需要扩展的调用逻辑直接写死在 route 或页面里
+- `app/`: pages and API route entry points.
+- `components/`: UI components.
+- `server/services/`: business logic and data coordination.
+- `server/adapters/`: provider calls and compatibility differences.
+- `server/orchestrators/`: sequential model execution.
+- `lib/`: shared utilities, configuration, and database client.
+- `prisma/`: schema and migrations.
+- `types/`: shared types.
 
-### 3.3 保持目录分层清晰
+## 4. Code changes
 
-建议目录及职责：
+Prefer local changes. Avoid unjustified rewrites or changes to established layering.
 
-- `app/`：页面和 API 路由入口
-- `components/`：纯 UI 组件
-- `server/services/`：业务逻辑
-- `server/adapters/`：模型调用适配
-- `server/orchestrators/`：多模型顺序编排
-- `lib/`：通用工具、配置、数据库客户端
-- `prisma/`：数据库 schema 和 migration
-- `types/`：共享类型
+Use names that describe responsibility. Avoid ambiguous names such as `test2.ts` or `newService.ts`.
 
-## 4. 代码修改规则
+Keep default model names, third-party endpoints, timeouts, and system prompts in environment variables, constants, or explicit configuration objects rather than business logic.
 
-### 4.1 尽量小改动
+## 5. Layer responsibilities
 
-- 优先局部修改
-- 不无理由大规模重写
-- 不擅自改变已确定的目录分层
+Pages display information and trigger actions; they do not contain complex business logic.
 
-### 4.2 保持命名清晰
+API routes only receive and validate parameters, call services, and return responses. Do not put provider calls or business workflows directly in routes.
 
-- 文件和标识符必须体现职责
-- 不使用 `test2.ts`、`newService.ts` 之类的模糊命名
+Services coordinate rooms, messages, model configuration, and persistence, and call adapters and orchestrators.
 
-### 4.3 配置不得硬编码
+Adapters encapsulate model calls and provider differences. OpenAI-compatible APIs remain the first integration path.
 
-以下内容不得硬编码在业务逻辑中：
+Orchestrators own sequential calls, pass earlier successful replies into later models' context, and enforce the failure policy.
 
-- 默认模型名称
-- 第三方接口地址
-- 超时时间
-- 默认系统提示词
+## 6. Data and security
 
-这些内容应放入：
+### Model credentials
 
-- 环境变量
-- 常量文件
-- 明确的配置对象
+- Use `api_key` only on the server.
+- Never return plaintext credentials in API responses.
+- Preserve the existing key when an edit does not supply a replacement.
+- Never print plaintext credentials in logs, stack traces, or debug output.
 
-## 5. 分层约束
+### Data constraints
 
-### 5.1 页面层
+- Enforce uniqueness of `room_id + model_id` in `chat_room_models`.
+- Enforce uniqueness of `room_id + sort_order` in `chat_room_models`.
+- A single-model room must bind exactly one model.
+- A group room must bind at least two models.
+- Messages must have a sortable `sequence` or equivalent ordering field.
 
-- 负责展示和事件触发
-- 不写重业务逻辑
+## 7. Group conversation failure policy
 
-### 5.2 API Route
+- Save the user message before calling any model.
+- Preserve successful replies if a later model fails.
+- Do not create a message for the failed model.
+- Stop all subsequent model calls.
+- Return partial-success information.
 
-只允许负责：
+Do not switch to all-or-nothing rollback or continue after failure unless the task explicitly requests that behavior.
 
-- 参数接收
-- 参数校验
-- 调用 service
-- 返回响应
+## 8. Minimum test coverage
 
-禁止在 route 中直接堆叠业务流程或第三方模型调用。
+Delivery must cover:
 
-### 5.3 服务层
+- Connection tests against a mocked provider.
+- Single-model message persistence.
+- Sequential group replies.
+- Later models receiving earlier replies from the current round.
+- Partial success when a model fails mid-round.
+- Reloading historical messages.
 
-- 负责房间、消息、模型配置的业务编排
-- 协调数据访问
-- 调用适配器和编排器
+Report missing automated coverage and its practical risk when a task does not close a gap.
 
-### 5.4 适配器层
+## 9. Changes requiring an explicit request
 
-- 统一封装模型调用
-- 屏蔽 provider 差异
-- 第一版先实现 OpenAI 兼容接口适配器
+Do not:
 
-### 5.5 编排器层
+- Call third-party model APIs directly from pages or components.
+- Scatter orchestration across routes.
+- Add complex state management libraries, queues, middleware, or microservices.
+- Switch databases.
+- Introduce authentication.
+- Add unconfirmed later-stage features.
 
-- 统一处理多模型顺序调用
-- 统一处理“前一个模型回复进入后一个模型上下文”的逻辑
-- 统一处理顺序调用中的失败策略
+## 10. Delivery
 
-## 6. 数据与安全规则
+Report the files changed, the reason for the change, verification performed, and material remaining limitations.
 
-### 6.1 模型密钥
+## 11. Goal
 
-- `api_key` 只允许服务端使用
-- 接口返回中不得包含明文 `api_key`
-- 编辑模型时，未提供新 key 代表保留旧值
-- 日志、错误栈、调试输出中不得打印明文 `api_key`
-
-### 6.2 数据结构底线
-
-在实现数据库 schema 时，必须满足以下约束：
-
-- `chat_room_models` 中 `room_id + model_id` 唯一
-- `chat_room_models` 中 `room_id + sort_order` 唯一
-- 单聊房间必须且只能绑定 1 个模型
-- 群聊房间至少绑定 2 个模型
-- `messages` 必须有可排序的 `sequence` 字段或等价机制
-
-## 7. 群聊失败处理规则
-
-MVP 统一采用以下行为：
-
-- 先保存用户消息，再开始顺序调用模型
-- 某个模型失败后，已成功回复不回滚
-- 失败模型不生成消息
-- 后续模型停止执行
-- 接口返回部分成功信息
-
-实现时不得擅自改成“全部回滚”或“失败后继续执行后续模型”，除非任务明确要求。
-
-## 8. 最小测试要求
-
-每次交付代码时，至少应保证以下测试场景可覆盖：
-
-- mocked provider 的模型连接测试
-- 单聊消息保存
-- 群聊顺序回复
-- 后续模型可见前序模型本轮回复
-- 群聊中途失败时的部分成功行为
-- 历史消息重新加载
-
-如果本次任务未补齐自动化测试，应明确说明缺口和风险。
-
-## 9. 明确禁止事项
-
-除非任务明确要求，否则不得：
-
-- 直接在页面或组件中调用第三方模型接口
-- 把多模型顺序逻辑散落在多个 route 中
-- 擅自引入复杂状态管理库
-- 擅自引入消息队列、中间件、微服务
-- 擅自切换数据库
-- 擅自引入登录认证
-- 擅自加入未确认的二期功能
-
-## 10. 交付输出要求
-
-完成任务时，应优先说明：
-
-1. 修改了哪些文件
-2. 为什么这样修改
-3. 是否做了验证
-4. 如有缺口，下一步建议是什么
-
-## 11. 最终目标
-
-所有实现都应服务于一个目标：
-
-**用最小复杂度完成一个结构清晰、可运行、可扩展的 AI 多模型聊天室 MVP。**
+Deliver a clear, runnable, extensible AI multi-model chatroom MVP with minimal complexity.
