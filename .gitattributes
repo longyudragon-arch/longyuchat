@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve archived verification evidence byte for byte.
+docs/recovery/2026-09-05/* -text
